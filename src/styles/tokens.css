@@ -1,0 +1,29 @@
+/* REWIND · tokens CSS — generados del Manual de identidad visual v07 (25/09/2026).
+   Solo valores confirmados. Ver design-tokens.json para provisionales y reglas. */
+:root {
+  --rw-verde:  #C2FE0B;  /* verde eléctrico (Jaime 08/10, reemplaza #C9D200): protagonista, puede inundar pantallas */
+  --rw-negro:  #000000;  /* fondo dominante (65 %) */
+  --rw-blanco: #FFFFFF;  /* texto y contornos (25 %) */
+  --rw-carbon: #121212;  /* epílogo y fichas */
+  --rw-gris:   #383838;
+  --rw-cian:   #19C6D9;  /* SOLO María Clara: traje cyborg y momento final */
+
+  --rw-font: "Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --rw-peso-display: 800;
+  --rw-peso-titulo: 600;
+  --rw-peso-hud: 600;
+  --rw-peso-texto: 400;
+  --rw-peso-ligera: 300;
+  --rw-anchura-condensada: 75%;
+
+  --rw-ease: cubic-bezier(.2,.8,.2,1);
+  --rw-dur-crt-off: 300ms;
+  --rw-dur-camara-max: 400ms;
+
+  --rw-tactil-min: 56px;
+  --rw-opacidad-controles: .5;
+  --rw-pad: clamp(20px, 5vw, 96px);
+  --rw-logo-min: 120px;
+  --rw-iso-min: 32px;
+}
+body { font-variant-numeric: tabular-nums; }

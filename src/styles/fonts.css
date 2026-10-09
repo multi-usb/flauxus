@@ -1,0 +1,86 @@
+/* Sistema tipográfico FLAUXUS v3 (Jaime 08/10: más peso, más carácter, sin outline). Fontsource, subset latin, variables.
+   Nombre  · Unbounded     — geométrica, black, de interfaz contemporánea: solo «María Clara Lozada Ocampo».
+   Display · Tektur        — angular, de interfaz de videojuego (wght 400–900, wdth 75–100): titulares, notas, cifras.
+   Cuerpo  · Space Grotesk — grotesk tecnológica con carácter (wght 300–700): párrafos y citas.
+   HUD     · Martian Mono  — mono técnica: datos, prompts, labels, frecuencias.
+   Titular · Unbounded     — geométrica black: todos los titulares (nombre, M3, cierre, salas, citas cortas, cifra).
+   Acento  · Pixelify Sans — píxel contemporáneo, inclinado: solo PRESS START. */
+
+@font-face {
+  font-family: "Tektur";
+  src: url("@fontsource-variable/tektur/files/tektur-latin-standard-normal.woff2") format("woff2-variations");
+  font-weight: 400 900; font-stretch: 75% 100%; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Unbounded";
+  src: url("@fontsource-variable/unbounded/files/unbounded-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 200 900; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 300 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Martian Mono";
+  src: url("@fontsource-variable/martian-mono/files/martian-mono-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 100 800; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("@fontsource-variable/pixelify-sans/files/pixelify-sans-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 400 700; font-style: normal; font-display: swap;
+}
+
+:root {
+  --font-display: "Tektur", "Space Grotesk", system-ui, sans-serif;
+  --font-name: "Unbounded", "Tektur", system-ui, sans-serif; /* solo el nombre de María Clara */
+  --font-text: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --font-pixel: "Pixelify Sans", "Martian Mono", ui-monospace, monospace;
+  --font-head: "Unbounded", "Tektur", system-ui, sans-serif; /* titulares */
+
+  /* Escala fluida: contraste fuerte entre momentos intensos y de descanso */
+  --fs-mega: clamp(4.5rem, 13.5vw, 15rem);
+  --fs-h1: clamp(3.4rem, 8.4vw, 9rem);
+  --fs-h2: clamp(2.1rem, 4.6vw, 4.8rem);
+  --fs-h3: clamp(1.6rem, 2.8vw, 2.8rem);
+  --fs-lead: clamp(1.35rem, 2.1vw, 2.2rem);
+  --fs-body: clamp(1.05rem, 1.15vw, 1.2rem);
+  --fs-quote: clamp(1.25rem, 1.75vw, 1.8rem);
+  --fs-hud: clamp(.7rem, .76vw, .82rem);
+}
+
+body { font-family: var(--font-text); font-size: var(--fs-body); }
+
+.t-mega, .m4-name, .sala-title {
+  font-family: var(--font-head); font-weight: 900; font-stretch: normal; text-transform: uppercase;
+  line-height: .9; letter-spacing: -.045em; margin: 0; font-kerning: normal;
+}
+
+.tape-label, .hud-counter, .hud-rewind, .prompt-tag, .prompt-btn, .cta, cite,
+.fps, .osd-prompt, .osc-freq, .note .hz, .m4-facts {
+  font-family: var(--font-mono); font-stretch: 100%;
+}
+.tape-label, .hud-counter { font-size: var(--fs-hud); font-weight: 500; letter-spacing: .04em; }
+.hud-rewind { font-size: var(--fs-hud); font-weight: 700; letter-spacing: .12em; }
+.prompt-tag, .prompt-btn { font-weight: 600; letter-spacing: .02em; }
+.cta { font-family: var(--font-display); font-weight: 900; letter-spacing: .02em; }
+cite { font-size: var(--fs-hud); font-weight: 400; letter-spacing: .02em; }
+
+/* Notas y cifras: Tektur pesada (la tipografía de las seis salas) */
+.scale, .note .n, .sala-note { font-family: var(--font-display); font-weight: 900; font-stretch: 85%; letter-spacing: -.01em; }
+/* PRESS START: píxel contemporáneo (Pixelify Sans 700), inclinado. */
+.press-start { font-family: var(--font-pixel); font-weight: 700; font-size: clamp(24px, 2.6vw, 38px); letter-spacing: .06em; }
+.press-start span { display: inline-block; transform: skewX(-12deg); }
+
+/* Split letra a letra: cada letra se enciende en un instante aleatorio. */
+.split .ch { display: inline-block; }
+.split.lit .ch { animation: ch-on 180ms steps(2, jump-none) var(--d, 0ms) both; }
+@keyframes ch-on { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) { .split.lit .ch { animation: none; } }
+
+/* ♯ vectorial (ui/sharp.js) */
+.sharp { display: inline-block; width: .44em; height: .66em; margin: 0 .03em; vertical-align: baseline; }
+.sharp svg { display: block; width: 100%; height: 100%; overflow: visible; }
