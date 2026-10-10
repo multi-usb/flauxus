@@ -11,12 +11,36 @@
   <body>
     <!-- 0 · Inicio: el logotipo se reconstruye; la cinta carga; PRESS START arranca imagen y sonido -->
     <div id="boot" role="dialog" aria-label="FLAUXUS">
-      <div class="boot-logo"></div>
-      <div class="boot-tape" aria-live="polite">
-        <div class="tape-bar"><i></i></div>
-        <p class="tape-label"><span class="tape-pct">0</span> % · rebobinando cinta</p>
+      <!-- Retícula de fondo -->
+      <div class="boot-grid" aria-hidden="true"></div>
+      <!-- Esquinas de visor -->
+      <div class="boot-corner boot-corner--tl" aria-hidden="true"></div>
+      <div class="boot-corner boot-corner--tr" aria-hidden="true"></div>
+      <div class="boot-corner boot-corner--bl" aria-hidden="true"></div>
+      <div class="boot-corner boot-corner--br" aria-hidden="true"></div>
+      <!-- Telemetría lateral izquierda -->
+      <div class="boot-meta boot-meta--left" aria-hidden="true">
+        <span class="boot-meta-line">FLAUXUS · SISTEMA DE IDENTIDAD</span>
+        <span class="boot-meta-line">LA4 = 440 HZ · DO4 → LA♯4</span>
+        <span class="boot-meta-line">CUERPO: MARÍA CLARA LOZADA OCAMPO</span>
       </div>
-      <button class="press-start waiting" type="button" disabled><span>PRESS START</span></button>
+      <!-- Telemetría lateral derecha -->
+      <div class="boot-meta boot-meta--right" aria-hidden="true">
+        <span class="boot-meta-line">261,63 – 466,16 Hz</span>
+        <span class="boot-meta-line">6 SALAS · 1 URL</span>
+        <span class="boot-meta-line" id="boot-ts">00:00:00</span>
+      </div>
+      <!-- Núcleo central -->
+      <div class="boot-core">
+        <div class="boot-logo"></div>
+        <div class="boot-tape" aria-live="polite">
+          <!-- Barra de escáner -->
+          <div class="tape-scanner" aria-hidden="true"><div class="tape-scanner-beam"></div></div>
+          <div class="tape-bar"><i></i></div>
+          <p class="tape-label">REBOBINANDO CINTA · <span class="tape-pct">0</span> %</p>
+        </div>
+        <button class="press-start waiting" type="button" disabled><span>PRESS START</span></button>
+      </div>
     </div>
 
     <canvas id="gl" aria-hidden="true"></canvas>
@@ -43,18 +67,33 @@
     <!-- HUD fijo -->
     <div id="hud" aria-hidden="true">
       <span class="hud-iso"></span>
-      <p class="hud-chapter">01 / 06</p>
+      <!-- Coordenada de navegación: reemplaza el genérico 01/06 -->
+      <div class="hud-nav">
+        <span class="hud-nav-seq">SEQ</span>
+        <p class="hud-chapter">01 / 06</p>
+        <span class="hud-nav-label">IMPACTO</span>
+      </div>
       <p class="hud-counter">00:00:00</p>
       <p class="hud-rewind">REBOBINANDO ◀◀</p>
       <i class="hud-hint"></i>
     </div>
     <!-- Secuencia de activación + telemetría del Momento 1 (ui/activation.js) -->
     <div id="sys" aria-hidden="true" hidden>
+      <!-- Marcos de visor para la pantalla de activación -->
+      <div class="sys-frame sys-frame--tl" aria-hidden="true"></div>
+      <div class="sys-frame sys-frame--tr" aria-hidden="true"></div>
+      <div class="sys-frame sys-frame--br" aria-hidden="true"></div>
+      <!-- Línea de estado superior (solo durante activación) -->
+      <div class="sys-topbar" aria-hidden="true">
+        <span class="sys-topbar-dot"></span>
+        <span class="sys-topbar-text">FLAUXUS · INICIANDO SISTEMA</span>
+        <span class="sys-topbar-coords">LAT 3°26′N · LON 76°31′O</span>
+      </div>
       <div class="sys-log"></div>
       <p class="sys-hint"><span class="d">[ CURSOR ] RADIOGRAFÍA · [ CLIC ] PULSO DO4</span><span class="t">[ TOCA ] RADIOGRAFÍA Y PULSO DO4</span></p>
     </div>
     <!-- Atajo al portal: siempre a mano (fuera del portal) -->
-    <button id="hud-cta" class="prompt-btn" type="button" data-cursor data-scramble>[ JUEGA YA ]</button>
+    <button id="hud-cta" class="prompt-btn" type="button" data-cursor data-scramble>ENTRAR AL SISTEMA ›</button>
     <button id="sound" type="button" aria-pressed="true" aria-label="Sonido" data-cursor></button>
 
     <main id="story">

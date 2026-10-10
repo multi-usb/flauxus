@@ -87,6 +87,8 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   let activeId = '';
   let flooded = false;
   const chapter = document.querySelector('#hud .hud-chapter');
+  const navLabel = document.querySelector('#hud .hud-nav-label');
+  const MOMENT_NAMES = { m1: 'IMPACTO', m2: 'PORTAL', m3: 'UNIVERSO', m4: 'ARTISTA', m5: 'SALAS', m6: 'CIERRE' };
   const fps = createFpsWatch(backend);
 
   if (!profile.touch) {
@@ -117,6 +119,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
       if (activeId && !rewinding) { backend.glitch?.(0.45); audio.sfx(Math.abs(velocity) > 2500 ? 'glitch' : 'whoosh'); }
       activeId = active.id;
       chapter.textContent = `${active.id.slice(1).padStart(2, '0')} / 06`;
+      if (navLabel) navLabel.textContent = MOMENT_NAMES[active.id] || '';
       document.documentElement.dataset.moment = activeId;
     }
     // El video de JUEGA YA empieza a cargar una pantalla antes.

@@ -29,6 +29,19 @@ const bootLogo = document.querySelector('#boot .boot-logo');
 bootLogo.innerHTML = logoSVG({ format: narrowFormat(), animated: true, color: 'var(--rw-verde)' });
 animateLogo(bootLogo.querySelector('svg'), profile).rebuild(1100);
 
+// Reloj vivo en la telemetría del preloader
+const bootTs = document.getElementById('boot-ts');
+if (bootTs) {
+  const tick = () => {
+    const d = new Date();
+    bootTs.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  };
+  tick();
+  const tsInterval = setInterval(tick, 1000);
+  // Se detiene cuando el boot desaparece
+  document.getElementById('boot').addEventListener('transitionend', () => clearInterval(tsInterval), { once: true });
+}
+
 // Progreso real: en modo 3D, 15 % el código y 85 % los bytes del GLB de María Clara.
 let jsDone = 0;
 let glbDone = mode === 'gl' ? 0 : 1;
