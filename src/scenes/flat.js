@@ -1,6 +1,7 @@
 // Backend sin WebGL (o con prefers-reduced-motion): la misma narrativa con imágenes.
 // Momento 1: las vistas reales del personaje (espalda → perfil → tres cuartos → frente) como hoja de modelo.
 // Momento 3: el monitor es un marco HTML con el póster/video. Transiciones por corte.
+
 export function createFlatBackend({ profile, channels }) {
   const html = document.documentElement;
   html.classList.add('flat');
@@ -8,7 +9,10 @@ export function createFlatBackend({ profile, channels }) {
   const sheet = layer.querySelector('.flat-sheet');
   const views = [...sheet.querySelectorAll('img')];
   const lazy = [...document.querySelectorAll('img[data-src]')];
-  lazy.forEach((img) => { img.src = img.dataset.src; img.decoding = 'async'; });
+  lazy.forEach((img) => {
+    img.src = img.dataset.src;
+    img.decoding = 'async';
+  });
 
   const osdScreen = document.querySelector('#osd .osd-screen');
   const poster = osdScreen.querySelector('.osd-poster');

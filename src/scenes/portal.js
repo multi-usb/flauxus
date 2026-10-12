@@ -3,22 +3,33 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import { GLYPHS, WIDTH as LOGO_W, ORIGIN } from '../ui/logo.js';
 import { span } from '../lib/math.js';
 
-// PORTAL — JUEGA YA. Un marco monumental 9:16 frente a María Clara (ella lo mira: está en +z),
-// con el concept art como superficie de luz. Encima, el logotipo FLAUXUS extruido desde el mismo vector.
-// El portal se enciende ligado al scroll: primero el contorno verde se dibuja, luego la pantalla se abre
-// como un CRT y su luz cae sobre la espalda de ella y el piso.
-export const PORTAL = { z: 6, w: 2.4, h: 4.267, base: 0.12 };
-PORTAL.cy = PORTAL.base + PORTAL.h / 2;
+// PORTAL — JUEGA YA. Pantalla 16:9 en escritorio / vertical 9:16 en celular frente a María Clara,
+// con el preview interactivo del juego como superficie de luz y el logotipo extruido.
+export const PORTAL = { z: 6, w: 4.8, h: 2.7, base: 0.12, cy: 1.47 };
+
+export function configurePortal(mobile) {
+  if (mobile) {
+    PORTAL.w = 2.4;
+    PORTAL.h = 4.267; // 9:16 vertical para smartphone
+  } else {
+    PORTAL.w = 4.8;
+    PORTAL.h = 2.7; // 16:9 panorámico cinematográfico para desktop
+  }
+  PORTAL.cy = PORTAL.base + PORTAL.h / 2;
+  return PORTAL;
+}
+
 const VERDE = 0xc2fe0b;
 
 export function createPortal(scene, { channels, mobile }) {
+  configurePortal(mobile);
+
   const group = new THREE.Group();
   group.position.set(0, 0, PORTAL.z);
   group.rotation.y = Math.PI; // la cara del portal mira hacia ella (-z)
   scene.add(group);
 
-  const { w, h, base } = PORTAL;
-  const cy = PORTAL.cy;
+  const { w, h, base, cy } = PORTAL;
   const T = 0.22; // grosor del marco
   const D = 0.36; // profundidad del marco
 
@@ -36,7 +47,7 @@ export function createPortal(scene, { channels, mobile }) {
   });
   group.add(...pieces);
   // Zócalo
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + T * 2 + 0.5, base, D + 0.6), frameMat);
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + T * 2 + 0.6, base, D + 0.6), frameMat);
   plinth.position.set(0, base / 2, 0);
   group.add(plinth);
 
@@ -74,17 +85,17 @@ export function createPortal(scene, { channels, mobile }) {
   group.add(refl);
 
   // Luz del portal: sale de la pantalla hacia ella. Su color es el promedio real del concept art.
-  const light = new THREE.PointLight(0xffffff, 0, 14, 1.4);
+  const light = new THREE.PointLight(0xffffff, 0, mobile ? 14 : 18, 1.4);
   light.position.set(0, cy, 1.2); // delante de la pantalla (en espacio del grupo, +z apunta hacia ella)
   group.add(light);
   averageColor(channels.poster(0)).then((c) => light.color.copy(c));
 
   // Logotipo FLAUXUS extruido sobre el portal (mismo vector que la web; sin deformar las letras).
   const logo = extrudeLogo();
-  // En móvil el logo mide lo mismo que el portal (el encuadre vertical es angosto); en escritorio, algo más ancho.
-  const logoScale = (w + T * 2 + (mobile ? 0 : 1.6)) / LOGO_W;
+  const logoTargetW = mobile ? (w + T * 2) : Math.min(w * 0.76, 3.8);
+  const logoScale = logoTargetW / LOGO_W;
   logo.scale.set(logoScale, -logoScale, logoScale); // el SVG crece hacia abajo
-  logo.position.set(-(LOGO_W * logoScale) / 2, cy + h / 2 + T + (mobile ? 0.85 : 1.35), 0);
+  logo.position.set(-(LOGO_W * logoScale) / 2, cy + h / 2 + T + (mobile ? 0.85 : 0.65), 0);
   group.add(logo);
 
   // ---------- Texturas de la pantalla ----------

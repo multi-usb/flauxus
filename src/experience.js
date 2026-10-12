@@ -35,6 +35,15 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   const audio = createAudio();
   const soundBtn = document.getElementById('sound');
   soundBtn.innerHTML = '<canvas class="viz" aria-hidden="true"></canvas><span class="snd-label" aria-hidden="true"></span>';
+  let moments = [];
+  const exploreHero = () => {
+    const portalStart = moments[1]?.track?.start;
+    const targetY = portalStart != null ? portalStart + 80 : window.innerHeight * 1.35;
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
+  };
+  document.querySelector('.hero-explore')?.addEventListener('click', exploreHero);
+  document.querySelector('.hero-mini-avatar')?.addEventListener('click', exploreHero);
+  document.querySelector('.hero-scroll')?.addEventListener('click', exploreHero);
   document.querySelector('#hud .hud-iso').innerHTML = isoSVG({ color: 'currentColor' });
   const syncSound = (on) => soundBtn.setAttribute('aria-pressed', String(on));
   syncSound(audio.enabled);
@@ -57,7 +66,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   };
 
   // El orden importa: los ScrollTrigger se calculan de arriba hacia abajo.
-  const moments = [createM1(ctx), createM2(ctx), createM3(ctx), createM4(ctx), createM5(ctx), createM6(ctx)];
+  moments = [createM1(ctx), createM2(ctx), createM3(ctx), createM4(ctx), createM5(ctx), createM6(ctx)];
   const portal = moments[1];
   // Evento musical → visual en el mismo instante: el golpe del clímax abre el portal.
   audio.onCue((name) => {
@@ -87,14 +96,16 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   let activeId = '';
   let flooded = false;
   const chapter = document.querySelector('#hud .hud-chapter');
-  const navLabel = document.querySelector('#hud .hud-nav-label');
-  const MOMENT_NAMES = { m1: 'IMPACTO', m2: 'PORTAL', m3: 'UNIVERSO', m4: 'ARTISTA', m5: 'SALAS', m6: 'CIERRE' };
+  const heroComp = document.querySelector('.hero-composition');
   const fps = createFpsWatch(backend);
 
   if (!profile.touch) {
     addEventListener('pointermove', (e) => { mouseTarget = (e.clientX / innerWidth) * 2 - 1; }, { passive: true });
   }
   addEventListener('resize', () => backend.resize());
+
+  // El cursor personalizado se activa desde el primer momento, incluidos el preloader y la pantalla de inicio.
+  createCursor();
 
   function frame(now) {
     if (!running) return;
@@ -111,6 +122,10 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
     if (Math.abs(y - sy) < 0.5) sy = y;
     mouse += (mouseTarget - mouse) * (1 - Math.exp(-dt / 0.4));
 
+    if (heroComp && activeId === 'm1' && !profile.touch) {
+      heroComp.style.setProperty('--hero-px', `${(mouse * 18).toFixed(1)}px`);
+    }
+
     // Momento activo = el último cuyo tramo ya empezó.
     let active = moments[0];
     for (const m of moments) if (m.track.start <= sy + 0.5) active = m;
@@ -119,7 +134,6 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
       if (activeId && !rewinding) { backend.glitch?.(0.45); audio.sfx(Math.abs(velocity) > 2500 ? 'glitch' : 'whoosh'); }
       activeId = active.id;
       chapter.textContent = `${active.id.slice(1).padStart(2, '0')} / 06`;
-      if (navLabel) navLabel.textContent = MOMENT_NAMES[active.id] || '';
       document.documentElement.dataset.moment = activeId;
     }
     // El video de JUEGA YA empieza a cargar una pantalla antes.
@@ -182,7 +196,6 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   function start() {
     started = true;
     running = true;
-    createCursor();
     ScrollTrigger.refresh();
     last = performance.now();
     requestAnimationFrame(frame);

@@ -15,11 +15,10 @@ const XRAY_MOMENTS = new Set(['m1', 'm2', 'm3']);
 const PC = PORTAL.cy;
 
 // M1: órbita [t, azimut°, distancia, altura cámara, altura de mira, desplazamiento lateral]
-// Plano inicial = plano general frente a la pantalla monumental (ella en el tercio derecho, el texto a la izquierda;
-// en móvil, ella abajo y el texto encima); luego se acerca, gira y queda detrás de ella mirando el portal.
+// Plano inicial americano: encuadre idéntico al diseño de referencia; luego gira hacia el portal.
 const M1 = {
-  desktop: [[0, 0, 5.0, 2.0, 2.45, -0.9], [0.3, 20, 1.9, 1.55, 1.5, -0.2], [0.65, 110, 3.3, 1.05, 1.2, 0], [1, 180, 3.4, 1.3, 1.7, 0]],
-  mobile: [[0, 0, 6.2, 2.3, 3.1, 0], [0.3, 20, 2.6, 1.5, 1.45, 0], [0.65, 110, 4.4, 1.1, 1.15, 0], [1, 180, 4.6, 1.5, 1.7, 0]],
+  desktop: [[0, 0, 1.98, 1.50, 1.44, 0], [0.3, 20, 2.9, 1.55, 1.5, -0.1], [0.65, 110, 3.3, 1.05, 1.2, 0], [1, 180, 3.4, 1.3, 1.7, 0]],
+  mobile: [[0, 0, 3.2, 1.8, 1.3, 0], [0.3, 20, 3.5, 1.6, 1.35, 0], [0.65, 110, 4.4, 1.1, 1.15, 0], [1, 180, 4.6, 1.5, 1.7, 0]],
 };
 // M2 y M3: posiciones explícitas [t, px, py, pz, lx, ly, lz]
 const M2 = {
@@ -34,8 +33,11 @@ const M3 = {
 export async function createGlBackend({ canvas, glbBuffer, profile, channels }) {
   const pipeline = createPipeline(canvas, { quality: profile.quality, crt: profile.crt });
   const hero = await createHero({ glbBuffer, profile, channels });
-  const xray = createXray(hero, profile);
+  const xray = createXray(hero, { ...profile, renderer: pipeline.renderer });
   const kind = profile.mobile ? 'mobile' : 'desktop';
+  const pc = PORTAL.cy;
+  M2.desktop[2][5] = pc - 0.05;
+  M2.mobile[2][5] = pc + 0.05;
   const m2End = M2[kind][M2[kind].length - 1].slice(1);
   const m3Keys = M3[kind](m2End);
   const KEY_BASE = hero.key.intensity;
@@ -79,11 +81,22 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
     hero.camera.lookAt(ox, lookY, 0);
   }
 
-  function aspect() { hero.setAspect(pipeline.aspect); }
+  function aspect() {
+    hero.camera.clearViewOffset();
+    hero.setAspect(pipeline.aspect);
+  }
   aspect();
 
   function update(id, e, q, dt, mouse) {
     wanted = SCENE_OF[id];
+    hero.reticle.visible = id === 'm1' && q < 0.4;
+    if (hero.bgGlow) hero.bgGlow.visible = id === 'm1' && q < 0.4;
+    if (hero.wordsRain) hero.wordsRain.group.visible = id === 'm1' && q < 0.4;
+    hero.grid.mesh.visible = id !== 'm1';
+    hero.figure.scale.setScalar(1);
+    u.uScanEnabled.value = id === 'm1' ? 0 : 1;
+    if (id === 'm1') u.uVignette.value = 0;
+    else u.uVignette.value = profile.crt ? 0.35 : 0;
     let ign = 0;
     let wipe = 0;
     let code = 0;
@@ -91,22 +104,44 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
     let flood = 0;
     let halo = 0;
 
+    hero.figure.rotation.y = 0;
+    hero.reticle.position.x = 0;
+    if (hero.bgGlow) hero.bgGlow.position.x = 0;
+    if (hero.wordsRain) hero.wordsRain.group.position.x = 0;
+
     if (id === 'm1') {
       const [az, dist, y, ly, ox] = sampleKeys(M1[kind], q, 1);
       // Secuencia de activación (ui/activation.js): la cámara llega desde lejos y de lado, y se clava en el visor.
       const d = boot.dolly;
-      orbit((az + d * 40) * DEG + mouse * 0.05 * (1 - q), dist * (1 + d * 1.6), y + d * 0.6, ly, ox);
-      hero.wall.setVisible(true);
+      // Movimiento suave y sutil sin saltos ni tirones al entrar/salir de la radiografía
+      const pointerFollow = mouse * 0.02 * (1 - q);
+      orbit((az + d * 40) * DEG + pointerFollow, dist * (1 + d * 1.6), y + d * 0.6, ly, ox);
+
+      // Punto 1: Telemetría sonora viva en la retícula radar (rotación y pulso)
+      hero.reticle.update?.(dt, performance.now() / 1000, beat);
+
+      // Lluvia 3D de conceptos identitarios (ESCUCHA, RECORRE, INTERVIENE)
+      hero.wordsRain?.update(dt, performance.now() / 1000, beat);
+
+      // Punto 4: Parallax multicapa cinematográfico
+      // Plano medio: María Clara se orienta apenas hacia el cursor
+      hero.figure.rotation.y = mouse * 0.055 * (1 - q);
+      // Fondo: la retícula polar, el resplandor y la lluvia de palabras reaccionan en profundidad inversa
+      hero.reticle.position.x = -mouse * 0.065 * (1 - q);
+      if (hero.bgGlow) hero.bgGlow.position.x = mouse * 0.095 * (1 - q);
+      if (hero.wordsRain) hero.wordsRain.group.position.x = -mouse * 0.12 * (1 - q);
+
+      hero.wall.setVisible(false);
       hero.setScan(-0.1);
       // María Clara existe primero como código; la línea de escaneo la convierte en imagen.
       code = boot.code;
       codeLine = boot.codeLine;
-      halo = boot.halo * (1 - span(q, 0.5, 0.62));
+      halo = 0;
       // Pantalla: estado de la activación + cursor + pulso; la franja central del logo salta con el bombo.
       const now = performance.now();
       if (ptr.x >= 0) hero.wall.pointer(ptr.x, ptr.y, hero.camera);
       const jolt = boot.pulse > 0.5 && !profile.reducedMotion ? (Math.random() - 0.5) * 80 : 0; // la franja central salta con el pulso DO4
-      hero.wall.set({ ...boot.wall, invert: boot.pulse > 0.5 ? 1 : 0, tape: boot.liveAt ? (now - boot.liveAt) / 1000 : 0, rowsDx: [0, jolt, 0] }, now);
+      hero.wall.set({ ...boot.wall, grid: 0, invert: boot.pulse > 0.5 ? 1 : 0, tape: boot.liveAt ? (now - boot.liveAt) / 1000 : 0, rowsDx: [0, jolt, 0] }, now);
     } else if (id === 'm2') {
       hero.wall.setVisible(false);
       const t = (e + q * 2) / 3;
@@ -126,7 +161,7 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
       ign = 1;
       wipe = e; // barrido por bandas mientras entra la sección editorial
       flood = e < 1 ? 1 : 0; // el verde sale con el barrido
-      if (e >= 1) wanted = null;
+      if (q >= 1) wanted = null;
     }
     u.uWipe.value = profile.reducedMotion ? (wipe > 0.5 ? 1 : 0) : wipe;
 
@@ -136,10 +171,13 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
     u.uFlood.value = flood;
     // La interfaz vuelve a verde sobre negro cuando el barrido va por la mitad.
     floodState = id === 'm4' ? (e < 0.5 ? 1 : 0) : flood;
-    placeHalo(halo);
+    placeHalo(id === 'm1' ? 0 : halo);
     hero.grid.update(hero.camera, ptr, dt, beat);
 
     portalState = hero.portal.update(ign, dt, Math.max(level, beat));
+    // El portal es otra escena: ocultarlo durante el retrato inicial evita que su pantalla negra
+    // aparezca como un rectángulo delante del ciclorama cuando la cámara aún está cerca.
+    hero.portal.setVisible(id !== 'm1');
     // El clímax: la pantalla se abre en blanco un instante y decae en ~350 ms.
     flash = Math.max(0, flash - dt * 3);
     u.uFlash.value = profile.reducedMotion ? 0 : flash * flash;

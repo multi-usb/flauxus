@@ -1,10 +1,12 @@
 import './styles/tokens.css';
 import './styles/main.css';
 import './styles/fonts.css';
+import '@fontsource/poppins/latin-400.css';
+import '@fontsource/poppins/latin-700.css';
 import { MODELS } from './config.js';
 import { detectProfile } from './profile.js';
 import { createBoot, fetchWithProgress } from './ui/boot.js';
-import { logoSVG, animateLogo, narrowFormat } from './ui/logo.js';
+import { logoSVG, narrowFormat } from './ui/logo.js';
 
 history.scrollRestoration = 'manual';
 scrollTo(0, 0);
@@ -24,23 +26,94 @@ const mode = !forceFlat && hasWebGL() ? 'gl' : 'flat';
 html.dataset.mode = mode;
 
 const boot = createBoot();
-// El logotipo de la pantalla de inicio se reconstruye por bandas apenas carga la página.
-const bootLogo = document.querySelector('#boot .boot-logo');
-bootLogo.innerHTML = logoSVG({ format: narrowFormat(), animated: true, color: 'var(--rw-verde)' });
-animateLogo(bootLogo.querySelector('svg'), profile).rebuild(1100);
-
-// Reloj vivo en la telemetría del preloader
-const bootTs = document.getElementById('boot-ts');
-if (bootTs) {
-  const tick = () => {
-    const d = new Date();
-    bootTs.textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+const bootGlassPanels = [...document.querySelectorAll('#boot .boot-glass')];
+if (!profile.reducedMotion) {
+  const glassMotion = new Map();
+  const bootRoot = document.getElementById('boot');
+  const driftGlass = (panel) => {
+    if (document.hidden || bootRoot.classList.contains('off') || bootRoot.classList.contains('entering')) return;
+    const state = glassMotion.get(panel);
+    if (!state || state.evading) return;
+    clearTimeout(state.timer);
+    const duration = 4300 + Math.random() * 3900;
+    state.x = Math.random() * 30 - 15;
+    state.y = Math.random() * 22 - 11;
+    state.angle = Math.random() * 12 - 6;
+    panel.style.setProperty('--glass-drift-duration', `${duration}ms`);
+    panel.style.setProperty('--glass-drift-easing', 'cubic-bezier(.42,0,.58,1)');
+    panel.style.transform = `translate3d(${state.x.toFixed(1)}vw, ${state.y.toFixed(1)}vh, 0) rotate(${state.angle.toFixed(1)}deg)`;
+    state.timer = setTimeout(() => driftGlass(panel), duration + 120 + Math.random() * 400);
   };
-  tick();
-  const tsInterval = setInterval(tick, 1000);
-  // Se detiene cuando el boot desaparece
-  document.getElementById('boot').addEventListener('transitionend', () => clearInterval(tsInterval), { once: true });
+  bootGlassPanels.forEach((panel, i) => {
+    glassMotion.set(panel, { timer: 0, evading: false, lastEvasionAt: 0, x: 0, y: 0, angle: 0 });
+    setTimeout(() => driftGlass(panel), 250 + i * (900 + Math.random() * 900));
+  });
+
+  // Glass starts fleeing as the pointer approaches; pointer-events stay off so controls remain clickable.
+  document.addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'mouse') return;
+    const homeIsVisible = bootRoot.classList.contains('ready') && !bootRoot.classList.contains('entering');
+    bootGlassPanels.forEach((panel) => {
+      const state = glassMotion.get(panel);
+      if (!state) return;
+      const rect = panel.getBoundingClientRect();
+      const dx = Math.max(rect.left - event.clientX, 0, event.clientX - rect.right);
+      const dy = Math.max(rect.top - event.clientY, 0, event.clientY - rect.bottom);
+      const distance = Math.hypot(dx, dy);
+      if (!homeIsVisible || distance > (state.evading ? 270 : 190)) {
+        if (state.evading && (distance > 270 || !homeIsVisible)) {
+          state.evading = false;
+          clearTimeout(state.timer);
+          driftGlass(panel);
+        }
+        return;
+      }
+      const now = performance.now();
+      if (now - state.lastEvasionAt < 210) return;
+      state.evading = true;
+      state.lastEvasionAt = now;
+      clearTimeout(state.timer);
+      let vx = rect.left + rect.width / 2 - event.clientX;
+      let vy = rect.top + rect.height / 2 - event.clientY;
+      const magnitude = Math.hypot(vx, vy) || 1;
+      vx /= magnitude;
+      vy /= magnitude;
+      const stepX = 7 + Math.random() * 4;
+      const stepY = 5 + Math.random() * 3;
+      state.x = Math.max(-27, Math.min(27, state.x + vx * stepX));
+      state.y = Math.max(-22, Math.min(22, state.y + vy * stepY));
+      state.angle = Math.max(-11, Math.min(11, state.angle + (vx > 0 ? 1 : -1) * (2 + Math.random() * 3)));
+      panel.style.setProperty('--glass-drift-duration', '360ms');
+      panel.style.setProperty('--glass-drift-easing', 'cubic-bezier(.16,.78,.25,1)');
+      panel.style.transform = `translate3d(${state.x.toFixed(1)}vw, ${state.y.toFixed(1)}vh, 0) rotate(${state.angle.toFixed(1)}deg)`;
+    });
+  }, { passive: true });
+
+  window.addEventListener('blur', () => {
+    bootGlassPanels.forEach((panel) => {
+      const state = glassMotion.get(panel);
+      if (!state?.evading) return;
+      state.evading = false;
+      driftGlass(panel);
+    });
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    bootGlassPanels.forEach((panel) => {
+      const state = glassMotion.get(panel);
+      if (state && !state.evading) driftGlass(panel);
+    });
+  });
 }
+const bootFigures = [...document.querySelectorAll('#boot .boot-figure')];
+Promise.all(bootFigures.map((img) => img.decode().catch(() => {}))).then(() => {
+  html.classList.add('boot-art-ready');
+});
+// Logotipo estático: conserva intacta la composición del diseño de inicio.
+const bootLogo = document.querySelector('#boot .boot-logo');
+bootLogo.innerHTML = logoSVG({ format: narrowFormat(), animated: false, color: 'currentColor' });
+// Reveal the shell only after its styles and logo are in place, so first paint cannot catch home elements mid-transition.
+html.classList.add('boot-css-ready');
 
 // Progreso real: en modo 3D, 15 % el código y 85 % los bytes del GLB de María Clara.
 let jsDone = 0;
@@ -74,11 +147,13 @@ Promise.all([code, glb])
       profile,
       glModule,
     });
+    await boot.waitForMinimumDuration(3000);
     await boot.waitForStart();
-    boot.hide();
-    html.classList.remove('locked');
-    html.classList.add('started');
+    html.classList.add('started', 'hero-entering');
     experience.start();
+    await boot.transitionToHero(profile.reducedMotion);
+    boot.hide();
+    html.classList.remove('hero-entering', 'locked');
   })
   .catch((err) => {
     console.error(err);

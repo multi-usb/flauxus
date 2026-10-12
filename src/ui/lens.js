@@ -17,14 +17,15 @@ export function createLens() {
       off = setTimeout(() => el.classList.remove('note'), 420);
     },
     update({ amount = 0, x = 0, y = 0, radius = 0 }) {
-      const on = amount > 0.02;
+      const on = amount > 0.001;
+      el.style.opacity = Math.min(1, amount * 1.15).toFixed(3);
       if (on !== shown) {
         shown = on;
         el.classList.toggle('on', on);
         cursor?.classList.toggle('lens', on);
       }
       if (!on) return;
-      const d = radius * 2;
+      const d = Math.max(0, radius * 2);
       el.style.width = `${d.toFixed(1)}px`;
       el.style.height = `${d.toFixed(1)}px`;
       el.style.transform = `translate3d(${(x - radius).toFixed(1)}px,${(y - radius).toFixed(1)}px,0)`;

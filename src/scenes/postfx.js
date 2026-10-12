@@ -10,6 +10,7 @@ const fragment = /* glsl */ `
   uniform float uDpr;
   uniform float uTime;
   uniform float uScan;
+  uniform float uScanEnabled;
   uniform float uVignette;
   uniform float uRewind;
   uniform float uPower;
@@ -116,7 +117,7 @@ const fragment = /* glsl */ `
 
     // Scanlines: periodo 2 px CSS, línea oscura al 40 %.
     float row = mod(floor(gl_FragCoord.y / uDpr), 2.0);
-    col *= 1.0 - (uScan + uLevel * 0.12) * row; // las scanlines respiran con la música
+    col *= 1.0 - (uScan + uLevel * 0.12) * row * uScanEnabled; // las scanlines respiran con la música
 
     // Viñeta suave del CRT del manual (solo con CRT activo).
     float d = length(vUv - 0.5) * 1.4142;
@@ -178,6 +179,7 @@ export function createPipeline(canvas, { quality, crt }) {
     uDpr: { value: 1 },
     uTime: { value: 0 },
     uScan: { value: crt ? SCANLINE_STRENGTH : 0 },
+    uScanEnabled: { value: 1 },
     uVignette: { value: crt ? 0.35 : 0 },
     uRewind: { value: 0 },
     uPower: { value: 0 },

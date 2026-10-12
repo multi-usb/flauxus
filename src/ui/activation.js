@@ -27,7 +27,7 @@ export function createActivation({ profile, backend, sfx, onLogo }) {
     { t: 1.25, text: dots(`> MODELO ${tri} TRIÁNGULOS`, 'OK') },
     { t: 1.5, text: '> SUJETO MARÍA CLARA LOZADA OCAMPO' },
     { t: 2.25, text: dots('> ESCANEANDO CUERPO', '100 %') },
-    { t: 2.45, text: dots('> REBOBINADO', 'ACTIVO') },
+    { t: 2.45, text: dots('> EXHALANDO EXPERIENCIA', 'ACTIVO') },
     { t: 3.0, text: '■ SISTEMA EN LÍNEA', cls: 'ok' },
   ];
 

@@ -82,7 +82,7 @@ const fragment = /* glsl */ `
   }
 `;
 
-export function createXray(hero, { mobile, reducedMotion }) {
+export function createXray(hero, { mobile, reducedMotion, renderer }) {
   const uniforms = {
     uCenter: { value: new THREE.Vector2() },
     uRadius: { value: 0 },
@@ -139,10 +139,11 @@ export function createXray(hero, { mobile, reducedMotion }) {
     layers.push(shell);
   }
   for (const l of layers) { l.renderOrder = 6; l.frustumCulled = false; l.visible = false; }
-  // El esqueleto vive en coordenadas de escena (pies en y = 0), igual que la figura. Se carga DESPUÉS de PRESS START
-  // (fuera del presupuesto de la primera carga), en un momento libre.
+  // El esqueleto comparte el grupo de transformación de la figura para heredar su escala y posición
+  // desde el primer fotograma (también durante el acercamiento de entrada). Se carga DESPUÉS de PRESS START.
   let bones = null;
   let loading = false;
+  let bonesReady = false;
   const loadBones = () => {
   loading = true;
   const loader = new GLTFLoader();
@@ -156,38 +157,54 @@ export function createXray(hero, { mobile, reducedMotion }) {
     });
     bones = gltf.scene;
     bones.visible = false;
-    hero.scene.add(bones);
+    hero.figure.add(bones);
+    bonesReady = true;
+    try {
+      renderer?.compile?.(hero.scene, hero.camera);
+    } catch {
+      // ignore
+    }
+  }, undefined, (error) => {
+    console.error('No se pudo cargar el esqueleto para la radiografía.', error);
   });
   };
+  // Carga inmediata del esqueleto para que esté listo desde el primer instante
+  loadBones();
+
   // Índice espacial para el rayo (se construye en un momento libre: ~100 ms una sola vez)
   const buildBVH = () => hero.meshes.forEach((m) => {
     if (!m.geometry.boundsTree) { m.geometry.computeBoundsTree = computeBoundsTree; m.geometry.computeBoundsTree(); }
     m.raycast = acceleratedRaycast;
   });
-  (window.requestIdleCallback || ((fn) => setTimeout(fn, 200)))(buildBVH);
+  (window.requestIdleCallback || ((fn) => setTimeout(fn, 150)))(buildBVH);
 
   // ---------- Entrada: cursor en escritorio; tap/arrastre en táctil ----------
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
-  const pointer = { x: 0, y: 0, inside: false, touching: false, dirty: false };
-  const RADIUS = mobile ? 96 : 130; // px CSS
+  const pointer = { x: innerWidth / 2, y: innerHeight / 2, inside: false, touching: false };
+  const RADIUS = mobile ? 105 : 142; // px CSS
   let amount = 0;
   let hit = false;
   let hitY = -1;
+  let smoothX = innerWidth / 2;
+  let smoothY = innerHeight / 2;
+  let hasPointer = false;
   let releaseAt = 0;
   let pulse = 0;
-  const castAt = { x: -1e4, y: -1e4 };
   raycaster.firstHitOnly = true;
-  let leaveAt = 0;
+  let missAt = -Infinity;
+  let lastHitY = -1;
+  const HIT_GRACE_MS = 240; // ventana de tolerancia para cruzar costuras del modelo con fluidez
 
   addEventListener('pointermove', (e) => {
     if (e.pointerType === 'touch' && !pointer.touching) return;
-    pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true; pointer.dirty = true;
+    pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true;
+    if (!hasPointer) { smoothX = pointer.x; smoothY = pointer.y; hasPointer = true; }
   }, { passive: true });
   addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'touch') return;
-    pointer.touching = true; pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true; pointer.dirty = true;
-    castAt.x = -1e4; // un toque siempre se evalúa
+    pointer.touching = true; pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true;
+    smoothX = pointer.x; smoothY = pointer.y; hasPointer = true;
   }, { passive: true });
   const up = (e) => {
     if (e.pointerType !== 'touch') return;
@@ -197,49 +214,68 @@ export function createXray(hero, { mobile, reducedMotion }) {
   addEventListener('pointerup', up, { passive: true });
   addEventListener('pointercancel', up, { passive: true });
   document.addEventListener('pointerleave', () => { pointer.inside = false; });
-  let scrolled = false;
-  addEventListener('scroll', () => { pointer.dirty = true; scrolled = true; }, { passive: true }); // la cámara se mueve: recalcular
 
   // enabled: la escena del personaje está en pantalla; scale: resolución interna (px internos por px CSS)
   function update({ enabled, dt, time, scale, level }) {
-    if (!loading && document.documentElement.classList.contains('started')) {
-      loading = true;
-      (window.requestIdleCallback || ((fn) => setTimeout(fn, 300)))(loadBones);
+    if (!loading) {
+      loadBones();
     }
-    // Con el índice espacial, el rayo cuesta décimas de ms: se lanza en cada cuadro en que el puntero o la cámara se movieron.
     const active = mobile ? pointer.touching : pointer.inside;
     const now = performance.now();
-    const moved = Math.abs(pointer.x - castAt.x) + Math.abs(pointer.y - castAt.y) > 0.5 || scrolled;
-    if (pointer.dirty && enabled && active && moved) {
-      pointer.dirty = false;
-      scrolled = false;
-      castAt.x = pointer.x; castAt.y = pointer.y;
+    if (enabled && active) {
       ndc.set((pointer.x / innerWidth) * 2 - 1, -(pointer.y / innerHeight) * 2 + 1);
+      hero.camera.updateMatrixWorld(true);
+      hero.figure.updateMatrixWorld(true);
       raycaster.setFromCamera(ndc, hero.camera);
       const h = raycaster.intersectObjects(hero.meshes, false)[0];
-      hit = !!h;
-      hitY = h ? h.point.y : -1;
+      if (h) {
+        hit = true;
+        hitY = h.point.y;
+        lastHitY = hitY;
+        missAt = -Infinity;
+      } else {
+        if (missAt < 0) missAt = now;
+        hit = lastHitY >= 0 && now - missAt < HIT_GRACE_MS;
+        hitY = hit ? lastHitY : -1;
+      }
+    } else {
+      hit = false;
+      hitY = -1;
+      lastHitY = -1;
+      missAt = -Infinity;
     }
-    const touchHeld = mobile ? (pointer.touching || performance.now() < releaseAt) : true;
-    const want = enabled && pointer.inside && hit && touchHeld ? 1 : 0;
-    // Aparece al instante; al salir se cierra rápido (90 ms) sin parpadear entre huecos (brazo/torso).
-    if (want) { amount = 1; leaveAt = 0; } else {
-      if (!leaveAt) leaveAt = now;
-      if (now - leaveAt > 60) amount = Math.max(0, amount - dt / 0.09);
-    }
-    pulse = Math.max(0, pulse - dt * 1.6);
 
+    const touchHeld = mobile ? (pointer.touching || performance.now() < releaseAt) : true;
+    const want = enabled && (pointer.inside || mobile) && hit && touchHeld ? 1 : 0;
+
+    // Transición suave, orgánica y ultra-fluida al abrir y cerrar la radiografía
+    if (want) {
+      amount += (1 - amount) * Math.min(1, dt * 14);
+    } else {
+      amount += (0 - amount) * Math.min(1, dt * 9);
+      if (amount < 0.003) amount = 0;
+    }
+
+    // Suavizado directo e hiper-reactivo de coordenadas para que la lente fluya con el puntero
+    const followLerp = Math.min(1, dt * 32);
+    smoothX += (pointer.x - smoothX) * followLerp;
+    smoothY += (pointer.y - smoothY) * followLerp;
+
+    pulse = Math.max(0, pulse - dt * 1.6);
     const open = amount * (1 + pulse * 0.18);
+
+    const centerX = smoothX;
+    const centerY = smoothY;
     uniforms.uRadius.value = RADIUS * scale * open;
-    uniforms.uCenter.value.set(pointer.x * scale, (innerHeight - pointer.y) * scale);
+    uniforms.uCenter.value.set(centerX * scale, (innerHeight - centerY) * scale);
     uniforms.uTime.value = reducedMotion ? 0 : time;
     uniforms.uLevel.value = level;
     uniforms.uPulse.value = pulse;
     uniforms.uScale.value = scale;
-    const on = amount > 0;
+    const on = amount > 0.005;
     for (const l of layers) l.visible = on;
     if (bones) bones.visible = on;
-    return { amount, x: pointer.x, y: pointer.y, radius: RADIUS * open, hit: hit && want > 0, hitY, touching: pointer.touching };
+    return { amount, x: centerX, y: centerY, radius: RADIUS * open, hit: hit && want > 0, hitY, touching: pointer.touching };
   }
   // Una nota de María Clara acaba de sonar: los huesos se encienden.
   function note(v = 1) { pulse = Math.max(pulse, v); }
