@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <title>Flauxus — la flautista aumentada y su ecosistema interactivo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..800,60;1,9..144,400..800,60&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script>
+</head>
+
+<body>
+  <canvas id="g2d"></canvas>
+  <div id="flash"></div>
+  <div id="titleCard">
+    <div class="tc-note" id="tcNote"></div>
+    <div class="tc-title" id="tcTitle"></div>
+  </div>
+
+  <div id="hud">
+    <div class="top">
+      <div>
+        <div class="brand">Flauxus<i></i></div>
+        <div class="subbrand">la flautista aumentada · prototipo</div>
+      </div>
+      <div class="mid">
+        <div id="progress"></div>
+        <div id="objective"></div>
+      </div>
+      <div class="rightTop ui"><span class="chip" id="entryLabel"></span><button class="icon" id="btnSound"
+          aria-label="Sonido">♪</button><button class="icon" id="btnHelp" aria-label="Ayuda">?</button></div>
+    </div>
+    <button id="btnBack" class="ui">← Volver al atrio</button>
+    <div id="roomInfo">
+      <div class="k" id="roomKicker"></div>
+      <h1 id="roomTitle"></h1>
+      <p id="roomDesc"></p>
+    </div>
+    <div id="sourceChip"></div>
+    <div id="unlock" class="paper"></div>
+    <div id="vo">
+      <div class="who">María Clara · en off</div>
+      <p id="voText"></p>
+      <div class="src" id="voSrc"></div>
+    </div>
+    <button id="btnVoSkip" class="ui">Saltar locución ›</button>
+    <div id="coach"></div>
+    <button id="btnWalk" class="ui"></button>
+    <button id="btnLook" class="ui" aria-label="Girar la vista">⟳</button>
+    <button id="prompt" class="ui"></button>
+    <div id="compass">
+      <div class="mk"></div>
+      <div class="arrow" id="cmpArrow"></div>
+      <div class="lbl" id="cmpLabel"></div>
+    </div>
+    <div id="joy" class="ui">
+      <div id="joyKnob"></div>
+    </div>
+  </div>
+
+  <div id="roomUI">
+    <div id="roomHint"></div>
+    <button id="btnSkip" class="ui">Saltar esta sala ›</button>
+    <div id="miUI">
+      <div id="miHandles"></div>
+      <div id="handWrap">
+        <div id="hand"></div>
+        <div id="intMenu"></div>
+      </div>
+      <div id="miBtns"><button class="btns" id="miOrig">▶ Original</button><button class="btns" id="miListen" disabled>▶
+          Mi fraseo</button><button class="btns go" id="miConfirm" style="display:none">Confirmar ✓</button></div>
+    </div>
+    <div id="laUI">
+      <div class="frame" id="laFrame"></div>
+      <div class="tray" id="tray"></div>
+      <div id="laStatus"></div>
+      <div id="laBtns"><button class="btns" id="chiselBtn" style="display:none">✂ Cincel</button><button class="btns"
+          id="laListen" disabled>▶ Escuchar secuencia</button><button class="btns go" id="laConfirm"
+          style="display:none">Entregar obra ✓</button></div>
+    </div>
+    <div id="brief" class="card paper ui"></div>
+    <div id="done" class="card paper ui"></div>
+  </div>
+
+  <div id="intro">
+    <div class="box paper">
+      <div class="eyebrow">Trabajo de grado · prototipo jugable</div>
+      <h1 class="big">Flauxus</h1>
+      <p class="lede">Un museo que no se queda quieto. Camina por sus escaleras, escucha a María Clara y toca el sonido
+        hasta que cambie.</p>
+      <div class="how" id="introHow"></div>
+      <button class="btn" id="btnStart">Entrar al museo</button>
+      <div class="note" id="introEntry"></div>
+      <div class="devpick" id="devPick"></div>
+    </div>
+  </div>
+  <div id="help">
+    <div class="box paper ui">
+      <h3>Controles</h3>
+      <div id="helpBody"></div><button class="btn" id="helpClose">Cerrar</button>
+    </div>
+  </div>
+
+  <div id="epilogue">
+    <div id="epInner">
+      <div class="eyebrow">Epílogo</div>
+      <h2>La partitura de tu huella</h2>
+      <p>La experiencia termina después de la sexta sala. Esta salida no añade una séptima sala: convierte lo que
+        hiciste dentro del sistema —tu aire, tu pulso, tus pausas, tu recorrido, tus conexiones, tu reensamblaje— en una
+        huella propia.</p><canvas id="traceCanvas" width="1600" height="900"></canvas>
+      <div class="epBtns"><button class="primary" id="downloadTrace">Descargar mi partitura (.png)</button><button
+          id="restart">Rebobinar y empezar de nuevo</button></div>
+      <div id="epEntries"></div>
+      <div id="epSummary"></div>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./Main.js"></script>
+</body>
+
+</html>
