@@ -6,9 +6,10 @@ import * as THREE from 'three';
 
 /* ── Referencias inyectadas por Main.js via navInit() ── */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-let _player, _vel, _stairGroups, _huellaMesh, _S, _scene, _qs;
+let _player, _vel, _stairGroups, _S, _scene, _qs;
 let _clamp = clamp;
 let _stairLocal, _setAtriumFBXObj, _resetPlayerPhysics;
+let _navCal = {}, _blockedStair = null;
 
 /**
  * Llamar desde Main.js DESPUÉS de declarar todas las variables.
@@ -18,7 +19,6 @@ export function navInit(refs) {
   _player = refs.player;
   _vel = refs.vel;
   _stairGroups = refs.stairGroups;
-  _huellaMesh = refs.huellaMesh;
   _S = refs.S;
   _scene = refs.scene;
   _qs = refs.qs;
@@ -26,6 +26,8 @@ export function navInit(refs) {
   _stairLocal = refs.stairLocal;
   _setAtriumFBXObj = refs.setAtriumFBXObj;
   _resetPlayerPhysics = refs.resetPlayerPhysics;
+  _navCal = refs.navCal || {};
+  _blockedStair = Object.values(_navCal).find(c => c?.blockedStair)?.blockedStair || null;
 }
 
 export const NAV = {
@@ -82,16 +84,17 @@ export function navSoft(x, z, h) {
   return bl >= 0 && bd < .5 && !NAV.ok[c * NAV.K + bl];
 }
 
-/* Identifica si las coordenadas corresponden al tramo recto frontal elevado de RE.
-   El suelo plano del atrio (y < 1.32m) NUNCA se bloquea, eliminando la pared invisible del piso. */
-export function isReBlockedStair(x, z, y) {
-  if (y !== undefined && y < 1.32) return false;
+/* Identifica el tramo recto frontal elevado que una sala declara como bloqueado
+   (hoy: RE). El suelo plano del atrio NUNCA se bloquea, eliminando la pared invisible. */
+export function isBlockedStair(x, z, y) {
+  if (!_blockedStair) return false;
+  if (y !== undefined && _blockedStair.minY !== undefined && y < _blockedStair.minY) return false;
 
-  const g = _stairGroups?.[1]; // RE4 (sala 2)
+  const g = _stairGroups?.[_blockedStair.index];
   if (!g || !g.userData || g.userData.cs === undefined) return false;
 
   const l = _stairLocal(g, x, z);
-  return (l.x >= -1.4 && l.x <= 0.85 && l.z >= -3.3 && l.z <= -0.20);
+  return (l.x >= _blockedStair.x[0] && l.x <= _blockedStair.x[1] && l.z >= _blockedStair.z[0] && l.z <= _blockedStair.z[1]);
 }
 
 /* altura de suelo en (x,z) alcanzable desde la altura py */
@@ -109,7 +112,7 @@ export function navFloor(x, z, py, soft = false) {
     const h = NAV.H[c * K + l];
 
     // Solo se ignora la capa si pertenece al tramo recto elevado bloqueado de RE
-    if (isReBlockedStair(x, z, h)) continue;
+    if (isBlockedStair(x, z, h)) continue;
     if (h > py + maxUp || h < py - NAV.DROP) continue;
 
     // Se acepta navHard en las escaleras para que los pasamanos de MI y SOL no asfixien el paso
@@ -139,7 +142,7 @@ function navHs(node) {
     let bh = NaN, bd = .65;
     for (let l = 0; l < NAV.nL[nc]; l++) {
       const stepH = NAV.H[nc * K + l];
-      if (isReBlockedStair(navCX(nc), navCZ(nc), stepH)) continue;
+      if (isBlockedStair(navCX(nc), navCZ(nc), stepH)) continue;
       if (!NAV.ok[nc * K + l] && !navHard(nc, stepH)) continue;
       const d = Math.abs(stepH - h);
       if (d <= bd) { bd = d; bh = stepH; }
@@ -159,7 +162,7 @@ export function navRampY(x, z, py) {
     let bn = -1, bd = .85;
     for (let l = 0; l < NAV.nL[c]; l++) {
       const stepH = NAV.H[c * K + l];
-      if (isReBlockedStair(navCX(c), navCZ(c), stepH)) continue;
+      if (isBlockedStair(navCX(c), navCZ(c), stepH)) continue;
       if (!NAV.ok[c * K + l] && !navHard(c, stepH)) continue;
       const d = Math.abs(stepH - py);
       if (d <= bd) { bd = d; bn = c * K + l; }
@@ -545,7 +548,7 @@ export async function navBuild(root) {
     const px = navCX(cc), pz = navCZ(cc);
     const n = nL[cc];
     for (let l = 0; l < n; l++) {
-      if (isReBlockedStair(px, pz, H[cc * K + l])) {
+      if (isBlockedStair(px, pz, H[cc * K + l])) {
         ok[cc * K + l] = 0;
       }
     }
@@ -857,49 +860,21 @@ export function navAnalyze() {
 }
 
 /* ======================================================================
-   CONFIGURACIONES Y CALIBRADORES INDEPENDIENTES
+   CALIBRACIÓN POR SALA
+   Las tablas CUE/PORTAL y la excepción de la escalera de RE viven en
+   `meta.nav` de rooms/*.js y se inyectan vía navInit(). Aquí solo queda
+   la lógica genérica del atrio.
    ====================================================================== */
 
-export const HUELLA_CONFIG = {
-  x: -1.3,        // Desplaza el parche hacia la derecha (+X) para centrarlo con la piedra
-  z: 1.8,        // Desplaza el parche hacia adelante (+Z)
-  radius: 4.4,    // Radio ajustado para quedar dentro de la ranura interior del borde
-  radiusX: 4.4,
-  radiusZ: 4.4,
-  rotY: 0,
-  orbit: 140,     // Margen de los 6 círculos con respecto al borde
-  yOffset: 0.04
-};
-
-/* Calibración de los círculos blancos del suelo (CUE) */
-export const CUE_OFFSETS = {
-  1: { x: 0.0, z: 0.9, y: 0.0 },    // DO4 (centrado, sin cambios)
-  2: { x: 8.0, z: -3.05, y: 0.0 },  // RE4 (pie del tramo corto de la escalera en L)
-  3: { x: 2.01, z: -0.74, y: 0.0 }, // MI4 (centro del pie de la escalera diagonal)
-  4: { x: 1.87, z: -0.66, y: 0.0 }, // FA#4 (centro del pie de la escalera corta)
-  5: { x: -2.47, z: -1.82, y: 0.0 }, // SOL#4 (centro del pie de la escalera diagonal)
-  6: { x: -1.45, z: 0.34, y: 0.0 } // LA#4 (centro del pie de la escalera diagonal)
-};
-
-/* Calibración de los aros de luz (PORTAL_OFFSETS) */
-export const PORTAL_OFFSETS = {
-  1: { x: 0.0, y: 0.0, z: 0.0, scale: 1.0, rotY: 0 },
-  2: { x: 0.0, y: 0.5, z: 0.01, scale: 1.0, rotY: 7 },  // RE4 intacto
-  3: { x: -0.2, y: 0.0, z: 0.2, scale: 0.85, rotY: -4 },
-  4: { x: 0.0, y: -0.5, z: 0.0, scale: 1.0, rotY: 2 },
-  5: { x: 1.0, y: 0.2, z: 1.3, scale: 0.7, rotY: 10 },
-  6: { x: 0.0, y: 0.0, z: 0.0, scale: 1.0, rotY: 0 }
-};
-
 function navBuildBlock() {
-  const N = NAV.N, g = _stairGroups?.[1];
-  if (!N || !g?.userData?.measured) { NAV.blk = null; return; }
+  const N = NAV.N, g = _stairGroups?.[_blockedStair?.index];
+  if (!_blockedStair || !N || !g?.userData?.measured) { NAV.blk = null; return; }
   const blk = new Uint8Array(N * N);
   for (let c = 0; c < N * N; c++) {
     const px = navCX(c), pz = navCZ(c);
     let allBlocked = false;
     for (let l = 0; l < NAV.nL[c]; l++) {
-      if (isReBlockedStair(px, pz, NAV.H[c * NAV.K + l])) allBlocked = true;
+      if (isBlockedStair(px, pz, NAV.H[c * NAV.K + l])) allBlocked = true;
     }
     if (allBlocked) blk[c] = 1;
   }
@@ -912,7 +887,7 @@ export function navApply(info) {
     if (!g) return;
     const u = g.userData, th = Math.atan2(-s.dir.x, -s.dir.z);
     const roomId = u.roomId || (i + 1);
-    const adj = PORTAL_OFFSETS[roomId] || { x: 0, y: 0, z: 0, scale: 1.0 };
+    const adj = _navCal?.[roomId]?.portal || { x: 0, y: 0, z: 0, scale: 1.0 };
 
     g.position.set(s.mouth.x, 0, s.mouth.z);
     g.rotation.y = th;
@@ -972,7 +947,7 @@ export function navApply(info) {
     }
 
     // Posicionamiento independiente del círculo cue
-    const cueAdj = CUE_OFFSETS[roomId] || { x: 0.0, z: 0.9, y: 0.0 };
+    const cueAdj = _navCal?.[roomId]?.cue || { x: 0.0, z: 0.9, y: 0.0 };
     const localCue = new THREE.Vector3(cueAdj.x, 0, cueAdj.z);
     const worldCue = g.localToWorld(localCue.clone());
     const fy = navFloor(worldCue.x, worldCue.z, (s.base ?? s.mouth.y - .15) + .02);
@@ -985,17 +960,6 @@ export function navApply(info) {
   navBuildBlock();
   Object.assign(SPAWN, info.spawn);
   navY = info.spawn.y;
-
-  /*if (_huellaMesh) {
-    const cfg = HUELLA_CONFIG;
-    const daisY = info.daisY ?? 1.36;
-    _huellaMesh.position.set(cfg.x, daisY + (cfg.yOffset || 0.04), cfg.z);
-    _huellaMesh.scale.set(
-      (cfg.radiusX || cfg.radius || 4.8) / 5.2,
-      (cfg.radiusZ || cfg.radius || 4.8) / 5.2,
-      1
-    );
-  }*/
 
   if (_S.phase === 'atrium' || _S.phase === 'intro') {
     placeAtSpawn();

@@ -2,7 +2,10 @@
    FLAUXUS — AudioSystem.js
    Gestión de AudioContext, buffers, análisis espectral, síntesis y clips
    ====================================================================== */
-import { clamp, lerp, rand, INKH, VO, toast, $, T } from './Main.js';
+import { clamp, lerp, rand, INKH, $ } from './core/util.js';
+import { T } from './core/time.js';
+import { VO } from './core/voiceState.js';
+import { toast } from './ui/toast.js';
 
 export const A = {
   ctx: null, master: null, an: null, anBuf: null, pan: null, bus: null, verb: null,

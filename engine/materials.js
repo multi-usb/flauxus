@@ -1,0 +1,14 @@
+/* ======================================================================
+   FLAUXUS — engine/materials.js
+   Materiales, texturas de glow y sprites de texto reutilizados por el
+   atrio y las salas. También limpia grupos liberando GPU.
+   ====================================================================== */
+import * as THREE from 'three';
+
+export function clearGroup(g) { while (g.children.length) { const o = g.children.pop(); o.traverse?.(x => { if (x.geometry && !x.geometry.userData.keep) x.geometry.dispose(); if (x.material) { (Array.isArray(x.material) ? x.material : [x.material]).forEach(m => { if (m.userData.keep) return; if (m.map && m.map !== GLOW) m.map.dispose?.(); m.dispose() }) } }) } }
+export function mat(color, o = {}) { return new THREE.MeshStandardMaterial({ color, roughness: .8, metalness: .05, ...o }) }
+export function glowTex() { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.35, 'rgba(255,255,255,.35)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t }
+export const GLOW = glowTex();
+export function glowSprite(color, scale, op = .8) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.set(scale, scale, 1); return s }
+export function makeTextSprite(text, color = '#fff', scale = 5, size = 34, italic = false) { const c = document.createElement('canvas'); c.width = 512; c.height = 128; const x = c.getContext('2d'); x.font = `${italic ? 'italic ' : ''}700 ${size}px Georgia,serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round'; x.lineWidth = Math.max(4, size * .2); x.strokeStyle = 'rgba(8,9,5,.88)'; x.strokeText(text, 256, 64); x.fillStyle = color; x.fillText(text, 256, 64); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false })); s.scale.set(scale, scale * .25, 1); return s }
+export function makeDust(n, r, h, color, size = .1) { const pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * r; pos[i * 3] = Math.cos(a) * rr; pos[i * 3 + 1] = Math.random() * h; pos[i * 3 + 2] = Math.sin(a) * rr } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); return new THREE.Points(g, new THREE.PointsMaterial({ color, size, transparent: true, opacity: .65, depthWrite: false, blending: THREE.AdditiveBlending, map: GLOW })) }

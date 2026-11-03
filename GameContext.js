@@ -1,7 +1,7 @@
 /* ======================================================================
    FLAUXUS — GameContext.js
-   Contenedor de referencias compartidas entre Main.js y Rooms.js.
-   Rompe la dependencia circular: Main ← GameContext ← Rooms,
+   Contenedor de referencias compartidas entre Main.js y las salas.
+   Rompe la dependencia circular: Main ← GameContext ← rooms/context.js,
    en lugar del ciclo roto Main ↔ Rooms.
    ====================================================================== */
 
@@ -9,9 +9,9 @@
  * GX — contexto global del juego.
  * - Main.js lo rellena con GX._set(refs) al inicio.
  * - Main.js actualiza GX.W, GX.H, GX.T, etc. cada frame.
- * - Rooms.js lo importa y usa las variables de módulo que se copian
- *   en roomsInit(). Para valores dinámicos (W, H, T, ptr, ctx, bloom,
- *   S, avatarObj, roomGroup) se leen de GX directamente en cada uso.
+ * - rooms/context.js lo importa y expone bindings vivos a los scripts
+ *   de sala. Para valores dinámicos (W, H, T, ptr, ctx, bloom, S,
+ *   avatarObj, roomGroup) los bindings se refrescan en roomsUpdate().
  */
 export const GX = {
   /* Three.js / scene */
