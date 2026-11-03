@@ -4,6 +4,7 @@
    en salas para 60 FPS estables sin coste de CPU ni vibraciones.
    ====================================================================== */
 import * as THREE from 'three';
+import { S, rooms } from '../core/state.js';
 
 export class GroundController {
   constructor() {
@@ -17,7 +18,12 @@ export class GroundController {
   }
 
   reset() {
+    // No limpiar roomFloorY aquí: placeFBX llama a reset() durante la carga
+  }
+
+  clearRoom() {
     this.roomFloorY = null;
+    this.roomObj = null;
   }
 
   getHeight(x, z, currentY, isAtrium) {
@@ -37,12 +43,22 @@ export class GroundController {
       }
       return (x * x + z * z < 28) ? 2.42 : 1.10;
     } else {
-      // Si la sala tiene definida la altura de tarima (ej. DO = 2.42), devolverla de inmediato
+      // 1. Prioridad: altura fijada explícitamente en el controlador
       if (this.roomFloorY !== null && this.roomFloorY !== undefined) {
         return this.roomFloorY;
       }
 
-      // Fallback para salas sin tarima explícita
+      // 2. Consulta directa a los metadatos de la sala activa
+      if (S.room && rooms[S.room - 1]) {
+        const r = rooms[S.room - 1];
+        const fy = r.floorY ?? r.start?.y;
+        if (fy !== undefined && fy !== null) {
+          this.roomFloorY = fy;
+          return fy;
+        }
+      }
+
+      // 3. Fallback
       return currentY > 1.0 ? currentY : 2.42;
     }
   }

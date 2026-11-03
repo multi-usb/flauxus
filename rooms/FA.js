@@ -10,6 +10,10 @@ import { S, roomGroup, avatarObj, camera, bloom, makeDust, makeTextSprite, animA
 export const meta = {
   key: 'fa',
   id: 4, note: 'FA♯4', short: 'FA♯', title: 'El cuerpo', desc: 'Tocar ocupando espacio: el movimiento modifica la música y deja memoria.', source: 'Stockhausen.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'body',
+  /* Altura de suelo y configuración espacial de FA */
+  floorY: 1.80,
+  start: { x: 0.0, y: 1.80, z: 4.2, yaw: Math.PI },
+  preludeR: 14.0, // Radio del límite durante la narración (ajústalo al tamaño que desees)
   goal: 'La grabación suena todo el rato y tu posición la transforma. Quédate dentro de cada campo hasta que se encienda: cada uno añade una capa. Tu recorrido queda inscrito.',
   ctl: [[['W', 'A', 'S', 'D'], ['Círculo'], 'Mover el cuerpo'], [['Clic'], ['Toca'], 'Ir a un punto del suelo']],
   light: {
@@ -36,29 +40,85 @@ export const meta = {
 };
 
 export const FA = (() => {
-  const zones = [{ x: -5.2, z: -2.6 }, { x: 5.4, z: -3.6 }, { x: .4, z: 5.0 }], ZR = 1.9, DW = 1.5, RM = 9.2, NAMES = ['I · grave', 'II · eco', 'III · brillo'];
+  // Coordenadas individuales para cada estación (X = horizontal, Z = profundidad)
+  const zones = [
+    { x: -8.67, z: 3.1 },   // I · grave   (Círculo Izquierdo)
+    { x:  8.65, z: 2.3 },   // II · eco    (Círculo Derecho)
+    { x:  -0.3, z: -10 }   // III · brillo (Círculo del Fondo)
+  ];
+  const ZR = 2.4, DW = 1.5, RM = 14.0, NAMES = ['I · grave', 'II · eco', 'III · brillo'];
+  
   let pos = new THREE.Vector3(0, 0, 3.2), target = null, prog = [0, 0, 0], on = [false, false, false], pads = null, zObj = [], trail, tPos, tCol, tN = 0, discs = [], discI = 0, lastDrop = new THREE.Vector3(), path = [], dist = 0, doneT = 0, moving = false, startedMove = false, base = null, layers = [], real = false;
   const rc = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const getFloorY = () => meta.floorY ?? 1.80;
   return {
     noParallax: true,
-    cam() { return { pos: new THREE.Vector3(pos.x * .8, 8.2, pos.z + 9.4), look: new THREE.Vector3(pos.x * .9, .8, pos.z * .9) } },
+    cam() {
+      const fy = getFloorY();
+      return {
+        pos: new THREE.Vector3(pos.x * .8, fy + 7.4, pos.z + 9.4),
+        look: new THREE.Vector3(pos.x * .9, fy + 0.8, pos.z * .9)
+      };
+    },
     build() {
-      /* Keep functional overlays for zones, trail, etc. */
-      const edge = new THREE.Mesh(new THREE.RingGeometry(RM, RM + .12, 96), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: .3, side: THREE.DoubleSide })); edge.rotation.x = -Math.PI / 2; edge.position.y = .04; roomGroup.add(edge);
+      const fy = getFloorY();
+      /* Elementos funcionales del minijuego elevados a la altura de la tarima */
+      const edge = new THREE.Mesh(new THREE.RingGeometry(RM, RM + .12, 96), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: .3, side: THREE.DoubleSide })); edge.rotation.x = -Math.PI / 2; edge.position.y = fy + .04; roomGroup.add(edge);
       zObj = zones.map((z, i) => {
-        const g = new THREE.Group(); g.position.set(z.x, 0, z.z); const ring = new THREE.Mesh(new THREE.RingGeometry(ZR - .1, ZR, 64), new THREE.MeshBasicMaterial({ color: PALE, transparent: true, opacity: .85, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = .06; g.add(ring);
-        const fill = new THREE.Mesh(new THREE.CircleGeometry(ZR - .1, 48), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); fill.rotation.x = -Math.PI / 2; fill.position.y = .05; g.add(fill);
-        const beam = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 9, 8, 1, true), new THREE.MeshBasicMaterial({ color: PALE, transparent: true, opacity: .2, depthWrite: false, blending: THREE.AdditiveBlending })); beam.position.y = 4.5; g.add(beam);
-        const lb = makeTextSprite(NAMES[i], '#efeadb', 4, 30, true); lb.position.y = 2; g.add(lb); roomGroup.add(g); return { ring, fill, beam, g }
+        const g = new THREE.Group();
+        // Elevamos la base del grupo 10 cm sobre el piso para salvar el relieve del escenario
+        g.position.set(z.x, fy + 0.10, z.z);
+
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: PALE,
+          transparent: true,
+          opacity: 0.9,
+          side: THREE.DoubleSide,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2
+        });
+        const ring = new THREE.Mesh(new THREE.RingGeometry(ZR - .12, ZR, 64), ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.03; // Queda a +13 cm sobre el piso
+        g.add(ring);
+
+        const fillMat = new THREE.MeshBasicMaterial({
+          color: LIME,
+          transparent: true,
+          opacity: 0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1
+        });
+        const fill = new THREE.Mesh(new THREE.CircleGeometry(ZR - .12, 48), fillMat);
+        fill.rotation.x = -Math.PI / 2;
+        fill.position.y = 0.02; // Queda a +12 cm sobre el piso
+        g.add(fill);
+
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 9, 8, 1, true), new THREE.MeshBasicMaterial({ color: PALE, transparent: true, opacity: .2, depthWrite: false, blending: THREE.AdditiveBlending }));
+        beam.position.y = 4.5;
+        g.add(beam);
+
+        const lb = makeTextSprite(NAMES[i], '#efeadb', 4, 30, true);
+        lb.position.y = 2.4;
+        g.add(lb);
+
+        roomGroup.add(g);
+        return { ring, fill, beam, g };
       });
       tN = 0; tPos = new Float32Array(240 * 3); tCol = new Float32Array(240 * 3); const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tPos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tCol, 3)); trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .95 })); trail.frustumCulled = false; trail.geometry.setDrawRange(0, 0); roomGroup.add(trail);
-      discs = []; for (let i = 0; i < 40; i++) { const d = new THREE.Mesh(new THREE.CircleGeometry(.28, 16), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })); d.rotation.x = -Math.PI / 2; d.position.y = .07; roomGroup.add(d); discs.push(d) }
-      roomGroup.add(makeDust(180, RM, 5, 0xf0eddc, .12));
-      /* Room 4 FBX + dramatic body-aware lighting */
-      placeFBX(4, roomGroup, 16, { roughness: 0.88, metalness: 0.08 }, () => roomGen);
+      discs = []; for (let i = 0; i < 40; i++) { const d = new THREE.Mesh(new THREE.CircleGeometry(.28, 16), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })); d.rotation.x = -Math.PI / 2; d.position.y = fy + .07; roomGroup.add(d); discs.push(d) }
+      const dust = makeDust(180, RM, 5, 0xf0eddc, .12); dust.position.y = fy; roomGroup.add(dust);
+      /* Room 4 FBX + lighting (retornamos la promesa para sincronizar con la cortina negra) */
+      return placeFBX(4, roomGroup, 16, { roughness: 0.88, metalness: 0.08 }, () => roomGen);
     },
     start() {
-      pos.set(0, 0, 3.2); target = null; prog = [0, 0, 0]; on = [false, false, false]; discI = 0; lastDrop.copy(pos); path = []; dist = 0; doneT = 0; startedMove = false; tN = 0; layers = []; base = null; pads = null; real = recOk(4);
+      const fy = getFloorY();
+      pos.set(0, fy, 3.2); target = null; prog = [0, 0, 0]; on = [false, false, false]; discI = 0; lastDrop.copy(pos); path = []; dist = 0; doneT = 0; startedMove = false; tN = 0; layers = []; base = null; pads = null; real = recOk(4);
+      plane.set(new THREE.Vector3(0, 1, 0), -fy);
       if (real) {
         let rate = 1; const mi = S.metrics[3];
         if (EXPERIMENT.miToFa && mi && !mi.skipped && mi.vals) { const avg = mi.vals.reduce((a, b) => a + b, 0) / mi.vals.length; rate = lerp(.94, 1.06, avg); toast('Tu fraseo en MI marca el pulso de esta sala') }
@@ -78,13 +138,13 @@ export const FA = (() => {
       pos.y += clamp(gy - pos.y, -14 * dt, 14 * dt);
       avatarObj.position.copy(pos); if (moving) startedMove = true;
       if (pos.distanceTo(lastDrop) > .45) {
-        dist += pos.distanceTo(lastDrop); lastDrop.copy(pos); path.push([+pos.x.toFixed(2), +pos.z.toFixed(2)]); const dd = discs[discI++ % discs.length]; dd.position.set(pos.x, .07, pos.z); dd.material.opacity = .8; dd.scale.setScalar(1);
-        if (tN < 240) { tPos.set([pos.x, .09, pos.z], tN * 3); tN++ } else { tPos.copyWithin(0, 3); tPos.set([pos.x, .09, pos.z], 239 * 3) }
+        dist += pos.distanceTo(lastDrop); lastDrop.copy(pos); path.push([+pos.x.toFixed(2), +pos.z.toFixed(2)]); const dd = discs[discI++ % discs.length]; dd.position.set(pos.x, pos.y + .07, pos.z); dd.material.opacity = .8; dd.scale.setScalar(1);
+        if (tN < 240) { tPos.set([pos.x, pos.y + .09, pos.z], tN * 3); tN++ } else { tPos.copyWithin(0, 3); tPos.set([pos.x, pos.y + .09, pos.z], 239 * 3) }
         for (let i = 0; i < tN; i++) { const f = i / Math.max(1, tN - 1); tCol[i * 3] = .35 + .4 * f; tCol[i * 3 + 1] = .36 + .4 * f; tCol[i * 3 + 2] = .1 } trail.geometry.attributes.position.needsUpdate = true; trail.geometry.attributes.color.needsUpdate = true; trail.geometry.setDrawRange(0, tN)
       }
       let nOn = 0; zones.forEach((z, i) => {
         const inside = Math.hypot(pos.x - z.x, pos.z - z.z) < ZR;
-        if (!on[i]) { prog[i] = inside ? prog[i] + dt / DW : Math.max(0, prog[i] - dt * .5); if (prog[i] >= 1) { on[i] = true; prog[i] = 1; const s = toScreen(new THREE.Vector3(z.x, .5, z.z)); burst(s.x, s.y, LIMEH, 46, 380, 1, 4); ringFx(s.x, s.y, '#fff', 20, 200, .8, 3); shake(8); toast(`Campo ${NAMES[i]} encendido · una capa nueva`) } }
+        if (!on[i]) { prog[i] = inside ? prog[i] + dt / DW : Math.max(0, prog[i] - dt * .5); if (prog[i] >= 1) { on[i] = true; prog[i] = 1; const s = toScreen(new THREE.Vector3(z.x, pos.y + .5, z.z)); burst(s.x, s.y, LIMEH, 46, 380, 1, 4); ringFx(s.x, s.y, '#fff', 20, 200, .8, 3); shake(8); toast(`Campo ${NAMES[i]} encendido · una capa nueva`) } }
         if (on[i]) nOn++;
         if (real) { layers[i].set({ gain: on[i] ? .85 : prog[i] * .5 }) } else pads[i].set(on[i] ? 1 : prog[i] * .6)
       });

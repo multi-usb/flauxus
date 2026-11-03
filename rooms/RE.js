@@ -10,6 +10,10 @@ import { S, roomGroup, avatarObj, bloom, mat, animAvatar, rimSet, ctx, W, H, bur
 export const meta = {
   key: 're',
   id: 2, note: 'RE4', short: 'RE', title: 'El pulso', desc: 'Marca el pulso, escucha el click y desplázate fuera de la rejilla.', source: 'sonido provisional', audio: 'pending', color: 0xc9d000, hex: '#c9d000', avatar: 'disciplined',
+  /* Altura de suelo y configuración espacial de RE */
+  floorY: 1.80,
+  start: { x: 0.0, y: 1.80, z: 4.2, yaw: Math.PI },
+  preludeR: 12.0,
   goal: 'Toca cuando cada nota cruce el círculo. Al principio caen sobre la rejilla; después se salen: sigue el click, no las marcas. 12 golpes.',
   ctl: [[['Espacio', 'D', 'Clic'], ['Toca'], 'Tocar el pulso']],
   light: {
@@ -47,14 +51,16 @@ export const RE = (() => {
   }
   function judge(txt, c, ok) { const X = hx(), Y = ly(); ftext(X, Y - 82, txt, c, 24); if (ok) { burst(X, Y, c, 18, 300, .6, 3); ringFx(X, Y, c, 40, 130, .5, 3); tone(sc[combo % sc.length], .14, 'triangle', .11); tone(sc[combo % sc.length] * 2, .1, 'sine', .04); shake(3); pulse = Math.max(pulse, .8) } else { tone(140, .1, 'sawtooth', .05); shake(2) } }
   return {
-    camPos: new THREE.Vector3(0, 2.6, 9.2), camLook: new THREE.Vector3(0, 1.6, 0),
+    // Cámara elevada acorde al piso en Y=1.40 (altura 3.8 mirando al torso en 2.7)
+    camPos: new THREE.Vector3(0, 3.8, 8.8), camLook: new THREE.Vector3(0, 2.7, 0),
     build() {
-      /* Keep functional invisible geometry for pulse effects */
-      floorL = new THREE.Mesh(new THREE.BoxGeometry(22, .1, 3.2), mat(0x191a13, { roughness: 1, emissive: LIME, emissiveIntensity: 0 })); floorL.position.set(0, .05, 3); floorL.visible = false; roomGroup.add(floorL);
-      pillars = []; for (let i = 0; i < 9; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(.5, 4, .5), mat(0x282a1f, { emissive: LIME, emissiveIntensity: 0 })); const a = -1.1 + i * .275; p.position.set(Math.sin(a) * 8, 2, -Math.cos(a) * 5 - 1); p.visible = false; roomGroup.add(p); pillars.push(p) }
+      const fy = meta.floorY ?? 1.80;
+      /* Geometría funcional de pulso alineada con la altura de suelo */
+      floorL = new THREE.Mesh(new THREE.BoxGeometry(22, .1, 3.2), mat(0x191a13, { roughness: 1, emissive: LIME, emissiveIntensity: 0 })); floorL.position.set(0, fy + 0.05, 3); floorL.visible = false; roomGroup.add(floorL);
+      pillars = []; for (let i = 0; i < 9; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(.5, 4, .5), mat(0x282a1f, { emissive: LIME, emissiveIntensity: 0 })); const a = -1.1 + i * .275; p.position.set(Math.sin(a) * 8, fy + 2.0, -Math.cos(a) * 5 - 1); p.visible = false; roomGroup.add(p); pillars.push(p) }
       avatarObj.scale.setScalar(1.1);
-      /* Room 2 FBX + lighting */
-      placeFBX(2, roomGroup, 16, { roughness: 0.86, metalness: 0.09 }, () => roomGen);
+      /* Room 2 FBX + lighting (se retorna la promesa para sincronizar la cortina negra) */
+      return placeFBX(2, roomGroup, 16, { roughness: 0.86, metalness: 0.09 }, () => roomGen);
     },
     start() { t = 0; notes = []; nt = 0; k = 0; nextClick = 0; hits = 0; perfect = 0; miss = 0; combo = 0; bestCombo = 0; devs = []; pulse = 0; red = 0; gen(); hint(TOUCH ? 'Escucha 4 clicks · toca cuando la nota cruce el círculo' : 'Escucha 4 clicks · luego Espacio / D / clic cuando la nota cruce el círculo') },
     onKey(c) { if (c === 'Space' || c === 'KeyD' || c === 'KeyK' || c === 'KeyF' || c === 'KeyJ') press() }, onDown() { press() },

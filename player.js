@@ -282,7 +282,26 @@ export function updateAtrium(dt) {
     const before = player.clone(); let nx = player.x + vel.x * dt, nz = player.z + vel.z * dt;
     const curLimit = pre && S.room ? (rooms[S.room - 1]?.preludeR ?? PRELUDE.R) : (pre ? PRELUDE.R : 26);
     const rr = Math.hypot(nx, nz); if (rr > curLimit) { nx *= curLimit / rr; nz *= curLimit / rr }
+
+    // Colisión con obstáculos de la sala (ej. mesa central en LA) con deslizamiento por ejes
+    const roomMeta = pre && S.room ? rooms[S.room - 1] : null;
+    if (roomMeta?.isBlocked && roomMeta.isBlocked(nx, nz)) {
+      if (!roomMeta.isBlocked(nx, player.z)) {
+        nz = player.z;
+        vel.z = 0;
+      } else if (!roomMeta.isBlocked(player.x, nz)) {
+        nx = player.x;
+        vel.x = 0;
+      } else {
+        nx = player.x;
+        nz = player.z;
+        vel.x = 0;
+        vel.z = 0;
+      }
+    }
+
     // colisión: barandas laterales cuando estás en altura en la escalera (>2m)
+    
     const navOn = on && NAV.ready;
     if (navOn) { // colisión contra el modelo: subpasos de ≤0,15 m (no se atraviesan muros finos) + deslizamiento por las paredes
       const dx = nx - player.x, dz = nz - player.z, ns = Math.max(1, Math.ceil(Math.hypot(dx, dz) / .15)), sx = dx / ns, sz = dz / ns; let px = player.x, pz = player.z, ph = navY, soft = navSoft(px, pz, ph);
@@ -441,6 +460,8 @@ export function clickToGo(cx, cy) {
     if (valid) {
       const curLimit = S.room ? (rooms[S.room - 1]?.preludeR ?? PRELUDE.R) : PRELUDE.R;
       const pt = valid.point, r = Math.hypot(pt.x, pt.z), k = r > curLimit ? curLimit / r : 1, x = pt.x * k, z = pt.z * k;
+      const roomMeta = S.room ? rooms[S.room - 1] : null;
+      if (roomMeta?.isBlocked && roomMeta.isBlocked(x, z)) return; // No caminar hacia el interior de la mesa
       startAuto([{ x, z }], { mark: { x, y: pt.y + .08, z } });
     }
     return;
@@ -472,13 +493,15 @@ export function placePlayerAtSpawn(yaw = Math.PI) {
   placeAtSpawn(); vel.set(0, 0, 0); rig.yaw = yaw; rig.pitch = -.12; heading = yaw;
   viewY = camY = player.y; updateCam()
 }
-export function resetPlayerForPrelude(start = PRELUDE.start) {
+export function resetPlayerForPrelude(start = PRELUDE.start, defaultY = 0) {
   const s = start || PRELUDE.start;
-  const sy = s.y ?? 2.42;
-  player.set(s.x, sy, s.z); vel.set(0, 0, 0); velY = 0; isGrounded = true;
-  const yaw = s.yaw ?? Math.PI;
+  const sx = (s && typeof s.x === 'number' && !isNaN(s.x)) ? s.x : PRELUDE.start.x;
+  const sz = (s && typeof s.z === 'number' && !isNaN(s.z)) ? s.z : PRELUDE.start.z;
+  const sy = (s && typeof s.y === 'number' && !isNaN(s.y)) ? s.y : (defaultY ?? 0);
+  player.set(sx, sy, sz); vel.set(0, 0, 0); velY = 0; isGrounded = true;
+  const yaw = (s && typeof s.yaw === 'number' && !isNaN(s.yaw)) ? s.yaw : Math.PI;
   rig.yaw = yaw; rig.pitch = -.12; heading = yaw; viewY = camY = sy;
-  stopAuto(); updateCam()
+  stopAuto(); updateCam();
 }
 export function placePlayerAtAtrium() {
   stopAuto(); placeAtSpawn(); vel.set(0, 0, 0);

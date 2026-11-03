@@ -35,7 +35,8 @@ export function startGame() {
   if (S.phase !== 'intro') return; ensureAudio(); startAmbient(); $('intro').classList.add('hide'); setTimeout(() => $('intro').style.display = 'none', 650); S.phase = 'atrium'; S.sessionStart = performance.now();
   placePlayerAtSpawn(Math.PI); renderProgress(); setAvatar(skinKind(0));
   seen.add(entry); LS.set('flauxus.entries.v1', [...seen]); showUnlock();
-  assetManager.warm(1); // Precarga el modelo de DO en segundo plano mientras estás en el atrio
+  const next = nextRoomId();
+  if (next) assetManager.warm(next);
 }
 export function showUnlock() {
   const d = ENTRIES[entry]; if (!d.skill) return; const el = $('unlock');
@@ -66,7 +67,7 @@ export function enterRoom(id) {
     stopAuto(); S.room = id; S.phase = PRELUDE.enabled ? 'prelude' : 'brief'; cur = IMPL[id];
     world.visible = false; roomGroup.visible = true; clearGroup(roomGroup); bumpRoomGen(); groundController.reset(); groundController.roomObj = null;
     lightingManager.setMode('room', id);
-    const floorY = r.start?.y ?? 0;
+    const floorY = r.floorY ?? r.start?.y ?? 0;
     groundController.roomFloorY = floorY;
     setAvatar(skinKind(id)); avatarObj.position.set(0, floorY, 0); avatarObj.rotation.y = 0; avatarObj.scale.setScalar(1);
     /* Invisible collision floor for raycasting */
@@ -106,10 +107,13 @@ export function afterDone() { if (S.phase !== 'done') return; if (S.room === 6) 
 export function leaveRoom() {
   if (S.busy || !S.room) return; S.busy = true; fade(() => {
     cur?.stop?.(); killBus(); hideRoomDom(); $('roomUI').classList.remove('active'); $('btnBack').style.display = 'none'; $('sourceChip').style.display = 'none';
-    roomGroup.visible = false; world.visible = true; bumpRoomGen(); groundController.reset(); groundController.roomFloorY = null; groundController.roomObj = null; setAvatar(skinKind(0)); avatarObj.scale.setScalar(1); S.room = 0; cur = null; S.phase = 'atrium';
+    roomGroup.visible = false; world.visible = true; bumpRoomGen(); groundController.clearRoom(); setAvatar(skinKind(0)); avatarObj.scale.setScalar(1); S.room = 0; cur = null; S.phase = 'atrium';
     lightingManager.setMode('atrium');
     placePlayerAtAtrium();
-    setRoomInfo('Atrio central', 'El museo imposible', 'Seis escaleras flotan alrededor del centro. Haz clic en el suelo para caminar y sigue la que late: cada una lleva a un momento distinto.'); A.ambient?.set(1, 1); renderProgress(); S.busy = false; hint('')
+    setRoomInfo('Atrio central', 'El museo imposible', 'Seis escaleras flotan alrededor del centro. Haz clic en el suelo para caminar y sigue la que late: cada una lleva a un momento distinto.'); A.ambient?.set(1, 1); renderProgress(); S.busy = false; hint('');
+    // Precarga automática de la siguiente sala en segundo plano mientras caminas por el atrio
+    const next = nextRoomId();
+    if (next) assetManager.warm(next);
   })
 }
 $('btnSkip').onclick = () => { if (S.phase === 'play') { cur.stop?.(); finish({}, [], true) } };

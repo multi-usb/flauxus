@@ -10,6 +10,10 @@ import { S, roomGroup, avatarObj, bloom, glowSprite, animAvatar, ctx, W, H, burs
 export const meta = {
   key: 'mi',
   id: 3, note: 'MI4', short: 'MI', title: 'El fraseo', desc: 'Decide dónde respira la música. La pausa es una decisión, no un botón.', source: 'Sarabanda ornamentada.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'disciplined',
+  /* Altura de suelo y configuración espacial de MI */
+  floorY: 1.40,
+  start: { x: 0.0, y: 1.40, z: 4.2, yaw: Math.PI },
+  preludeR: 12.0,
   goal: 'La grabación se parte en cuatro frases. Entre una y otra hay una respiración: tú decides cuánto dura. Arrastra cada punto hacia arriba para alargarla, escucha y confirma.',
   ctl: [[['Arrastrar ↕'], ['Arrastrar ↕'], 'Duración de cada pausa'], [['▶ Original'], ['▶ Original'], 'Cómo suena sin tus decisiones']],
   light: {
@@ -89,14 +93,18 @@ export const MI = (() => {
     ph0 = performance.now(); const total = t; hint('Escuchando tu fraseo…'); setTimeout(() => { playing = false; listened = true; updBtns(); hint('¿Te convence? Ajusta las respiraciones y vuelve a escuchar, o confirma.') }, total * 1000 + 400)
   }
   function playOrig() { if (playing || !real) return; playing = true; updBtns(); stopClips(); const d = playClip(3, bounds[0], bounds[4], { wet: .1 }); hint('Así suena sin tus decisiones…'); setTimeout(() => { playing = false; updBtns(); hint('Ahora decide dónde respira cada frase') }, d * 1000 + 300) }
+  const getFloorY = () => meta.floorY ?? 1.40;
   return {
-    camPos: new THREE.Vector3(0, 2.2, 8.4), camLook: new THREE.Vector3(0, 1.9, 0),
+    camPos: new THREE.Vector3(0, 3.8, 8.4), camLook: new THREE.Vector3(0, 2.7, 0),
     build() {
-      halo = glowSprite(LIME, 9, .3); halo.position.set(0, 2.2, -1.5); roomGroup.add(halo);
-      arcs = []; for (let i = 0; i < 4; i++) { const a = new THREE.Mesh(new THREE.TorusGeometry(2.4 + i * .55, .02, 6, 80, Math.PI), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: .25 })); a.position.set(0, .1, -1); roomGroup.add(a); arcs.push(a) }
+      const fy = getFloorY();
+      this.camPos.set(0, fy + 2.4, 8.4);
+      this.camLook.set(0, fy + 1.8, 0);
+      halo = glowSprite(LIME, 9, .3); halo.position.set(0, fy + 2.2, -1.5); roomGroup.add(halo);
+      arcs = []; for (let i = 0; i < 4; i++) { const a = new THREE.Mesh(new THREE.TorusGeometry(2.4 + i * .55, .02, 6, 80, Math.PI), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: .25 })); a.position.set(0, fy + .1, -1); roomGroup.add(a); arcs.push(a) }
       avatarObj.scale.setScalar(1.1);
-      /* Room 3 FBX + lighting */
-      placeFBX(3, roomGroup, 14, { roughness: 0.86, metalness: 0.07 }, () => roomGen);
+      /* Room 3 FBX + lighting (retorna la promesa para sincronizar con la cortina negra) */
+      return placeFBX(3, roomGroup, 14, { roughness: 0.86, metalness: 0.07 }, () => roomGen);
     },
     start() {
       vals = [.35, .45, .55, .38]; touched = new Set(); playing = false; listened = false; ops = [null, null, null, null]; selCard = -1; hand = HAND.map(c => ({ c, used: false, at: -1 })); drag = null; real = recOk(3);

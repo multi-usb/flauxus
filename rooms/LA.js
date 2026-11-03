@@ -5,11 +5,22 @@
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
 import { recOk, pad, tone, hiss, playClip, stopClips, A, regionFor, splitRegion, recPeaks, wfImg, ensureAudio, fmt } from '../AudioSystem.js';
-import { S, roomGroup, avatarObj, bloom, animAvatar, burst, ringFx, ftext, shake, LIMEH, PAPER, hint, toast, finish, roomGen, $ } from './context.js';
+import { S, roomGroup, avatarObj, bloom, animAvatar, burst, ringFx, ftext, shake, LIMEH, PAPER, hint, toast, finish, roomGen, mat, T, $ } from './context.js';
 
 export const meta = {
   key: 'la',
   id: 6, note: 'LA♯4', short: 'LA♯', title: 'MataЯ al padre', desc: 'La partitura deja de ser página cerrada: extrae, interviene y reensambla.', source: 'CPE Bach Intervención.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'cyborg',
+  /* Altura de suelo, inicio y activación frente a la mesa de trabajo */
+  floorY: 1.40,
+  start: { x: 0.0, y: 1.40, z: -6.8, yaw: 0 },      // Spawn en el extremo opuesto (Z negativo), mirando hacia el centro
+  trigger: { x: 0.0, z: 4.8, r: 1.8 },             // Aumentado a 4.8 para alejarlo más de la mesa
+  preludeR: 11.0,
+  /* Posición del avatar durante el minijuego (de pie en el suelo junto a la mesa) */
+  gameAvatarPos: { x: 0.0, y: 1.40, z: -2.1, yaw: 0 },
+  /* Collider de la mesa central de trabajo (ancho ~3.0m x largo ~2.0m + margen del avatar) */
+  isBlocked(x, z) {
+    return Math.abs(x) < 1.85 && Math.abs(z) < 1.35;
+  },
   goal: 'La grabación se corta en fragmentos reales. Toca uno para oírlo, arrástralos al pentagrama para componer otra secuencia, escúchala y entrégala.',
   ctl: [[['Clic = oír'], ['Toca = oír'], 'Escuchar un fragmento'], [['Arrastrar'], ['Arrastrar'], 'Fragmento → pentagrama']],
   light: {
@@ -91,16 +102,90 @@ export const LA = (() => {
     slots.forEach((i, k) => { const d = playFrag(i, t); setTimeout(() => { els.forEach(x => x.classList.remove('playing')); els[k]?.classList.add('playing'); const rc = els[k]?.getBoundingClientRect(); if (rc) burst(rc.left + rc.width / 2, rc.top + rc.height / 2, LIMEH, 14, 200, .5, 3) }, t * 1000); t += d + .12 });
     hint('Escuchando tu reensamblaje…'); setTimeout(() => { document.querySelectorAll('#laFrame .slot').forEach(x => x.classList.remove('playing')); playing = false; listened = true; status(); hint('Puedes reordenar y volver a escuchar, o entregar la obra.') }, t * 1000 + 300)
   }
+  const getFloorY = () => meta.floorY ?? 1.40;
+
+  // Generador de biombos que replican los paneles del modelo (tubos oscuros + lienzo beige)
+  function createExhibitionPanel(w = 2.3, h = 2.2) {
+    const g = new THREE.Group();
+    const poleMat = mat(0x1a1c16, { roughness: 0.6, metalness: 0.35 });
+    const boardMat = mat(0xd4cdba, { roughness: 0.88, metalness: 0.05, side: THREE.DoubleSide });
+
+    // Panel central de lienzo / papel
+    const board = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), boardMat);
+    board.position.y = h * 0.5 + 0.2;
+    g.add(board);
+
+    // Parantes laterales tubulares de soporte
+    const poleGeo = new THREE.CylinderGeometry(0.04, 0.04, h + 0.6, 12);
+    const poleL = new THREE.Mesh(poleGeo, poleMat);
+    poleL.position.set(-w * 0.5 - 0.04, (h + 0.6) * 0.5, 0);
+    const poleR = new THREE.Mesh(poleGeo, poleMat);
+    poleR.position.set(w * 0.5 + 0.04, (h + 0.6) * 0.5, 0);
+    g.add(poleL);
+    g.add(poleR);
+
+    // Abrazaderas metálicas de fijación
+    const clampGeo = new THREE.BoxGeometry(0.11, 0.06, 0.11);
+    for (const py of [h * 0.25 + 0.2, h * 0.75 + 0.2]) {
+      const bL = new THREE.Mesh(clampGeo, poleMat);
+      bL.position.set(-w * 0.5 - 0.04, py, 0);
+      const bR = new THREE.Mesh(clampGeo, poleMat);
+      bR.position.set(w * 0.5 + 0.04, py, 0);
+      g.add(bL);
+      g.add(bR);
+    }
+    return g;
+  }
+
   return {
-    camPos: new THREE.Vector3(0, 2.6, 9), camLook: new THREE.Vector3(0, 2, 0),
+    noParallax: true,
+    // Cámara en espiral 3D continua alrededor del eje Y
+    cam() {
+      const fy = getFloorY();
+      const ang = T * 0.15; // Velocidad de giro alrededor del centro (~50s por vuelta completa)
+
+      // Variación armónica de radio y altura para generar la espiral tridimensional
+      const r = 9.0 + Math.sin(T * 0.2) * 1.4; // El radio oscila suavemente entre 6.6m y 9.4m
+      const y = fy + 3.2 + Math.cos(T * 0.2) * 1.0; // La altura sube y baja entre fy+2.2m y fy+4.2m
+
+      return {
+        pos: new THREE.Vector3(Math.sin(ang) * r, y, Math.cos(ang) * r),
+        look: new THREE.Vector3(0, fy + 1.4, 0) // Enfoca continuamente a la mesa central y al avatar
+      };
+    },
     build() {
-      /* Keep floating paper planes as functional overlay (they animate) */
-      papers = []; for (let i = 0; i < 10; i++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.1), new THREE.MeshBasicMaterial({ color: i % 3 ? 0x25261d : 0x3b3f00, side: THREE.DoubleSide, transparent: true, opacity: .5 })); const a = i / 10 * Math.PI * 2; m.position.set(Math.cos(a) * 7, 2.4 + Math.sin(a * 2) * 1.4, Math.sin(a) * 7 - 2); m.rotation.y = -a; m.userData.a = a; roomGroup.add(m); papers.push(m) }
-      avatarObj.position.set(0, 0, -1.5); avatarObj.scale.setScalar(1.1);
-      /* Room 6 FBX + intense destructive lighting */
-      placeFBX(6, roomGroup, 16, { roughness: 0.78, metalness: 0.16 }, () => roomGen);
+      const fy = getFloorY();
+
+      // Paneles móviles estilizados ubicados cerca del perímetro del escenario
+      papers = [];
+      const panelCount = 6;
+      const orbitR = 9.2; // Radio cercano a los paneles fijos del FBX
+
+      for (let i = 0; i < panelCount; i++) {
+        const p = createExhibitionPanel(2.4, 2.2);
+        const a = (i / panelCount) * Math.PI * 2;
+        p.position.set(Math.cos(a) * orbitR, fy + 0.15, Math.sin(a) * orbitR);
+        p.rotation.y = -a + Math.PI / 2;
+        p.userData = { baseAngle: a, orbitR, phase: i * 1.1 };
+        roomGroup.add(p);
+        papers.push(p);
+      }
+
+      // Colocar al avatar de pie en el piso detrás de la mesa
+      const gp = meta.gameAvatarPos || { x: 0, y: fy, z: -2.1, yaw: 0 };
+      avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
+      avatarObj.rotation.y = gp.yaw ?? 0;
+      avatarObj.scale.setScalar(1.1);
+
+      /* Room 6 FBX + iluminación (retornamos la promesa para sincronizar con la cortina) */
+      return placeFBX(6, roomGroup, 16, { roughness: 0.78, metalness: 0.16 }, () => roomGen);
     },
     start() {
+      const fy = getFloorY();
+      const gp = meta.gameAvatarPos || { x: 0, y: fy, z: -2.1, yaw: 0 };
+      avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
+      avatarObj.rotation.y = gp.yaw ?? 0;
+
       cuts = new Map(); playing = false; listened = false; drag = null; chisel = false; real = recOk(6);
       const reg = regionFor(6); bounds = splitRegion(6, reg.from, reg.to, 6); wf = [0, 1, 2, 3, 4, 5].map(i => wfImg(recPeaks(6, bounds[i], bounds[i + 1], 36)));
       slots = [null, null, null, null]; tray = [0, 1, 2, 3, 4, 5]; if (!real) { fbPad = pad([110, 165, 220], .05); fbPad.set(1) }
@@ -109,7 +194,23 @@ export const LA = (() => {
       $('laListen').onclick = play; $('laConfirm').onclick = () => finish({ slots: [...slots], cuts: cuts.size }, [['Secuencia', slots.map(i => NAMES[i].slice(-1)).join(' · ')], ['Fragmentos intervenidos', cuts.size ? `${cuts.size} (${[...cuts.values()].filter(v => v === 1).length} invertido · ${[...cuts.values()].filter(v => v === 2).length} tajo)` : '0']]);
       render(); hint(real ? 'Toca un fragmento para oírlo · arrástralo al pentagrama' : 'No encontré la grabación: modo provisional (compón la secuencia y entrégala)')
     },
-    update() { }, update3d(dt, t3) { papers.forEach(p => { p.rotation.y += dt * .15; p.position.y = 2.4 + Math.sin(t3 * .6 + p.userData.a * 2) * .5 }); animAvatar(avatarObj, 0, t3, true, A.lvl); if (bloom) bloom.strength = .55 },
+    update() { },
+    update3d(dt, t3) {
+      const fy = getFloorY();
+      // Órbita y cabeceo sutil de los biombos cerca del borde
+      papers.forEach(p => {
+        const u = p.userData;
+        const curAngle = u.baseAngle + t3 * 0.035;
+        p.position.set(
+          Math.cos(curAngle) * u.orbitR,
+          fy + 0.15 + Math.sin(t3 * 0.7 + u.phase) * 0.1,
+          Math.sin(curAngle) * u.orbitR
+        );
+        p.rotation.y = -curAngle + Math.PI / 2;
+      });
+      animAvatar(avatarObj, 0, t3, true, A.lvl);
+      if (bloom) bloom.strength = .55;
+    },
     draw() { }, stop() { $('laUI').style.display = 'none'; ghost?.remove(); ghost = null; stopClips() }
   }
 })();
