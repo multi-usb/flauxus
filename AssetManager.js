@@ -22,6 +22,7 @@ export class AssetManager {
       2: 'Nivel2_RE_El_pulso_nivel_completo.fbx',
       3: 'Nivel3_MI_El_fraseo_nivel_completo.fbx',
       4: 'Nivel4_FAsostenido_El_cuerpo_nivel_completo.fbx',
+      5: 'Nivel5_SOL_A_Terrazas.fbx',
       6: 'Nivel6_LAsostenido_Matar_al_padre_nivel_completo.fbx'
     };
   }

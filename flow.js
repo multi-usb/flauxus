@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { $, sleep, TOUCH, LIME, LIMEH, V3, qs } from './core/util.js';
 import { entry, ENTRIES, CARDS, HAND, LS, seen, PRELUDE } from './core/config.js';
-import { S, rooms, skinKind, bumpRoomGen } from './core/state.js';
+import { S, rooms, skinKind, bumpRoomGen, nextRoomId } from './core/state.js';
 import { W, H, burst, ringFx, shake } from './engine/fx.js';
 import {
   A, ensureAudio, startAmbient, newBus, killBus, tone, sting,
@@ -69,13 +69,13 @@ export function enterRoom(id) {
     lightingManager.setMode('room', id);
     const floorY = r.floorY ?? r.start?.y ?? 0;
     groundController.roomFloorY = floorY;
-    setAvatar(skinKind(id)); avatarObj.position.set(0, floorY, 0); avatarObj.rotation.y = 0; avatarObj.scale.setScalar(1);
+    const avatarReady = setAvatar(skinKind(id)); avatarObj.position.set(0, floorY, 0); avatarObj.rotation.y = 0; avatarObj.scale.setScalar(1);
     /* Invisible collision floor for raycasting */
     const f = new THREE.Mesh(new THREE.CircleGeometry(18, 64), mat(0x12130d, { roughness: 1 })); f.rotation.x = -Math.PI / 2; f.position.y = floorY - 0.02; f.material.transparent = true; f.material.opacity = 0; f.visible = true; roomGroup.add(f); setRoomFloor(f);
     const disc = glowSprite(LIME, 14, .2); disc.material.depthTest = false; disc.position.y = floorY + 0.05; disc.renderOrder = -1; roomGroup.add(disc);
 
-    // Esperar a que el escenario cargue y se monte antes de mostrar la escena y hablar
-    await cur.build();
+    // Esperar a que el escenario y el avatar carguen antes de mostrar la escena
+    await Promise.all([cur.build(), avatarReady]);
 
     camera.fov = 62; camera.updateProjectionMatrix(); camCur.copy(cur.camPos || new V3(0, 2.3, 8.6)); camLook.copy(cur.camLook || new V3(0, 1.7, 0));
     setRoomInfo(`Momento ${id} · ${r.note}`, r.title, r.desc);

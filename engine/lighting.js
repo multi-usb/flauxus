@@ -25,7 +25,10 @@ const _gp = new V3(), _c0 = new V3(0, 3, 0);
 export class LightingManager {
   constructor() {
     this.id = 'atrium'; this.P = LIGHT_PRESETS.atrium; this.keyOff = new V3(12, 24, 8); this.rimK = 8; this.onApply = null;
-    this.avatarLight = new THREE.PointLight(0xfff5e6, 2.4, 12, 2); scene.add(this.avatarLight);
+    /* Luz de relleno del avatar. Vive por delante y por encima para que el
+       PBR de la ropa no genere un punto especular blanco en el pecho: a
+       0,35 m el brillo saturaba el bloom y tapaba al personaje. */
+    this.avatarLight = new THREE.PointLight(0xfff5e6, 1.8, 12, 2); scene.add(this.avatarLight);
     this.pts = []; for (let i = 0; i < QUALITY.pts; i++) { const l = new THREE.PointLight(0xffffff, 0, 0, 2); scene.add(l); this.pts.push(l) }
     this.spot = null; if (QUALITY.spot) { this.spot = new THREE.SpotLight(0xffffff, 0, 0, .7, .5, 2); scene.add(this.spot); scene.add(this.spot.target) }
     this.blob = null;
@@ -47,7 +50,7 @@ export class LightingManager {
     if (this.spot) { const s = P.spot; this.spot.color.setHex(s.c); this.spot.intensity = s.e * s.r * s.r; this.spot.angle = s.ang; this.spot.penumbra = s.pen; this.spot.position.set(s.p[0], s.p[1], s.p[2]); this.spot.target.position.set(s.t[0], s.t[1], s.t[2]) }
   }
   update(pos, dt, isAtrium) {
-    this.avatarLight.position.set(pos.x, pos.y + 1.9, pos.z + .35);
+    this.avatarLight.position.set(pos.x, pos.y + 2.9, pos.z + 1.4);
     if (QUALITY.shadows) { // el frustum de sombra sigue al avatar, "pegado" a la rejilla de texeles para que no tiemble
       const ts = SHADOW_R * 2 / QUALITY.shadowMap, sx = Math.round(pos.x / ts) * ts, sz = Math.round(pos.z / ts) * ts;
       key.target.position.set(sx, pos.y, sz); key.position.set(sx + this.keyOff.x, pos.y + this.keyOff.y, sz + this.keyOff.z);

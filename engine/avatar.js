@@ -1,44 +1,545 @@
 /* ======================================================================
    FLAUXUS — engine/avatar.js
-   Avatar placeholder y su animación. `setAvatar` mantiene sincronizado
-   GX.avatarObj para que las salas siempre vean el avatar vigente.
+   Avatares riggeados de `personaje/` sobre un contenedor estable.
+
+   Cada versión carga su FBX `*_rig_Run.fbx`: es el rig profesional de la
+   entrega, con skin weights, 66/28 huesos y texturas 2K incrustadas. Sobre
+   ese rig se hornean los clips de `Idle.fbx` y `Walking.fbx` con
+   `engine/skinning.js` (delta mundial, sin perder la pose de reposo).
+
+   Los materiales se convierten a PBR (`MeshStandardMaterial`) usando el
+   baseColor y el normalMap incrustados + los mapas de roughness/metallic
+   de `texturas/`. La flauta aparece con un fundido al tocar (quieto en un
+   minijuego o caminando), se coloca al frente con IK de dos huesos
+   anclado a la cabeza y se desvanece al volver al idle. Los acentos del
+   cyborg cuelgan de la columna.
+
+   `avatarObj` nunca se reemplaza: GX, rooms/context.js, player.js y
+   ui/prelude.js conservan la misma referencia durante toda la partida.
    ====================================================================== */
 import * as THREE from 'three';
-import { LIME, clamp } from '../core/util.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { LIME, clamp, damp } from '../core/util.js';
 import { mat } from './materials.js';
 import { scene } from './renderer.js';
 import { A } from '../AudioSystem.js';
 import { GX } from '../GameContext.js';
+import { loadMixamo, prepareRig, bakeClips, applyFluteIK } from './skinning.js';
+
+const V3 = THREE.Vector3;
+const loader = new FBXLoader();
+const texLoader = new THREE.TextureLoader();
 
 /* ======================================================================
-   AVATAR — PLACEHOLDER GEO (se reemplaza por modelo low poly)
+   CATÁLOGO — rig profesional y mapas PBR
    ====================================================================== */
-export function avatar(kind) {
-  const g = new THREE.Group(), cy = kind === 'cyborg';
-  const bodyMat = mat(cy ? 0x1f2119 : 0x2b2c23, { roughness: .9, metalness: cy ? .45 : .05 });
-  const skinMat = mat(cy ? 0xe6e3d6 : 0xcfcab8, { roughness: .85, metalness: cy ? .2 : 0 });
-  const glowMat = new THREE.MeshStandardMaterial({ color: 0xf4f7cf, emissive: LIME, emissiveIntensity: cy ? 1.5 : .0, roughness: .3, metalness: .5 });
-  const M = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; return o };
-  const body = new THREE.Group(); g.add(body);
-  const torso = M(new THREE.CapsuleGeometry(.44, .85, 4, 12), bodyMat, 0, 1.25, 0); if (kind === 'body') torso.scale.set(1.04, .95, 1.08); body.add(torso);
-  body.add(M(new THREE.SphereGeometry(.34, 16, 12), skinMat, 0, 2.28, 0));
-  const mkLimb = (x, y, r, len, off) => { const p = new THREE.Group(); p.position.set(x, y, 0); p.add(M(new THREE.CapsuleGeometry(r, len, 4, 8), bodyMat, 0, off, 0)); g.add(p); return p };
-  const armL = mkLimb(-.56, 1.85, .12, .75, -.5), armR = mkLimb(.56, 1.85, .12, .75, -.5), legL = mkLimb(-.22, 1.1, .14, .92, -.5), legR = mkLimb(.22, 1.1, .14, .92, -.5);
-  const wl = new THREE.Object3D(); wl.position.set(0, -.95, 0); armL.add(wl); const wr = new THREE.Object3D(); wr.position.set(0, -.95, 0); armR.add(wr);
-  const head = new THREE.Object3D(); head.position.set(0, 2.45, 0); g.add(head);
-  const flute = M(new THREE.CylinderGeometry(.04, .04, 1.65, 12), mat(0xc9c9c0, { metalness: .9, roughness: .22 }), .28, 1.62, .3); flute.rotation.z = Math.PI / 2 + .12; g.add(flute);
-  if (cy) { for (const x of [-.57, .57]) g.add(M(new THREE.BoxGeometry(.2, .2, .2), glowMat, x, 1.85, 0)); g.add(M(new THREE.ConeGeometry(.13, .42, 8), glowMat, 0, 2.8, 0)); const ring = M(new THREE.TorusGeometry(.5, .03, 8, 30), glowMat, 0, 1.25, 0); ring.rotation.x = Math.PI / 2; g.add(ring); head.position.y = 2.78 }
-  g.userData = { body, armL, armR, legL, legR, joints: { wl, wr, head }, glowMat, flute, cy }; return g
+const AVATARS = {
+  original: {
+    rig: 'personaje/MC_original/MC_Original_rig_Run.fbx',
+    tex: {
+      roughness: 'personaje/MC_original/texturas/MC_Original_rig_Run_roughness.png',
+      metalness: 'personaje/MC_original/texturas/MC_Original_rig_Run_metallic.png'
+    }
+  },
+  body: {
+    rig: 'personaje/MC_mtp/MC_MatarAlPadre_rig_Run.fbx',
+    tex: {
+      roughness: 'personaje/MC_mtp/texturas/MC_MatarAlPadre_rig_Run_roughness.png',
+      metalness: 'personaje/MC_mtp/texturas/MC_MatarAlPadre_rig_Run_metallic.png'
+    }
+  },
+  cyborg: {
+    rig: 'personaje/MC_cyborg/MC_Cyborg_rig_Run.fbx',
+    tex: {
+      roughness: 'personaje/MC_cyborg/texturas/MC_Cyborg_rig_Run_roughness.png',
+      metalness: 'personaje/MC_cyborg/texturas/MC_Cyborg_rig_Run_metallic.png'
+    }
+  }
+};
+
+/* Nombres heredados de las fichas de sala → versión canónica. */
+const ALIAS = { disciplined: 'original', original: 'original', body: 'body', mtp: 'body', cyborg: 'cyborg' };
+const versionOf = kind => ALIAS[kind] || 'original';
+
+/* Ajustes PBR por versión. El roughness/metalness salen de los mapas; aquí
+   solo se decide el detalle del normal y la respuesta al IBL. */
+const PBR = {
+  original: { normalScale: .9, envMapIntensity: 1.15 },
+  body: { normalScale: .9, envMapIntensity: 1.0 },
+  cyborg: { normalScale: 1.0, envMapIntensity: 1.25 }
+};
+
+/* ======================================================================
+   FLAUTA — aparece al tocar (quieto en los minijuegos o caminando) y se
+   desvanece al volver al idle. Descentrada hacia la derecha del avatar
+   para que el extremo del bisel quede junto a la boca.
+
+   El grupo se construye con el tubo centrado en X. La mano izquierda
+   sujeta el extremo del bisel y la derecha el centro del tubo. La pose de
+   interpretación se ancla a la cabeza en cada frame: así el bob de la
+   caminata no separa la flauta ni las manos de la boca.
+   ====================================================================== */
+const FLUTE_PLAY_POS = new V3(-.40, 2.22, .30);
+const FLUTE_TARGETS = { Left: [-.10, 2.04, .26], Right: [-.40, 2.04, .26] };
+/* Los dedos apuntan en el plano YZ (arriba y hacia delante), perpendiculares
+   al tubo. Antes tenían componente X y la flauta se veía atravesando la
+   mano. */
+const FLUTE_DIRS = { Left: [.12, .8, .58], Right: [-.12, .8, .58] };
+/* Polos hacia abajo y afuera: los codos acompañan al cuerpo en vez de
+   quedar levantados como alas. */
+const FLUTE_POLES = { Left: [.75, -.62, -.18], Right: [-.75, -.62, -.18] };
+const FLUTE_ROLLS = { Left: 0, Right: 0 };
+const FLUTE_NOD = .12;
+const _flutePlay = new V3(), _headPos = new V3(), _headDelta = new V3();
+
+/* ======================================================================
+   CARGA — rig + texturas + horneado de clips, una vez por versión
+   ====================================================================== */
+const cache = new Map();
+
+function loadVersion(version) {
+  if (cache.has(version)) return cache.get(version);
+  const p = Promise.allSettled([loadRigFBX(version), loadMixamo()]).then(([rigR, mixR]) => {
+    if (rigR.status === 'rejected') throw rigR.reason;
+    const rig = rigR.value;
+    if (mixR.status === 'fulfilled') {
+      try { bakeClips(rig, mixR.value); }
+      catch (e) { console.warn('Avatar bake', version, e); }
+    } else {
+      console.warn('Avatar Mixamo', mixR.reason);
+    }
+    return rig;
+  }).catch(err => {
+    cache.delete(version);
+    throw err;
+  });
+  cache.set(version, p);
+  return p;
 }
-export let avatarObj = avatar('disciplined'); scene.add(avatarObj);
-export function setAvatar(kind) { scene.remove(avatarObj); avatarObj = avatar(kind); scene.add(avatarObj); GX.avatarObj = avatarObj }
-// El avatar respira con el audio real (A.lvl) cuando toca
+
+function loadRigFBX(version) {
+  const spec = AVATARS[version];
+  return new Promise((resolve, reject) => {
+    loader.load(new URL(spec.rig, document.baseURI).href, async root => {
+      try {
+        const rig = prepareRig(root, 2.6);
+        const maps = {};
+        if (spec.tex.roughness) {
+          maps.roughness = await loadTexture(spec.tex.roughness);
+          maps.roughness.colorSpace = THREE.NoColorSpace;
+          maps.roughness.wrapS = maps.roughness.wrapT = THREE.RepeatWrapping;
+          maps.roughness.anisotropy = 8;
+        }
+        if (spec.tex.metalness) {
+          maps.metalness = await loadTexture(spec.tex.metalness);
+          maps.metalness.colorSpace = THREE.NoColorSpace;
+          maps.metalness.wrapS = maps.metalness.wrapT = THREE.RepeatWrapping;
+          maps.metalness.anisotropy = 8;
+        }
+        convertMaterials(root, version, maps);
+        await waitTextures(root);
+        rig.maps = maps;
+        resolve(rig);
+      } catch (e) { reject(e); }
+    }, undefined, reject);
+  });
+}
+
+function loadTexture(url) {
+  return new Promise((resolve, reject) => {
+    texLoader.load(new URL(url, document.baseURI).href, resolve, undefined, reject);
+  });
+}
+
+/* Los FBX traen baseColor + normalMap incrustados; los otros dos mapas
+   vienen sueltos en `texturas/`. Se convierten a PBR sin duplicar texturas. */
+function convertMaterials(root, version, maps) {
+  const cfg = PBR[version] || PBR.original;
+  const out = [];
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const oldMats = Array.isArray(o.material) ? o.material : [o.material];
+    const mats = oldMats.map(old => {
+      const m = new THREE.MeshStandardMaterial({
+        name: old.name || 'avatar',
+        map: old.map || null,
+        normalMap: old.normalMap || null,
+        roughnessMap: maps.roughness || null,
+        metalnessMap: maps.metalness || null,
+        color: 0xffffff,
+        roughness: 1,
+        metalness: 1,
+        normalScale: new THREE.Vector2(cfg.normalScale, cfg.normalScale),
+        envMapIntensity: cfg.envMapIntensity,
+        side: THREE.FrontSide
+      });
+      if (m.map) { m.map.colorSpace = THREE.SRGBColorSpace; m.map.anisotropy = 8; }
+      if (m.normalMap) { m.normalMap.colorSpace = THREE.NoColorSpace; m.normalMap.anisotropy = 8; }
+      if (m.roughnessMap) m.roughnessMap.colorSpace = THREE.NoColorSpace;
+      if (m.metalnessMap) m.metalnessMap.colorSpace = THREE.NoColorSpace;
+      m.needsUpdate = true;
+      out.push(m);
+      return m;
+    });
+    o.material = Array.isArray(o.material) ? mats : mats[0];
+    o.castShadow = true;
+    o.receiveShadow = true;
+    o.frustumCulled = false;
+  });
+  return out;
+}
+
+/* FBXLoader entrega el scene antes de que terminen de decodificarse las
+   texturas incrustadas. Se esperan para que el avatar no aparezca blanco. */
+async function waitTextures(root, timeout = 4000) {
+  const textures = new Set();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) {
+      for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'specularMap']) {
+        const t = m?.[key];
+        if (t) textures.add(t);
+      }
+    }
+  });
+  const start = performance.now();
+  for (const t of textures) {
+    while (!t.image && performance.now() - start < timeout) await new Promise(r => setTimeout(r, 50));
+    if (t.image?.decode) await t.image.decode().catch(() => { });
+  }
+}
+
+/* Clona el rig para cada avatar: geometría, materiales y texturas se
+   comparten; los huesos y el Skeleton son nuevos para poder animarlos. */
+function instantiate(rig) {
+  const root = cloneSkeleton(rig.root);
+  root.updateMatrixWorld(true);
+  let mesh = null;
+  root.traverse(o => { if (!mesh && o.isSkinnedMesh) mesh = o; });
+  const bones = new Map();
+  root.traverse(o => { if (o.isBone) bones.set(o.name, o); });
+  return { root, mesh, skeleton: mesh.skeleton, bones };
+}
+
+/* ======================================================================
+   PIEZAS PROCEDURALES — placeholder, flauta y acentos del cyborg
+   ====================================================================== */
+function buildPlaceholder(version, glowMat) {
+  const g = new THREE.Group(), cy = version === 'cyborg';
+  const bodyMat = mat(cy ? 0x24261f : 0x3a3930, { roughness: .9, metalness: cy ? .4 : .05 });
+  const skinMat = mat(cy ? 0xd6c8b6 : 0xe0c2a6, { roughness: .85, metalness: cy ? .2 : 0 });
+  const pantsMat = mat(cy ? 0x282b23 : 0x56513f, { roughness: .95, metalness: 0 });
+  const bootMat = mat(cy ? 0x151713 : 0x24231e, { roughness: .9, metalness: cy ? .3 : .05 });
+  const M = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = false; g.add(o); return o; };
+  const torso = M(new THREE.CapsuleGeometry(.34, .62, 4, 12), bodyMat, 0, 1.38, 0); torso.scale.set(1, .98, .95);
+  M(new THREE.SphereGeometry(.29, 16, 12), skinMat, 0, 2.26, 0);
+  M(new THREE.SphereGeometry(.24, 12, 8), bodyMat, 0, 1.72, 0);
+  const mkArm = side => { const p = new THREE.Group(); p.position.set(side * .42, 1.8, 0); const a = new THREE.Mesh(new THREE.CapsuleGeometry(.09, .62, 4, 8), skinMat); a.position.y = -.38; p.add(a); g.add(p); };
+  mkArm(-1); mkArm(1);
+  const mkLeg = side => {
+    const p = new THREE.Group(); p.position.set(side * .17, .98, 0);
+    const l = new THREE.Mesh(new THREE.CapsuleGeometry(.13, .68, 4, 8), pantsMat); l.position.y = -.36; p.add(l);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(.22, .2, .34), bootMat); b.position.set(0, -.88, .06); p.add(b); g.add(p);
+  };
+  mkLeg(-1); mkLeg(1);
+  if (cy) {
+    const orb = new THREE.SphereGeometry(.06, 10, 8);
+    for (const x of [-.28, .28]) { const o = new THREE.Mesh(orb, glowMat); o.position.set(x, 1.98, .02); g.add(o); }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.15, .012, 6, 24), glowMat); ring.position.set(0, 1.58, .14); g.add(ring);
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(.27, .01, 6, 28), glowMat); belt.rotation.x = Math.PI / 2; belt.position.y = 1.26; g.add(belt);
+    const antenna = new THREE.Mesh(new THREE.ConeGeometry(.035, .16, 6), glowMat); antenna.position.set(0, 2.58, -.02); g.add(antenna);
+  }
+  return g;
+}
+
+function buildCyber(glowMat) {
+  /* Acentos del cyborg ajustados al torso del rig. Se cuelgan de spine2
+     para que sigan el torso animado. */
+  const g = new THREE.Group();
+  const add = (geo, x, y, z) => {
+    const o = new THREE.Mesh(geo, glowMat); o.position.set(x, y, z); o.castShadow = false; g.add(o); return o;
+  };
+  const orb = new THREE.SphereGeometry(.03, 10, 8);
+  add(orb, -.21, 1.97, .1); add(orb, .21, 1.97, .1);
+  add(new THREE.SphereGeometry(.028, 10, 8), 0, 1.62, .17);
+  return g;
+}
+
+function buildFlute() {
+  /* Construida alrededor del origen; el grupo se recoloca cada frame en la
+     pose de interpretación. Arranca invisible y opaca: el fundido lo lleva
+     el material compartido del tubo y las llaves. */
+  const g = new THREE.Group();
+  const fm = new THREE.MeshStandardMaterial({ color: 0xd8d8c8, metalness: .85, roughness: .22, transparent: true, opacity: 0, depthWrite: false });
+  const add = (geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    const o = new THREE.Mesh(geo, fm); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = false; g.add(o); return o;
+  };
+  add(new THREE.CylinderGeometry(.022, .022, .9, 10), 0, 0, 0, 0, 0, Math.PI / 2);
+  add(new THREE.BoxGeometry(.07, .03, .035), .12, .01, .02);
+  const key = new THREE.CylinderGeometry(.018, .018, .012, 8);
+  for (const x of [-.3, -.16, -.02, .12, .26]) add(key, x, -.015, .02, Math.PI / 2, 0, 0);
+  g.position.copy(FLUTE_PLAY_POS);
+  g.visible = false;
+  g.userData.mat = fm;
+  return g;
+}
+
+function disposeGroup(g, keepMat) {
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    o.geometry?.dispose?.();
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) if (m && m !== keepMat) m.dispose?.();
+  });
+}
+
+/* Devuelve las articulaciones al contenedor raíz antes de cambiar de malla:
+   si quedaran dentro del esqueleto viejo, desaparecerían con él. */
+function resetJoints(u) {
+  const root = u.visual.parent;
+  if (!root) return;
+  for (const j of Object.values(u.joints)) root.add(j);
+  u.joints.head.position.set(0, 2.36, 0);
+  u.joints.wl.position.set(-.48, 1.03, 0);
+  u.joints.wr.position.set(.48, 1.03, 0);
+}
+
+function clearVisual(u) {
+  resetJoints(u);
+  if (u.mixer) { u.mixer.stopAllAction(); if (u.rig) u.mixer.uncacheRoot(u.rig); u.mixer = null; }
+  u.actions = null;
+  if (u.flute) { u.visual.remove(u.flute); disposeGroup(u.flute); u.flute = null; }
+  if (u.cyber) { u.cyber.parent?.remove(u.cyber); disposeGroup(u.cyber, u.glowMat); u.cyber = null; }
+  if (u.placeholder) { u.visual.remove(u.placeholder); disposeGroup(u.placeholder, u.glowMat); u.placeholder = null; }
+  if (u.rig) { u.visual.remove(u.rig); u.rig = null; }
+  u.mesh = null; u.bones = null; u.template = null; u.skeleton = null;
+}
+
+function showPlaceholder(u, version) {
+  clearVisual(u);
+  u.version = version; u.cy = version === 'cyborg'; u.loaded = false;
+  u.placeholder = buildPlaceholder(version, u.glowMat);
+  u.visual.add(u.placeholder);
+}
+
+/* Las articulaciones que lee SOL se cuelgan de los huesos reales: así el
+   seguimiento de manos y cabeza sale gratis del esqueleto animado. */
+function attachJoints(u, bones) {
+  const handL = bones.get('mixamorigLeftHand');
+  const handR = bones.get('mixamorigRightHand');
+  const head = bones.get('mixamorigHead');
+  const scaleOf = b => (b.getWorldScale(new V3()).x || 1);
+  if (handL) { handL.add(u.joints.wl); u.joints.wl.position.set(0, .06 / scaleOf(handL), 0); }
+  if (handR) { handR.add(u.joints.wr); u.joints.wr.position.set(0, .06 / scaleOf(handR), 0); }
+  if (head) { head.add(u.joints.head); u.joints.head.position.set(0, .18 / scaleOf(head), 0); }
+}
+
+function attachCyber(u, bones) {
+  const spine = bones.get('mixamorigSpine2') || bones.get('mixamorigSpine1') || bones.get('mixamorigSpine');
+  if (!spine) return;
+  const g = buildCyber(u.glowMat);
+  u.visual.updateMatrixWorld(true);
+  const s = spine.getWorldScale(new V3()).x || 1;
+  /* Las piezas se diseñaron en coordenadas de la malla; se convierten al
+     espacio local del hueso y se compensa la escala del rig (100×). */
+  for (const child of g.children) {
+    const p = child.position.clone();
+    u.visual.localToWorld(p);
+    spine.worldToLocal(p);
+    child.position.copy(p);
+    child.scale.setScalar(1 / s);
+  }
+  spine.add(g);
+  u.cyber = g;
+}
+
+function applyVersion(u, version, rig) {
+  clearVisual(u);
+  u.version = version; u.cy = version === 'cyborg';
+  const inst = instantiate(rig);
+  u.visual.add(inst.root);
+  u.rig = inst.root; u.mesh = inst.mesh; u.skeleton = inst.skeleton;
+  u.bones = inst.bones; u.template = rig.template;
+  u.mesh.castShadow = true; u.mesh.receiveShadow = true; u.mesh.frustumCulled = false;
+
+  if (rig.clips) {
+    const mixer = new THREE.AnimationMixer(inst.root);
+    const actions = {
+      idle: mixer.clipAction(rig.clips.idle),
+      walk: mixer.clipAction(rig.clips.walk)
+    };
+    actions.idle.setLoop(THREE.LoopRepeat, Infinity);
+    actions.walk.setLoop(THREE.LoopRepeat, Infinity);
+    actions.idle.play(); actions.walk.play();
+    actions.idle.setEffectiveWeight(1); actions.walk.setEffectiveWeight(0);
+    u.mixer = mixer; u.actions = actions; u.idleW = 1; u.walkW = 0;
+  }
+
+  u.flute = buildFlute(); u.visual.add(u.flute);
+  u.fluteAnchor = null;
+  if (u.cy) attachCyber(u, inst.bones);
+  attachJoints(u, inst.bones);
+  u.loaded = true;
+  u.visual.parent?.updateMatrixWorld(true);
+}
+
+/* ======================================================================
+   RAÍZ ESTABLE
+   ====================================================================== */
+function makeRoot() {
+  const root = new THREE.Group();
+  const visual = new THREE.Group(); root.add(visual);
+  const joints = { wl: new THREE.Object3D(), wr: new THREE.Object3D(), head: new THREE.Object3D() };
+  joints.head.position.set(0, 2.36, 0);
+  joints.wl.position.set(-.48, 1.03, 0);
+  joints.wr.position.set(.48, 1.03, 0);
+  for (const j of Object.values(joints)) root.add(j);
+  const glowMat = new THREE.MeshStandardMaterial({ color: 0xf4f7cf, emissive: LIME, emissiveIntensity: 1.5, roughness: .3, metalness: .5 });
+  const u = root.userData = {
+    visual, joints, glowMat,
+    mode: 'idle', flautaBlend: 0, lastT: 0,
+    version: null, loaded: false, loading: null, gen: 0, cy: false,
+    placeholder: null, rig: null, mesh: null, flute: null, cyber: null,
+    mixer: null, actions: null, bones: null, template: null, skeleton: null,
+    idleW: 1, walkW: 0, fluteAnchor: null,
+    glowBase: 1.1, body: visual, armL: joints.wl, armR: joints.wr, legL: null, legR: null
+  };
+  return root;
+}
+
+function loadInto(root, kind) {
+  const version = versionOf(kind), u = root.userData;
+  if (u.version === version && u.loaded) return Promise.resolve(root);
+  if (u.version === version && u.loading) return u.loading;
+  const gen = ++u.gen;
+  u.version = version; u.loading = null; u.loaded = false; u.cy = version === 'cyborg';
+  showPlaceholder(u, version);
+  const p = loadVersion(version).then(rig => {
+    if (u.gen !== gen) return root;
+    applyVersion(u, version, rig);
+    u.loading = null;
+    return root;
+  }).catch(err => {
+    console.warn('Avatar', version, err);
+    if (u.gen === gen) u.loading = null;
+    return root;
+  });
+  u.loading = p;
+  return p;
+}
+
+export let avatarObj = makeRoot();
+scene.add(avatarObj);
+
+/** Crea un avatar independiente (poco usado: el juego comparte avatarObj). */
+export function avatar(kind) { const root = makeRoot(); loadInto(root, kind); return root; }
+
+/** Cambia la versión conservando la misma raíz y devuelve una promesa. */
+export function setAvatar(kind) {
+  const p = loadInto(avatarObj, kind);
+  GX.avatarObj = avatarObj;
+  return p;
+}
+
+loadInto(avatarObj, 'disciplined'); // precarga la versión del atrio
+
+/* ======================================================================
+   ANIMACIÓN
+   La caminata mantiene las piernas del clip `walk` con el timeScale
+   reducido (paso visual más pausado, misma velocidad real). Brazos y
+   flauta se resuelven aparte con IK sobre la boca. Quieto se usa idle y,
+   en los minijuegos, la misma pose de flauta.
+   ====================================================================== */
 export function animAvatar(av, sp, t, play = false, air = 0) {
-  const u = av.userData, k = clamp(sp / 6, 0, 1.5), w = t * 9, br = A.lvl;
-  if (u.cy) u.glowMat.emissiveIntensity = 1.1 + br * 2.6 + clamp(sp / 6, 0, 1) * .8; // Skin Cyborg: los dispositivos laten con el sonido y con el cuerpo
-  u.legL.rotation.x = Math.sin(w) * .75 * k; u.legR.rotation.x = -Math.sin(w) * .75 * k;
-  const sw = Math.sin(w) * .55 * k;
-  if (play) { u.armL.rotation.x = -1.05 + Math.sin(t * 1.7) * .04; u.armR.rotation.x = -1.15 + Math.sin(t * 1.7 + 1) * .04; u.armL.rotation.z = .5; u.armR.rotation.z = -.5; u.body.rotation.z = Math.sin(t * 1.3) * .03 * (1 + air); u.body.scale.set(1 + br * .05, 1 + br * .035, 1 + br * .05); u.flute.rotation.x = -br * .12 }
-  else { u.armL.rotation.x = -sw; u.armR.rotation.x = sw; u.armL.rotation.z = -.15; u.armR.rotation.z = .15; u.body.rotation.z = 0; u.body.scale.set(1, 1, 1) }
-  u.body.position.y = Math.abs(Math.sin(w)) * .09 * k + Math.sin(t * 1.6) * .015
+  const u = av?.userData;
+  if (!u || !u.visual) return;
+  const dt = clamp((t - (u.lastT || 0)) || .016, .001, .1);
+  u.lastT = t;
+  const speed = Math.abs(sp) || 0;
+  const walking = speed > .45;
+  const mode = walking ? 'walk' : (play ? 'flauta' : 'idle');
+  u.mode = mode;
+  /* Caminar también es tocar: las piernas siguen el clip walk, pero la
+     flauta sube a la boca y los brazos pasan a IK. */
+  const fluteOn = play || walking;
+
+  const k = clamp(speed / 6, 0, 1), br = clamp(air, 0, 1);
+
+  if (u.loaded && u.mixer && u.actions) {
+    const wantWalk = walking ? 1 : 0;
+    u.walkW = damp(u.walkW, wantWalk, 8, dt);
+    u.idleW = 1 - u.walkW;
+    u.actions.walk.setEffectiveWeight(u.walkW);
+    u.actions.idle.setEffectiveWeight(u.idleW);
+    /* El ciclo Mixamo mide 0,967 s y avanza ~2,1 m por vuelta a escala 1.
+       Antes se reproducía a ~1,8× a 6,2 m/s; ahora va ~1,5× para que el
+       paso se vea más pausado. La velocidad del jugador no se toca. */
+    u.actions.walk.timeScale = clamp(speed / 4.2, .75, 2.0);
+    u.mixer.update(dt);
+  }
+
+  /* Balanceo del contenedor: el esqueleto ya anima el cuerpo; aquí solo
+     queda una inclinación mínima para dar peso al paso. */
+  if (mode === 'walk') {
+    u.visual.rotation.x = .02 * k;
+    u.visual.rotation.z = Math.sin(t * 4.4) * .012 * k;
+  } else if (mode === 'flauta') {
+    u.visual.rotation.x = 0;
+    u.visual.rotation.z = Math.sin(t * 1.1) * .01;
+  } else {
+    u.visual.rotation.x = 0;
+    u.visual.rotation.z = Math.sin(t * 1.1) * .006;
+  }
+  u.visual.position.y = 0;
+  u.visual.scale.set(1 + br * .012, 1 + br * .008, 1 + br * .012);
+
+  /* Las matrices deben reflejar la pose del mixer antes de que el IK lea
+     posiciones mundiales de hombros y muñecas. El rig tiene la armature
+     como hermana del mesh, así que se actualiza desde la raíz del avatar. */
+  if (u.rig) u.visual.parent?.updateMatrixWorld(true);
+
+  /* Ancla de la cabeza en la pose quieta: el bob y el vaivén de la
+     caminata se restan de la posición de la flauta y de los targets IK.
+     Así el tubo y las manos conservan su sitio respecto de la boca aunque
+     el torso se mueva. */
+  let headDelta = null;
+  const head = u.bones?.get('mixamorigHead');
+  if (head) {
+    head.getWorldPosition(_headPos);
+    u.visual.worldToLocal(_headPos);
+    if (!u.fluteAnchor) u.fluteAnchor = _headPos.clone();
+    else if (u.walkW < .05 && u.flautaBlend < .05) u.fluteAnchor.copy(_headPos);
+    _headDelta.copy(_headPos).sub(u.fluteAnchor);
+    headDelta = _headDelta;
+  }
+
+  u.flautaBlend = damp(u.flautaBlend, fluteOn ? 1 : 0, 12, dt);
+  if (u.flute) {
+    const b = u.flautaBlend;
+    /* Sin pose de paseo: la flauta solo existe en la pose de
+       interpretación. Al volver al idle se desvanece en el sitio, así no
+       queda flotando junto a la mano. */
+    _flutePlay.copy(FLUTE_PLAY_POS);
+    if (headDelta) _flutePlay.add(headDelta);
+    u.flute.position.copy(_flutePlay);
+    u.flute.position.y += Math.sin(t * 2.1) * .006 * b;
+    u.flute.quaternion.identity();
+    u.flute.visible = b > .004;
+    const fm = u.flute.userData.mat;
+    if (fm) {
+      const transparent = b < .995;
+      fm.opacity = b;
+      fm.depthWrite = !transparent;
+      if (fm.transparent !== transparent) { fm.transparent = transparent; fm.needsUpdate = true; }
+    }
+  }
+
+  if (u.loaded && u.bones && u.template && u.flautaBlend > .001) {
+    applyFluteIK(u, u.flautaBlend, FLUTE_TARGETS, FLUTE_DIRS, FLUTE_POLES, FLUTE_ROLLS, FLUTE_NOD, headDelta, u.flute.position);
+    u.visual.parent?.updateMatrixWorld(true);
+  }
+
+  if (u.glowMat) u.glowMat.emissiveIntensity = (u.glowBase ?? 1.1) + clamp(A.lvl || 0, 0, 2) * 2.6 + k * .8;
 }

@@ -156,7 +156,7 @@ export const FA = (() => {
     },
     update3d(dt, t3) {
       zObj.forEach((o, i) => { const p = prog[i], done = on[i]; o.fill.material.opacity = p * .4; o.fill.scale.setScalar(.2 + p * .8); o.ring.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.opacity = .12 + p * .4; o.ring.rotation.z += dt * .5 });
-      discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) }); animAvatar(avatarObj, moving ? 5.4 : 0, t3, false, A.lvl); if (bloom) bloom.strength = .6
+      discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) }); animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
     },
     draw() {
       const k = TOUCH ? .78 : 1, cx = W - 112 * k, cy = H - (TOUCH ? 250 : 200), r = 74 * k, s = r / RM; ctx.save(); ctx.fillStyle = 'rgba(13,14,9,.72)'; ctx.strokeStyle = 'rgba(201,208,0,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill(); ctx.stroke();

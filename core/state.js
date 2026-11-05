@@ -13,7 +13,13 @@ if (entry === 'poster') S.mod.add('chisel');
 if (entry === 'cards') S.mod.add('intention');
 S.heard = new Set();
 
-export const skinKind = id => S.mod.has('cyborg') ? 'cyborg' : (id ? rooms[id - 1].avatar : 'disciplined'); // Skin Cyborg del fanzine: atrio y las seis salas
+/* Cada Momento tiene su propia versión de personaje: MC_original en el
+   atrio y las salas 1–3, MC_mtp en FA y MC_cyborg en SOL/LA. La skin
+   Cyborg del fanzine solo sustituye el avatar del atrio. */
+const AVATAR_VERSION = { disciplined: 'original', body: 'body', cyborg: 'cyborg' };
+export const skinKind = id => id
+  ? (AVATAR_VERSION[rooms[id - 1]?.avatar] || 'original')
+  : (S.mod.has('cyborg') ? 'cyborg' : 'original');
 export const nextRoomId = () => { for (const r of rooms) if (!S.completed.has(r.id)) return r.id; return 0 };
 
 /* Generaciones: invalidan cargas asíncronas de FBX cuando se cambia de escena. */

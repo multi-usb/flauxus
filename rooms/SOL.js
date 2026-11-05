@@ -3,12 +3,20 @@
    Cuerpo, sensor y máquina: captura los tres puntos y haz reaccionar el espacio.
    ====================================================================== */
 import * as THREE from 'three';
+import { placeFBX } from '../AssetManager.js';
 import { pad, tone, pluck, hiss, A } from '../AudioSystem.js';
-import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, TOUCH, ptr, ptrActive, hint, toast, finish, T } from './context.js';
+import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, TOUCH, ptr, ptrActive, hint, toast, finish, T, roomGen } from './context.js';
 
 export const meta = {
   key: 'sol',
   id: 5, note: 'SOL♯4', short: 'SOL♯', title: 'El unicornio cyborg', desc: 'Cuerpo, sensor y máquina: captura los tres puntos y haz reaccionar el espacio.', source: 'sonido procedural · sin grabación', audio: 'none', color: 0xc9d000, hex: '#c9d000', avatar: 'cyborg',
+  /* El suelo central del FBX queda a y≈0.23 tras el fit; el avatar y la
+     cámara se elevan con él. preludeR limita el paseo a la terraza central. */
+  floorY: 0.23,
+  start: { x: 0, y: 0.23, z: 4.2, yaw: Math.PI },
+  preludeR: 6.8,
+  trigger: { x: 0, z: 0, r: 2.2 },
+  gameAvatarPos: { x: 0, y: 0.23, z: 1.5, yaw: 0 },
   goal: 'Tres sensores flotan alrededor del cuerpo. Mantén el cursor (o el dedo) sobre cada uno hasta que el anillo se llene y se conecte.',
   ctl: [[['Mouse'], ['Dedo'], 'Seguir y mantener sobre el sensor']],
   light: {
@@ -39,11 +47,14 @@ export const SOL = (() => {
   const v3 = new THREE.Vector3(); const proj = o => { o.getWorldPosition(v3); const p = v3.clone().project(camera); return { x: (p.x * .5 + .5) * W, y: (-p.y * .5 + .5) * H } };
   const anchors = () => { avatarObj.updateMatrixWorld(true); camera.updateMatrixWorld(); const j = avatarObj.userData.joints; return [proj(j.wl), proj(j.wr), proj(j.head)] };
   return {
-    camPos: new THREE.Vector3(0, 2.4, 9), camLook: new THREE.Vector3(0, 2.1, 0),
+    camPos: new THREE.Vector3(0, 2.63, 9), camLook: new THREE.Vector3(0, 2.33, 0),
     build() {
-      avatarObj.scale.setScalar(1.5); avatarObj.position.set(0, 0, 1.5); core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 20), mat(0x15170f, { emissive: 0x4a5200, emissiveIntensity: .8, metalness: .4, roughness: .25 })); core.position.set(0, 3.2, -3); roomGroup.add(core);
+      const fy = meta.floorY ?? 0;
+      avatarObj.scale.setScalar(1.5); avatarObj.position.set(0, fy, 1.5);
+      core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 20), mat(0x15170f, { emissive: 0x4a5200, emissiveIntensity: .8, metalness: .4, roughness: .25 })); core.position.set(0, fy + 3.2, -3); roomGroup.add(core);
       rings = []; for (let i = 0; i < 9; i++) { const g = new THREE.Mesh(new THREE.TorusGeometry(2.1 + i * .4, .02, 6, 60), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xefeadb : LIME, transparent: true, opacity: .25 })); g.rotation.x = Math.random() * Math.PI; g.rotation.y = Math.random() * Math.PI; g.position.copy(core.position); roomGroup.add(g); rings.push(g) }
-      /* Room 5 procedural cybernetic lighting */
+      /* Escenario real de SOL: plataforma circular de terrazas. */
+      return placeFBX(5, roomGroup, 16, { roughness: .9, metalness: .05 }, () => roomGen);
     },
     start() {
       cap = [false, false, false]; hold = [0, 0, 0]; order = []; pending = false; orbs = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]; const p = pad([55, 110, 165], .09, 'sawtooth'); p.set(.5);
@@ -61,7 +72,7 @@ export const SOL = (() => {
           if (hold[i] >= HR) { cap[i] = true; order.push(i); burst(o.x, o.y, LIMEH, 50, 420, 1, 4); ringFx(o.x, o.y, '#fff', 20, 200, .8, 3); shake(7); pluck([220, 330, 523][i], 0, .9, .1, A.master); hiss(.25, .06, 6000, 0, A.master); toast(names[i] + ' conectada') }
         }
       });
-      avatarObj.userData.glowMat.emissiveIntensity = 1.5 + n * 1.2; hint(`Sensores conectados ${n} de 3`);
+      avatarObj.userData.glowBase = 1.5 + n * 1.2; hint(`Sensores conectados ${n} de 3`);
       if (n === 3 && !pending) { pending = true; setTimeout(() => finish({ order: [...order] }, [['Sensores', '3 de 3'], ['Orden de conexión', order.map(i => names[i]).join(' → ')]]), 900) }
     },
     update3d(dt, t3) { const n = cap.filter(Boolean).length; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); if (bloom) bloom.strength = .5 + n * .25 },
