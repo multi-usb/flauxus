@@ -17,7 +17,8 @@ export const meta = {
   goal: 'La grabación se parte en cuatro frases. Entre una y otra hay una respiración: tú decides cuánto dura. Arrastra cada punto hacia arriba para alargarla, escucha y confirma.',
   ctl: [[['Arrastrar ↕'], ['Arrastrar ↕'], 'Duración de cada pausa'], [['▶ Original'], ['▶ Original'], 'Cómo suena sin tus decisiones']],
   light: {
-    bg: 0x0f110c, fog: .020, exp: 1.05, env: .32, hemi: [0xf4f0dc, 0x262a1c, .4], key: { c: 0xfff0d4, i: 1.1, p: [6, 14, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
+    /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
+    bg: 0x221e1d, fog: .020, exp: 1.05, env: .32, hemi: [0xf4f0dc, 0x262a1c, .4], key: { c: 0xfff0d4, i: 1.1, p: [6, 14, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
     pts: [{ c: 0xfff0d4, e: 1.1, r: 5, p: [3, 5, -3] }, { c: 0xd4e8a0, e: .9, r: 5, p: [-4, 3, 2] }], spot: { c: 0xfff8e8, e: 1.2, r: 10, p: [0, 10, 4], t: [0, 0, -2], ang: 1.0, pen: .7 }
   },
   /* Huella de MI: cuatro respiraciones, cada una con su altura. */

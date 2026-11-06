@@ -321,7 +321,7 @@ function solveArm(shoulder, target, L1, L2, pole, outElbow) {
   outElbow.copy(_base).addScaledVector(_perp, h);
 }
 
-export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls, headNod = 0, offset = null, flutePos = null) {
+export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls, flutePos = null) {
   if (blend <= 0.001) return;
   const { bones, template, visual, mesh } = avatar;
   if (!bones || !template || !mesh) return;
@@ -353,9 +353,6 @@ export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls,
 
     arm.getWorldPosition(_shoulder);
     _target.set(targets[side][0], targets[side][1], targets[side][2]);
-    /* Compensación del bob/vaivén de la cabeza: mantiene las manos en el
-       mismo sitio respecto de la flauta y de la boca. */
-    if (offset) _target.add(offset);
     _targetLocal.copy(_target);
     visual.localToWorld(_target);
 
@@ -436,17 +433,6 @@ export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls,
           fb.updateWorldMatrix(false, false);
         }
       }
-    }
-  }
-
-  /* La cabeza baja un poco para mirar la flauta; el idle de Mixamo tiende
-     a llevarla hacia atrás. */
-  if (headNod && blend > 0) {
-    const head = bones.get('mixamorigHead');
-    if (head) {
-      _qLocal.setFromAxisAngle(new V3(1, 0, 0), headNod * blend);
-      head.quaternion.multiply(_qLocal);
-      head.updateWorldMatrix(false, false);
     }
   }
 }

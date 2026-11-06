@@ -34,7 +34,10 @@ export function preBuild(id) {
   const dots = []; for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(.1, 8, 6), new THREE.MeshBasicMaterial({ color: LIME })); m.scale.setScalar(0); g.add(m); dots.push(m) }
   Object.assign(PRE, { grp: g, ring, halo, beam, dots })
 }
-export function initPrelude(id) {
+/* `narrate = false` prepara la sala en silencio mientras el preloader tapa
+   la escena; la locución arranca después, cuando el nivel ya es visible,
+   para que el usuario no se pierda las primeras palabras. */
+export function initPrelude(id, narrate = true) {
   const r = ROOMS[id - 1];
   const floorY = r?.floorY ?? r?.start?.y ?? 0;
   const gp = r?.gameAvatarPos;
@@ -51,8 +54,12 @@ export function initPrelude(id) {
   };
   resetPlayerForPrelude(startPos, floorY);
   avatarObj.position.copy(player); avatarObj.rotation.y = startPos.yaw;
-  stopAuto(); A.ambient?.set(.35, .8); updateCam(); voRun(id);
+  stopAuto(); A.ambient?.set(.35, .8); updateCam();
+  if (narrate) voRun(id);
 }
+
+/* La voz se lanza desde `flow.js` justo después del fundido del preloader. */
+export function startPreludeVoice(id) { voRun(id) }
 export function updatePrelude(dt) {
   if (!PRE.grp) return;
   const id = S.room, r = ROOMS[id - 1], floorY = r?.floorY ?? r?.start?.y ?? 0;

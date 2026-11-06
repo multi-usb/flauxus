@@ -17,7 +17,8 @@ export const meta = {
   goal: 'La grabación suena todo el rato y tu posición la transforma. Quédate dentro de cada campo hasta que se encienda: cada uno añade una capa. Tu recorrido queda inscrito.',
   ctl: [[['W', 'A', 'S', 'D'], ['Círculo'], 'Mover el cuerpo'], [['Clic'], ['Toca'], 'Ir a un punto del suelo']],
   light: {
-    bg: 0x0d0f0e, fog: .020, exp: 1.0, env: .28, hemi: [0xdfe8e4, 0x1c241e, .32], key: { c: 0xfff4dc, i: 1.0, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
+    /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
+    bg: 0x221e1d, fog: .020, exp: 1.0, env: .28, hemi: [0xdfe8e4, 0x1c241e, .32], key: { c: 0xfff4dc, i: 1.0, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
     pts: [{ c: 0xff6633, e: 1.2, r: 5, p: [5, 5, -3] }, { c: 0x33ccff, e: 1.1, r: 5, p: [-5, 4, 4] }], spot: { c: 0xfff4dc, e: 1.2, r: 18, p: [0, 18, 5], t: [0, 0, 0], ang: 1.0, pen: .5 }
   },
   /* Huella de FA: el recorrido corporal inscrito en el espacio. */

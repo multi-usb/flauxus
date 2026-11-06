@@ -14,8 +14,8 @@ if (entry === 'cards') S.mod.add('intention');
 S.heard = new Set();
 
 /* Cada Momento tiene su propia versión de personaje: MC_original en el
-   atrio y las salas 1–3, MC_mtp en FA y MC_cyborg en SOL/LA. La skin
-   Cyborg del fanzine solo sustituye el avatar del atrio. */
+   atrio y las salas 1–3, MC_mtp (Matar al padre) en FA y LA, y MC_cyborg
+   solo en SOL. La skin Cyborg del fanzine sustituye el avatar del atrio. */
 const AVATAR_VERSION = { disciplined: 'original', body: 'body', cyborg: 'cyborg' };
 export const skinKind = id => id
   ? (AVATAR_VERSION[rooms[id - 1]?.avatar] || 'original')

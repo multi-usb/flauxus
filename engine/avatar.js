@@ -72,16 +72,42 @@ const PBR = {
 
 /* ======================================================================
    FLAUTA — aparece al tocar (quieto en los minijuegos o caminando) y se
-   desvanece al volver al idle. Descentrada hacia la derecha del avatar
-   para que el extremo del bisel quede junto a la boca.
+   desvanece al volver al idle. El extremo del bisel se ancla al punto de
+   boca de la cabeza en cada frame, de modo que el bob, el vaivén y el nod
+   de la interpretación no lo separan de los labios.
 
    El grupo se construye con el tubo centrado en X. La mano izquierda
-   sujeta el extremo del bisel y la derecha el centro del tubo. La pose de
-   interpretación se ancla a la cabeza en cada frame: así el bob de la
-   caminata no separa la flauta ni las manos de la boca.
+   sujeta el bisel y la derecha baja por el tubo; ambas muñecas se colocan
+   respecto del mismo grupo, así que los codos se acomodan solos cuando la
+   boca mueve la flauta.
    ====================================================================== */
-const FLUTE_PLAY_POS = new V3(-.40, 2.22, .30);
-const FLUTE_TARGETS = { Left: [-.10, 2.04, .26], Right: [-.40, 2.04, .26] };
+/* Punto de la boca en espacio local de `mixamorigHead`, medido sobre la
+   malla: los labios quedan ~3 cm sobre el origen del hueso y ~10 cm por
+   delante. El hueso tiene escala propia, así que este offset se transforma
+   con su matriz y no se interpreta como centímetros visuales. */
+const FLUTE_MOUTH_LOCAL = new V3(0, .030, .100);
+/* Separación del centro del bisel respecto de la superficie de los labios:
+   unos 2,5 cm hacia delante y 6 mm hacia abajo en espacio de la cabeza. El
+   tubo tiene radio .022, así que su cara trasera roza el labio inferior sin
+   atravesarlo. */
+const FLUTE_MOUTH_GAP = new V3(0, -.004, .016);
+/* El tubo mide .9 y está centrado en X: el bisel es el extremo +X. */
+const FLUTE_NEAR_X = .45;
+/* La boca no se apoya en el borde del bisel: entra .16 en el tubo, de modo
+   que los labios quedan sobre la caña y el extremo +X sobresale 16 cm hacia
+   la izquierda del personaje respecto de la boca. Antes eran .10; se amplió
+   otros 6 cm para alejar la sección cercana a la boca del filo del extremo. */
+const FLUTE_MOUTH_INSET = .16;
+const FLUTE_MOUTH_X = FLUTE_NEAR_X - FLUTE_MOUTH_INSET;
+/* Agarre en espacio local de la flauta (el grupo no rota). La mano
+   izquierda sujeta el bisel y la derecha baja por el tubo. Al ampliar el
+   inset, el tubo y las manos se desplazan juntos hacia la izquierda del
+   personaje: los agarres conservan sus valores para no cambiar la pose de
+   las muñecas respecto del tubo. */
+const FLUTE_GRIPS = { Left: [.38, -.175, -.01], Right: [.126, -.175, -.01] };
+/* Respaldo si el rig no tuviera hueso de cabeza; la pose real se calcula
+   desde la boca en cada frame. */
+const FLUTE_PLAY_POS = new V3(-.40, 2.20, .15);
 /* Los dedos apuntan en el plano YZ (arriba y hacia delante), perpendiculares
    al tubo. Antes tenían componente X y la flauta se veía atravesando la
    mano. */
@@ -89,9 +115,17 @@ const FLUTE_DIRS = { Left: [.12, .8, .58], Right: [-.12, .8, .58] };
 /* Polos hacia abajo y afuera: los codos acompañan al cuerpo en vez de
    quedar levantados como alas. */
 const FLUTE_POLES = { Left: [.75, -.62, -.18], Right: [-.75, -.62, -.18] };
+/* El cyborg lleva una chaqueta y un torso más anchos que el resto de los
+   rigs. Con el polo común, el codo izquierdo se mete en la geometría del
+   pecho al tocar. Este polo lo abre hacia +X (lado izquierdo) y lo lleva
+   apenas hacia delante (+Z), sin sacar la mano del tubo ni cambiar la pose
+   de los otros dos avatares. */
+const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.75, -.62, -.18] };
 const FLUTE_ROLLS = { Left: 0, Right: 0 };
 const FLUTE_NOD = .12;
-const _flutePlay = new V3(), _headPos = new V3(), _headDelta = new V3();
+const _flutePlay = new V3(), _mouth = new V3();
+const _qNod = new THREE.Quaternion(), _xAxis = new V3(1, 0, 0);
+const _fluteTargets = { Left: [0, 0, 0], Right: [0, 0, 0] };
 
 /* ======================================================================
    CARGA — rig + texturas + horneado de clips, una vez por versión
@@ -378,7 +412,6 @@ function applyVersion(u, version, rig) {
   }
 
   u.flute = buildFlute(); u.visual.add(u.flute);
-  u.fluteAnchor = null;
   if (u.cy) attachCyber(u, inst.bones);
   attachJoints(u, inst.bones);
   u.loaded = true;
@@ -403,7 +436,7 @@ function makeRoot() {
     version: null, loaded: false, loading: null, gen: 0, cy: false,
     placeholder: null, rig: null, mesh: null, flute: null, cyber: null,
     mixer: null, actions: null, bones: null, template: null, skeleton: null,
-    idleW: 1, walkW: 0, fluteAnchor: null,
+    idleW: 1, walkW: 0,
     glowBase: 1.1, body: visual, armL: joints.wl, armR: joints.wr, legL: null, legR: null
   };
   return root;
@@ -500,31 +533,39 @@ export function animAvatar(av, sp, t, play = false, air = 0) {
      como hermana del mesh, así que se actualiza desde la raíz del avatar. */
   if (u.rig) u.visual.parent?.updateMatrixWorld(true);
 
-  /* Ancla de la cabeza en la pose quieta: el bob y el vaivén de la
-     caminata se restan de la posición de la flauta y de los targets IK.
-     Así el tubo y las manos conservan su sitio respecto de la boca aunque
-     el torso se mueva. */
-  let headDelta = null;
+  /* El fundido se calcula antes del nod de cabeza: el nod se aplica ya
+     ponderado y el punto de boca que se usa como ancla incluye esa
+     inclinación. */
+  u.flautaBlend = damp(u.flautaBlend, fluteOn ? 1 : 0, 12, dt);
+  const b = u.flautaBlend;
   const head = u.bones?.get('mixamorigHead');
-  if (head) {
-    head.getWorldPosition(_headPos);
-    u.visual.worldToLocal(_headPos);
-    if (!u.fluteAnchor) u.fluteAnchor = _headPos.clone();
-    else if (u.walkW < .05 && u.flautaBlend < .05) u.fluteAnchor.copy(_headPos);
-    _headDelta.copy(_headPos).sub(u.fluteAnchor);
-    headDelta = _headDelta;
+
+  /* Nod de interpretación: se aplica sobre la pose del mixer, antes de
+     leer la boca, para que el ancla siga también la rotación de la cabeza.
+     Antes se aplicaba al final del IK y la flauta no lo acompañaba. */
+  if (head && b > .001) {
+    _qNod.setFromAxisAngle(_xAxis, FLUTE_NOD * b);
+    head.quaternion.multiply(_qNod);
+    head.updateWorldMatrix(true, false);
   }
 
-  u.flautaBlend = damp(u.flautaBlend, fluteOn ? 1 : 0, 12, dt);
   if (u.flute) {
-    const b = u.flautaBlend;
-    /* Sin pose de paseo: la flauta solo existe en la pose de
-       interpretación. Al volver al idle se desvanece en el sitio, así no
-       queda flotando junto a la mano. */
-    _flutePlay.copy(FLUTE_PLAY_POS);
-    if (headDelta) _flutePlay.add(headDelta);
-    u.flute.position.copy(_flutePlay);
-    u.flute.position.y += Math.sin(t * 2.1) * .006 * b;
+    /* Extremo del bisel anclado a la boca: se toma el punto de boca en
+       espacio local de la cabeza, se pasa a espacio visual y se desplaza el
+       grupo para que su extremo +X caiga exactamente ahí. No hay bob propio
+       de la flauta: el movimiento lo aporta la cabeza y el tubo no se
+       separa de los labios. */
+    if (head) {
+      _mouth.copy(FLUTE_MOUTH_LOCAL).add(FLUTE_MOUTH_GAP).applyMatrix4(head.matrixWorld);
+      u.visual.worldToLocal(_mouth);
+      _flutePlay.copy(_mouth);
+      /* La boca se ancla .16 dentro del tubo (no en el filo del bisel):
+         los labios apoyan sobre la caña y el extremo queda libre. */
+      _flutePlay.x -= FLUTE_MOUTH_X;
+      u.flute.position.copy(_flutePlay);
+    } else {
+      u.flute.position.copy(FLUTE_PLAY_POS);
+    }
     u.flute.quaternion.identity();
     u.flute.visible = b > .004;
     const fm = u.flute.userData.mat;
@@ -534,10 +575,22 @@ export function animAvatar(av, sp, t, play = false, air = 0) {
       fm.depthWrite = !transparent;
       if (fm.transparent !== transparent) { fm.transparent = transparent; fm.needsUpdate = true; }
     }
+
+    /* Los targets IK se cuelgan del mismo grupo: al moverse el bisel con la
+       boca, las muñecas se recolocan y los codos se acomodan solos. */
+    for (const side of ['Left', 'Right']) {
+      const g = FLUTE_GRIPS[side], tg = _fluteTargets[side];
+      tg[0] = u.flute.position.x + g[0];
+      tg[1] = u.flute.position.y + g[1];
+      tg[2] = u.flute.position.z + g[2];
+    }
   }
 
-  if (u.loaded && u.bones && u.template && u.flautaBlend > .001) {
-    applyFluteIK(u, u.flautaBlend, FLUTE_TARGETS, FLUTE_DIRS, FLUTE_POLES, FLUTE_ROLLS, FLUTE_NOD, headDelta, u.flute.position);
+  if (u.loaded && u.bones && u.template && u.flute && b > .001) {
+    /* El cyborg usa un polo de codo propio para que el brazo izquierdo no
+       se hunda en la chaqueta; el resto conserva la pose ya aprobada. */
+    const poles = u.cy ? FLUTE_POLES_CYBORG : FLUTE_POLES;
+    applyFluteIK(u, b, _fluteTargets, FLUTE_DIRS, poles, FLUTE_ROLLS, u.flute.position);
     u.visual.parent?.updateMatrixWorld(true);
   }
 

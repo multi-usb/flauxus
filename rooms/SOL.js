@@ -7,20 +7,36 @@ import { placeFBX } from '../AssetManager.js';
 import { pad, tone, pluck, hiss, A } from '../AudioSystem.js';
 import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, TOUCH, ptr, ptrActive, hint, toast, finish, T, roomGen } from './context.js';
 
+/* Medidas tomadas del FBX de SOL tras el fit:
+   - la plataforma principal queda a y≈0.234;
+   - la terraza en espiral bajo la posición de juego (0, 1.5) tiene la cima
+     a y≈0.358. */
+const SOL_FLOOR = 0.234, SOL_DAIS = 0.358;
+
 export const meta = {
   key: 'sol',
   id: 5, note: 'SOL♯4', short: 'SOL♯', title: 'El unicornio cyborg', desc: 'Cuerpo, sensor y máquina: captura los tres puntos y haz reaccionar el espacio.', source: 'sonido procedural · sin grabación', audio: 'none', color: 0xc9d000, hex: '#c9d000', avatar: 'cyborg',
   /* El suelo central del FBX queda a y≈0.23 tras el fit; el avatar y la
-     cámara se elevan con él. preludeR limita el paseo a la terraza central. */
+     cámara se elevan con él. SOL tiene terrazas a distintas alturas, así
+     que el suelo se muestrea del propio escenario (`floorRay`) en vez de
+     usar una única tarima: al subir la espiral las botas acompañan el
+     desnivel y no quedan flotando ni hundidas. */
   floorY: 0.23,
-  start: { x: 0, y: 0.23, z: 4.2, yaw: Math.PI },
-  preludeR: 6.8,
+  floorRay: true,
+  start: { x: 0, y: SOL_FLOOR, z: 4.2, yaw: Math.PI },
+  /* Antes 6.8: el paseo quedaba encerrado en el centro. 12.0 aprovecha las
+     terrazas intermedias (radio visible ≈14.5) sin llegar al borde. */
+  preludeR: 12.0,
   trigger: { x: 0, z: 0, r: 2.2 },
-  gameAvatarPos: { x: 0, y: 0.23, z: 1.5, yaw: 0 },
+  /* La pose de juego se apoya en la cima de la terraza (0.358), no en la
+     tarima baja. `plantFeet` corrige luego los pocos centímetros que el
+     clip de idle mueve los tobillos. */
+  gameAvatarPos: { x: 0, y: SOL_DAIS, z: 1.5, yaw: 0 },
   goal: 'Tres sensores flotan alrededor del cuerpo. Mantén el cursor (o el dedo) sobre cada uno hasta que el anillo se llene y se conecte.',
   ctl: [[['Mouse'], ['Dedo'], 'Seguir y mantener sobre el sensor']],
   light: {
-    bg: 0x0b0d10, fog: .024, exp: 1.0, env: .25, hemi: [0xdde4f0, 0x1a1e26, .3], key: { c: 0xe8f0ff, i: .8, p: [8, 16, 8] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .8,
+    /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
+    bg: 0x221e1d, fog: .024, exp: 1.0, env: .25, hemi: [0xdde4f0, 0x1a1e26, .3], key: { c: 0xe8f0ff, i: .8, p: [8, 16, 8] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .8,
     pts: [{ c: 0xc9d000, e: 2.0, r: 3.2, p: [0, 3.2, -3] }, { c: 0xaaccff, e: 1.0, r: 5, p: [4, 5, 2] }], spot: { c: 0xfffaec, e: 1.2, r: 14, p: [0, 14, 2], t: [0, 1.5, 0], ang: .9, pen: .5 }
   },
   /* Huella de SOL: el orden en que se conectaron los tres sensores. */
@@ -46,11 +62,39 @@ export const SOL = (() => {
   const names = ['Muñeca I', 'Muñeca II', 'Cabeza'], HR = 1.0; let orbs = [], cap = [], hold = [0, 0, 0], core, rings = [], order = [], anch = [], pending = false;
   const v3 = new THREE.Vector3(); const proj = o => { o.getWorldPosition(v3); const p = v3.clone().project(camera); return { x: (p.x * .5 + .5) * W, y: (-p.y * .5 + .5) * H } };
   const anchors = () => { avatarObj.updateMatrixWorld(true); camera.updateMatrixWorld(); const j = avatarObj.userData.joints; return [proj(j.wl), proj(j.wr), proj(j.head)] };
+  /* Apoyo fino de las botas. El clip idle sube y baja los tobillos unos
+     4 cm; si la raíz se deja fija, en unas fases las botas flotan y en
+     otras se hunden en la terraza. Se mide la punta del pie más baja y se
+     corrige la raíz para que la suela quede exactamente sobre `fy`.
+     `SOL_TOE_SOLE` es la distancia vertical medida, a escala 1.5, entre la
+     base del dedo y la suela del cyborg (≈0.174 m). */
+  const SOL_TOE_SOLE = .174;
+  const _soleV3 = new THREE.Vector3();
+  const soleNames = ['mixamorigLeftToeBase', 'mixamorigRightToeBase', 'mixamorigLeftFoot', 'mixamorigRightFoot'];
+  function plantFeet(fy) {
+    const u = avatarObj.userData;
+    if (!u?.bones) return;
+    let low = Infinity;
+    for (const n of soleNames) {
+      const b = u.bones.get(n);
+      if (!b) continue;
+      const y = b.getWorldPosition(_soleV3).y;
+      if (y < low) low = y;
+    }
+    if (!isFinite(low)) return;
+    /* rel es la altura del hueso respecto de la raíz; al recolocar la raíz
+       la relación no cambia, así que la corrección es estable frame a frame. */
+    const rel = low - avatarObj.position.y;
+    avatarObj.position.y = fy - rel + SOL_TOE_SOLE;
+  }
   return {
     camPos: new THREE.Vector3(0, 2.63, 9), camLook: new THREE.Vector3(0, 2.33, 0),
     build() {
-      const fy = meta.floorY ?? 0;
-      avatarObj.scale.setScalar(1.5); avatarObj.position.set(0, fy, 1.5);
+      const fy = meta.floorY ?? 0, gp = meta.gameAvatarPos;
+      avatarObj.scale.setScalar(1.5);
+      /* La terraza de juego está elevada: colocar la raíz en la cima evita
+         que las botas nazcan dentro de la espiral mientras carga la sala. */
+      avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
       core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 20), mat(0x15170f, { emissive: 0x4a5200, emissiveIntensity: .8, metalness: .4, roughness: .25 })); core.position.set(0, fy + 3.2, -3); roomGroup.add(core);
       rings = []; for (let i = 0; i < 9; i++) { const g = new THREE.Mesh(new THREE.TorusGeometry(2.1 + i * .4, .02, 6, 60), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xefeadb : LIME, transparent: true, opacity: .25 })); g.rotation.x = Math.random() * Math.PI; g.rotation.y = Math.random() * Math.PI; g.position.copy(core.position); roomGroup.add(g); rings.push(g) }
       /* Escenario real de SOL: plataforma circular de terrazas. */
@@ -75,7 +119,7 @@ export const SOL = (() => {
       avatarObj.userData.glowBase = 1.5 + n * 1.2; hint(`Sensores conectados ${n} de 3`);
       if (n === 3 && !pending) { pending = true; setTimeout(() => finish({ order: [...order] }, [['Sensores', '3 de 3'], ['Orden de conexión', order.map(i => names[i]).join(' → ')]]), 900) }
     },
-    update3d(dt, t3) { const n = cap.filter(Boolean).length; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); if (bloom) bloom.strength = .5 + n * .25 },
+    update3d(dt, t3) { const n = cap.filter(Boolean).length; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
     draw() {
       orbs.forEach((o, i) => {
         if (!anch[i]) return; if (cap[i]) { bolt(o.x, o.y, anch[i].x, anch[i].y, LIMEH, 10, 16); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(anch[i].x, anch[i].y, 50, 'rgba(201,208,0,.5)', 'rgba(201,208,0,0)'); ctx.restore(); return }

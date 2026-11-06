@@ -13,7 +13,8 @@ export const meta = {
   goal: 'El sonido empieza velado, como detrás de una pared. Sopla y mantén la luz dentro del campo: se abre y se aclara. Llena el círculo.',
   ctl: [[['Mouse'], ['Dedo'], 'Sigue la luz que se mueve'], [['Clic', 'Espacio'], ['Mantén'], 'Mantén para soplar (con el dedo: mantenlo sobre la luz)']],
   light: {
-    bg: 0x0e100b, fog: .020, exp: 1.05, env: .32, hemi: [0xf0e8d0, 0x2a281c, .38], key: { c: 0xffe8c0, i: 1.2, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
+    /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
+    bg: 0x221e1d, fog: .020, exp: 1.05, env: .32, hemi: [0xf0e8d0, 0x2a281c, .38], key: { c: 0xffe8c0, i: 1.2, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
     pts: [{ c: 0xffe8c0, e: 1.2, r: 5, p: [0, 5, -2] }, { c: 0xc9d000, e: .9, r: 5, p: [-3, 3, 4] }], spot: { c: 0xfff6e0, e: 1.3, r: 12, p: [0, 12, 0], t: [0, 0, 0], ang: .62, pen: .5 }
   },
   /* Huella de DO: cuatro aros que se abren con el aire sostenido. */

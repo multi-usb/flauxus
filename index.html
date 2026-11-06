@@ -19,6 +19,25 @@
 <body>
   <canvas id="g2d"></canvas>
   <div id="flash"></div>
+  <!-- La cortina arranca visible: cubre el primer paint y se retira recién
+       cuando el atrio, el avatar y los shaders ya están listos. La portada
+       (#intro) queda debajo, intacta, para aparecer al levantarse. -->
+  <div id="preloader" class="on" role="status" aria-live="polite" aria-hidden="false">
+    <div class="pl-glow"></div>
+    <div class="pl-orb" aria-hidden="true">
+      <span class="pl-ring r1"></span>
+      <span class="pl-ring r2"></span>
+      <span class="pl-ring r3"></span>
+      <span class="pl-note">♪</span>
+    </div>
+    <div class="pl-copy">
+      <div class="pl-kicker" id="plKicker">Flauxus</div>
+      <div class="pl-title" id="plTitle">El museo imposible</div>
+      <div class="pl-sub" id="plSub">Cargando el museo</div>
+    </div>
+    <div class="pl-meter" aria-hidden="true"><i id="plBar"></i></div>
+    <div class="pl-pct" id="plPct">0%</div>
+  </div>
   <div id="titleCard">
     <div class="tc-note" id="tcNote"></div>
     <div class="tc-title" id="tcTitle"></div>

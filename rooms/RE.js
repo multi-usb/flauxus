@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
 import { tone } from '../AudioSystem.js';
-import { S, roomGroup, avatarObj, bloom, mat, animAvatar, rimSet, ctx, W, H, burst, ringFx, ftext, shake, glowCircle, LIME, LIMEH, PAPER, SERIF, TOUCH, hint, finish, roomGen } from './context.js';
+import { S, roomGroup, avatarObj, bloom, mat, animAvatar, rimSet, ctx, W, H, burst, ringFx, ftext, shake, glowCircle, LIME, LIMEH, PAPER, SERIF, TOUCH, hint, finish, roomGen, groundController } from './context.js';
 
 export const meta = {
   key: 're',
@@ -14,10 +14,18 @@ export const meta = {
   floorY: 1.80,
   start: { x: 0.0, y: 1.80, z: 4.2, yaw: Math.PI },
   preludeR: 12.0,
+  /* El piso de RE no es una tarima plana: es un relieve con varios niveles
+     (1,68 m en la canaleta central, 1,83 m base, 2,08 m en el paso elevado
+     y 2,25 m en los peldaños laterales). Se precalcula un mapa de alturas
+     una sola vez al cargar la sala; en juego cada consulta es O(1) y no
+     lanza rayos, así que el contacto mejora sin coste por frame. El rango
+     vertical deja fuera las cimas altas de las columnas decorativas. */
+  floorMap: { cell: .1, radius: 12.5, baseY: 1.80, below: 1.2, above: .65 },
   goal: 'Toca cuando cada nota cruce el círculo. Al principio caen sobre la rejilla; después se salen: sigue el click, no las marcas. 12 golpes.',
   ctl: [[['Espacio', 'D', 'Clic'], ['Toca'], 'Tocar el pulso']],
   light: {
-    bg: 0x100d0a, fog: .022, exp: 1.0, env: .28, hemi: [0xffe0c0, 0x241a12, .3], key: { c: 0xffd9b0, i: 1.0, p: [6, 16, 9] }, rim: { c: 0xc9d000, base: 2.2, k: 8 }, bloomT: .82,
+    /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
+    bg: 0x221e1d, fog: .022, exp: 1.0, env: .28, hemi: [0xffe0c0, 0x241a12, .3], key: { c: 0xffd9b0, i: 1.0, p: [6, 16, 9] }, rim: { c: 0xc9d000, base: 2.2, k: 8 }, bloomT: .82,
     pts: [{ c: 0xff9944, e: 1.3, r: 5, p: [5, 4, -3] }, { c: 0xc9d000, e: 1.0, r: 5, p: [-5, 3, 2] }], spot: { c: 0xffeedd, e: 1.3, r: 14, p: [0, 14, 3], t: [0, 0, 0], ang: .78, pen: .6 }
   },
   /* Huella de RE: los golpes certeros y las notas que se escaparon. */
@@ -59,8 +67,11 @@ export const RE = (() => {
       floorL = new THREE.Mesh(new THREE.BoxGeometry(22, .1, 3.2), mat(0x191a13, { roughness: 1, emissive: LIME, emissiveIntensity: 0 })); floorL.position.set(0, fy + 0.05, 3); floorL.visible = false; roomGroup.add(floorL);
       pillars = []; for (let i = 0; i < 9; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(.5, 4, .5), mat(0x282a1f, { emissive: LIME, emissiveIntensity: 0 })); const a = -1.1 + i * .275; p.position.set(Math.sin(a) * 8, fy + 2.0, -Math.cos(a) * 5 - 1); p.visible = false; roomGroup.add(p); pillars.push(p) }
       avatarObj.scale.setScalar(1.1);
-      /* Room 2 FBX + lighting (se retorna la promesa para sincronizar la cortina negra) */
-      return placeFBX(2, roomGroup, 16, { roughness: 0.86, metalness: 0.09 }, () => roomGen);
+      /* Room 2 FBX + lighting (se retorna la promesa para sincronizar la
+         cortina negra). Al terminar de colocarlo se rasteriza su piso en
+         el mapa de alturas, todavía bajo el preloader. */
+      return placeFBX(2, roomGroup, 16, { roughness: 0.86, metalness: 0.09 }, () => roomGen)
+        .then(obj => { if (obj) groundController.buildRoomMap(obj, meta.floorMap); return obj });
     },
     start() { t = 0; notes = []; nt = 0; k = 0; nextClick = 0; hits = 0; perfect = 0; miss = 0; combo = 0; bestCombo = 0; devs = []; pulse = 0; red = 0; gen(); hint(TOUCH ? 'Escucha 4 clicks · toca cuando la nota cruce el círculo' : 'Escucha 4 clicks · luego Espacio / D / clic cuando la nota cruce el círculo') },
     onKey(c) { if (c === 'Space' || c === 'KeyD' || c === 'KeyK' || c === 'KeyF' || c === 'KeyJ') press() }, onDown() { press() },

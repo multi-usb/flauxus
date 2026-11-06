@@ -9,7 +9,7 @@ import { S, roomGroup, avatarObj, bloom, animAvatar, burst, ringFx, ftext, shake
 
 export const meta = {
   key: 'la',
-  id: 6, note: 'LA♯4', short: 'LA♯', title: 'MataЯ al padre', desc: 'La partitura deja de ser página cerrada: extrae, interviene y reensambla.', source: 'CPE Bach Intervención.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'cyborg',
+  id: 6, note: 'LA♯4', short: 'LA♯', title: 'MataЯ al padre', desc: 'La partitura deja de ser página cerrada: extrae, interviene y reensambla.', source: 'CPE Bach Intervención.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'body',
   /* Altura de suelo, inicio y activación frente a la mesa de trabajo */
   floorY: 1.40,
   start: { x: 0.0, y: 1.40, z: -6.8, yaw: 0 },      // Spawn en el extremo opuesto (Z negativo), mirando hacia el centro
@@ -24,7 +24,8 @@ export const meta = {
   goal: 'La grabación se corta en fragmentos reales. Toca uno para oírlo, arrástralos al pentagrama para componer otra secuencia, escúchala y entrégala.',
   ctl: [[['Clic = oír'], ['Toca = oír'], 'Escuchar un fragmento'], [['Arrastrar'], ['Arrastrar'], 'Fragmento → pentagrama']],
   light: {
-    bg: 0x100c0c, fog: .024, exp: .95, env: .25, hemi: [0xf0e0d8, 0x241818, .3], key: { c: 0xffe4d4, i: .9, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .82,
+    /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
+    bg: 0x221e1d, fog: .024, exp: .95, env: .25, hemi: [0xf0e0d8, 0x241818, .3], key: { c: 0xffe4d4, i: .9, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .82,
     pts: [{ c: 0xff4422, e: 1.3, r: 6, p: [6, 5, -4] }, { c: 0x8844ff, e: 1.0, r: 6, p: [0, 3, -6] }], spot: { c: 0xffeedd, e: 1.3, r: 16, p: [0, 16, 0], t: [0, 0, -2], ang: .8, pen: .4 }
   },
   /* Huella de LA: los cuatro espacios compuestos y el tajo del cincel. */

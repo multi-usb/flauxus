@@ -30,6 +30,9 @@ export const stairGroups = [], portalObjects = [];
 export let huellaTex = null, huellaCv = null, huellaMesh = null;
 export const STAIR_R0 = 7.2;
 export let atriumFloor = null;
+/* Promesa viva del atrio completo: FBX + NavMesh + materiales. El preloader
+   de `flow.js` la espera antes de descubrir el atrio o de volver a él. */
+export let atriumReady = Promise.resolve();
 
 export function makeStair(i, r) {
   const g = new THREE.Group(), phase = i * .87, angle = -Math.PI / 2 + i * (Math.PI / 3), th = Math.atan2(-Math.cos(angle), -Math.sin(angle));
@@ -220,17 +223,26 @@ export function makeAtrium() {
   const hp = new THREE.Mesh(new THREE.CircleGeometry(5.2, 64), new THREE.MeshBasicMaterial({ map: huellaTex, transparent: true, depthWrite: false })); hp.rotation.x = -Math.PI / 2; hp.position.y = 1.36; world.add(hp); huellaMesh = hp;
   /* Straight radial collision stairs */
   for (let i = 0; i < 6; i++) makeStair(i, ROOMS[i]);
-  /* Modelo FBX del atrio (las luces viven en el pool de LightingManager) */
-  /* Modelo FBX del atrio: transfiere el material de piedra a los bloques al terminar de cargar */
-  placeFBX('atrium', world, 28, { roughness: .85, metalness: .05 }, () => roomGen).then(obj => {
-    if (obj) {
-      onAtriumLoaded(obj);
-      applyFbxMaterialToFloatingBlocks(obj);
-    }
-  });
+  /* Modelo FBX del atrio (las luces viven en el pool de LightingManager).
+     La promesa se guarda porque el preloader debe esperar también el
+     NavMesh: si el atrio aparece antes de que el análisis termine, el
+     jugador puede caer o caminar sobre colliders incompletos. */
+  atriumReady = placeFBX('atrium', world, 28, { roughness: .85, metalness: .05 }, () => roomGen)
+    .then(async obj => {
+      if (obj) {
+        await onAtriumLoaded(obj);
+        applyFbxMaterialToFloatingBlocks(obj);
+      }
+      return obj;
+    })
+    .catch(err => {
+      console.warn('Atrio no disponible', err);
+      return null;
+    });
   const stars = makeDust(400, 95, 60, 0xc9d6a0, .45); stars.position.y = -5; stars.frustumCulled = false; world.add(stars);
   initFloatingBlocks(world);
   paintHuella();
+  return atriumReady;
 }
 
 export function paintHuella() {

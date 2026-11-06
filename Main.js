@@ -27,7 +27,7 @@ import {
   rig, player, vel, moveInput, updateCam, updateAtrium, roomCamera, walkNext, walkTo,
   clickToGo, tryJump, setLookHold, setCamDt, setPlayerCallbacks, resetPlayerPhysics, stairLocal
 } from './player.js';
-import { startGame, tryEnter, enterRoom, startRoom, leaveRoom, afterDone, cur, initDirectRoom, finish } from './flow.js';
+import { startGame, tryEnter, enterRoom, startRoom, leaveRoom, afterDone, cur, bootGame, finish } from './flow.js';
 import { initDebug, perfTick, adaptRes, perfEl } from './ui/debug.js';
 
 /* ======================================================================
@@ -138,6 +138,8 @@ addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; cam
 
 initDebug();
 frame();
-initDirectRoom();
+/* La cortina ya está visible: carga el museo completo antes de mostrar la
+   portada (o entra directo al Momento si la URL trae `?room=`). */
+bootGame();
 
 window.paintHuella = paintHuella;
