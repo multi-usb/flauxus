@@ -179,18 +179,23 @@ let camK = 1, camDt = .016, pendEnter = null, guideHidden = false, gpn = 0;
 const GPMAX = 512, gpx = new Float32Array(GPMAX), gpy = new Float32Array(GPMAX), gpz = new Float32Array(GPMAX), gcum = new Float32Array(GPMAX);
 let viewY = 0, camY = 0; // alturas SUAVIZADAS (avatar / cámara): subir escalones se ve como rampa, no como golpes
 export function setCamDt(dt) { camDt = dt }
+/* Escala del encuadre: la cámara se aleja en proporción al tamaño de la avatar (en SOL mide 1,5×, en LA 1,1×)
+   y un poco más en pantallas verticales, donde el campo horizontal es estrecho. Así ninguna sala obliga a
+   alejar la cámara a mano. En el atrio (escala 1, pantalla horizontal) el encuadre no cambia. */
+export function camFrameScale() { const s = clamp(avatarObj.scale.x || 1, 1, 2); return s * (camera.aspect < .8 ? 1.18 : camera.aspect < 1.1 ? 1.08 : 1) }
 export function updateCam() {
-  fwd.set(Math.sin(rig.yaw), 0, Math.cos(rig.yaw)); const tg = new V3(player.x, camY + 1.2, player.z); const look = new V3(tg.x + fwd.x * rig.look, tg.y + Math.sin(rig.pitch) * 3.1, tg.z + fwd.z * rig.look);
+  const ks = camFrameScale(), dist = rig.dist * ks, up = 1.2 * ks;
+  fwd.set(Math.sin(rig.yaw), 0, Math.cos(rig.yaw)); const tg = new V3(player.x, camY + up, player.z); const look = new V3(tg.x + fwd.x * rig.look * ks, tg.y + Math.sin(rig.pitch) * 3.1 * ks, tg.z + fwd.z * rig.look * ks);
   /* la cámara no atraviesa arcos ni escaleras: se acorta el brazo según la ocupación del NavMesh (8 muestras) */
-  const cy = camY + rig.height + rig.pitch * 1.4, ty = camY + 1.2; let k = 1;
+  const cy = camY + (rig.height + rig.pitch * 1.4) * ks, ty = camY + up; let k = 1;
   if (NAV.ready && S.phase === 'atrium') {
     for (let s = 1; s <= 8; s++) {
-      const f = s / 8, yy = lerp(ty, cy, f), c = navIdx(player.x - fwd.x * rig.dist * f, player.z - fwd.z * rig.dist * f);
+      const f = s / 8, yy = lerp(ty, cy, f), c = navIdx(player.x - fwd.x * dist * f, player.z - fwd.z * dist * f);
       if (c >= 0 && !navFree(NAV.occ, c, yy - .15, yy + .15)) { k = Math.max(.3, (s - 1) / 8); break }
     }
   }
   camK = damp(camK, k, k < camK ? 14 : 2.5, camDt);
-  camera.position.set(player.x - fwd.x * rig.dist * camK, lerp(ty, cy, camK), player.z - fwd.z * rig.dist * camK); camera.lookAt(look)
+  camera.position.set(player.x - fwd.x * dist * camK, lerp(ty, cy, camK), player.z - fwd.z * dist * camK); camera.lookAt(look)
 }
 
 let guideT = 0, guideFor = 0, guideLen = 0, guideRoute = null; const guideFrom = { x: 1e9, z: 1e9 };

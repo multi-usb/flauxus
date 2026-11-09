@@ -23,21 +23,26 @@
   <!-- La cortina arranca visible: cubre el primer paint y se retira recién
        cuando el atrio, el avatar y los shaders ya están listos. La portada
        (#intro) queda debajo, intacta, para aparecer al levantarse. -->
+  <!-- Preloader (ui/loader.js): etapa real de carga + bytes del escenario cuando se conocen.
+       Sin medición, la barra es un barrido de actividad: no se muestran porcentajes inventados. -->
   <div id="preloader" class="on" role="status" aria-live="polite" aria-hidden="false">
-    <div class="pl-glow"></div>
-    <div class="pl-orb" aria-hidden="true">
-      <span class="pl-ring r1"></span>
-      <span class="pl-ring r2"></span>
-      <span class="pl-ring r3"></span>
-      <span class="pl-note">♪</span>
+    <div class="pl-glow" aria-hidden="true"></div>
+    <div class="pl-panel">
+      <div class="pl-brand" aria-hidden="true"></div>
+      <div class="pl-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="pl-copy">
+        <div class="pl-kicker" id="plKicker">Flauxus</div>
+        <div class="pl-title" id="plTitle">El museo imposible</div>
+        <div class="pl-sub" id="plSub">Preparando el museo</div>
+      </div>
+      <div class="pl-meter" id="plMeter" aria-hidden="true"><i id="plBar"></i></div>
+      <div class="pl-pct" id="plPct" aria-hidden="true"></div>
+      <ol class="pl-steps" id="plSteps" aria-hidden="true"></ol>
+      <div class="pl-error" id="plError" role="alert" hidden>
+        <p id="plErrorMsg"></p>
+        <div class="pl-error-btns" id="plErrorBtns"></div>
+      </div>
     </div>
-    <div class="pl-copy">
-      <div class="pl-kicker" id="plKicker">Flauxus</div>
-      <div class="pl-title" id="plTitle">El museo imposible</div>
-      <div class="pl-sub" id="plSub">Cargando el museo</div>
-    </div>
-    <div class="pl-meter" aria-hidden="true"><i id="plBar"></i></div>
-    <div class="pl-pct" id="plPct">0%</div>
   </div>
   <div id="titleCard">
     <div class="tc-note" id="tcNote"></div>
@@ -48,7 +53,7 @@
     <div class="top">
       <div>
         <div class="brand">Flauxus<i></i></div>
-        <div class="subbrand">la flautista aumentada · prototipo</div>
+        <div class="subbrand">la flautista aumentada</div>
       </div>
       <div class="mid">
         <div id="progress"></div>
@@ -111,7 +116,7 @@
 
   <div id="intro">
     <div class="box paper">
-      <div class="eyebrow">Trabajo de grado · prototipo jugable</div>
+      <div class="eyebrow">Experiencia interactiva · trabajo de grado</div>
       <h1 class="big">Flauxus</h1>
       <p class="lede">Un museo que no se queda quieto. Camina por sus escaleras, escucha a María Clara y toca el sonido
         hasta que cambie.</p>

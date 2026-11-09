@@ -4,6 +4,8 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
+import { createMagicTrail } from '../engine/trail.js';
+import { GX } from '../GameContext.js';
 import { recOk, Voice, pad, A } from '../AudioSystem.js';
 import { S, roomGroup, avatarObj, camera, bloom, makeDust, makeTextSprite, animAvatar, ctx, W, H, burst, ringFx, shake, toScreen, LIME, LIMEH, SERIF, PALE, EXPERIMENT, clamp, lerp, lerpAngle, TOUCH, keys, hint, toast, finish, moveInput, groundController, roomGen } from './context.js';
 
@@ -49,7 +51,7 @@ export const FA = (() => {
   ];
   const ZR = 2.4, DW = 1.5, RM = 14.0, NAMES = ['I · grave', 'II · eco', 'III · brillo'];
   
-  let pos = new THREE.Vector3(0, 0, 3.2), target = null, prog = [0, 0, 0], on = [false, false, false], pads = null, zObj = [], trail, tPos, tCol, tN = 0, discs = [], discI = 0, lastDrop = new THREE.Vector3(), path = [], dist = 0, doneT = 0, moving = false, startedMove = false, base = null, layers = [], real = false;
+  let pos = new THREE.Vector3(0, 0, 3.2), target = null, prog = [0, 0, 0], on = [false, false, false], pads = null, zObj = [], trail, tPos, tCol, tN = 0, discs = [], discI = 0, lastDrop = new THREE.Vector3(), path = [], dist = 0, doneT = 0, moving = false, startedMove = false, base = null, layers = [], real = false, magic = null;
   const rc = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const getFloorY = () => meta.floorY ?? 1.80;
   return {
@@ -110,9 +112,11 @@ export const FA = (() => {
         roomGroup.add(g);
         return { ring, fill, beam, g };
       });
-      tN = 0; tPos = new Float32Array(240 * 3); tCol = new Float32Array(240 * 3); const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tPos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tCol, 3)); trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .95 })); trail.frustumCulled = false; trail.geometry.setDrawRange(0, 0); roomGroup.add(trail);
+      tN = 0; tPos = new Float32Array(240 * 3); tCol = new Float32Array(240 * 3); const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tPos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(tCol, 3)); trail = new THREE.Line(tg, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: .6 })); trail.frustumCulled = false; trail.geometry.setDrawRange(0, 0); roomGroup.add(trail);
       discs = []; for (let i = 0; i < 40; i++) { const d = new THREE.Mesh(new THREE.CircleGeometry(.28, 16), new THREE.MeshBasicMaterial({ color: LIME, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })); d.rotation.x = -Math.PI / 2; d.position.y = fy + .07; roomGroup.add(d); discs.push(d) }
       const dust = makeDust(180, RM, 5, 0xf0eddc, .12); dust.position.y = fy; roomGroup.add(dust);
+      /* Estela mágica: partículas verdes que nacen del cuerpo al moverse y se disipan girando (engine/trail.js). */
+      magic = createMagicTrail({ low: TOUCH }); roomGroup.add(magic.points);
       /* Room 4 FBX + lighting (retornamos la promesa para sincronizar con la cortina negra) */
       return placeFBX(4, roomGroup, 16, { roughness: 0.88, metalness: 0.08 }, () => roomGen);
     },
@@ -157,7 +161,8 @@ export const FA = (() => {
     },
     update3d(dt, t3) {
       zObj.forEach((o, i) => { const p = prog[i], done = on[i]; o.fill.material.opacity = p * .4; o.fill.scale.setScalar(.2 + p * .8); o.ring.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.opacity = .12 + p * .4; o.ring.rotation.z += dt * .5 });
-      discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) }); animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
+      discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) });
+      if (magic) { magic.emit(avatarObj.position, moving ? (keys.has('ShiftLeft') ? 8 : 5.4) : 0, dt); magic.update(dt, GX.renderer) } animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
     },
     draw() {
       const k = TOUCH ? .78 : 1, cx = W - 112 * k, cy = H - (TOUCH ? 250 : 200), r = 74 * k, s = r / RM; ctx.save(); ctx.fillStyle = 'rgba(13,14,9,.72)'; ctx.strokeStyle = 'rgba(194,254,11,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill(); ctx.stroke();

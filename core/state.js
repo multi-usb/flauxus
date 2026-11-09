@@ -20,6 +20,8 @@ const AVATAR_VERSION = { disciplined: 'original', body: 'body', cyborg: 'cyborg'
 export const skinKind = id => id
   ? (AVATAR_VERSION[rooms[id - 1]?.avatar] || 'original')
   : (S.mod.has('cyborg') ? 'cyborg' : 'original');
+/* El menú y la interfaz leen el skin activo del atrio (el mismo estado que decide el avatar): body[data-skin]. */
+document.body.dataset.skin = skinKind(0);
 export const nextRoomId = () => { for (const r of rooms) if (!S.completed.has(r.id)) return r.id; return 0 };
 
 /* Generaciones: invalidan cargas asíncronas de FBX cuando se cambia de escena. */

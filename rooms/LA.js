@@ -105,38 +105,46 @@ export const LA = (() => {
   }
   const getFloorY = () => meta.floorY ?? 1.40;
 
-  // Generador de biombos que replican los paneles del modelo (tubos oscuros + lienzo beige)
-  function createExhibitionPanel(w = 2.3, h = 2.2) {
-    const g = new THREE.Group();
-    const poleMat = mat(0x1a1c16, { roughness: 0.6, metalness: 0.35 });
-    const boardMat = mat(0xd4cdba, { roughness: 0.88, metalness: 0.05, side: THREE.DoubleSide });
-
-    // Panel central de lienzo / papel
-    const board = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), boardMat);
-    board.position.y = h * 0.5 + 0.2;
-    g.add(board);
-
-    // Parantes laterales tubulares de soporte
-    const poleGeo = new THREE.CylinderGeometry(0.04, 0.04, h + 0.6, 12);
-    const poleL = new THREE.Mesh(poleGeo, poleMat);
-    poleL.position.set(-w * 0.5 - 0.04, (h + 0.6) * 0.5, 0);
-    const poleR = new THREE.Mesh(poleGeo, poleMat);
-    poleR.position.set(w * 0.5 + 0.04, (h + 0.6) * 0.5, 0);
-    g.add(poleL);
-    g.add(poleR);
-
-    // Abrazaderas metálicas de fijación
-    const clampGeo = new THREE.BoxGeometry(0.11, 0.06, 0.11);
-    for (const py of [h * 0.25 + 0.2, h * 0.75 + 0.2]) {
-      const bL = new THREE.Mesh(clampGeo, poleMat);
-      bL.position.set(-w * 0.5 - 0.04, py, 0);
-      const bR = new THREE.Mesh(clampGeo, poleMat);
-      bR.position.set(w * 0.5 + 0.04, py, 0);
-      g.add(bL);
-      g.add(bR);
+  /* ---------- Hojas de partitura suspendidas ----------
+     Antes: seis biombos de caja + tubos (≈ 60 mallas, geometrías y materiales nuevos por panel).
+     Ahora: hojas de papel curvadas con textura de partitura, en dos anillos concéntricos que orbitan
+     despacio en sentidos opuestos. Una geometría y un material compartidos; cada anillo es una sola
+     InstancedMesh (2 llamadas de dibujo en total). Las hojas flotan por encima de los biombos fijos del
+     escenario y de la espiral de la cámara (que sube hasta ~4,2 m): nunca la atraviesan ni chocan con
+     los paneles del modelo. Se inclinan hacia el centro para leerse desde abajo. */
+  let paperTex = null;
+  function paperTexture() {
+    if (paperTex) return paperTex;
+    const c = document.createElement('canvas'); c.width = 512; c.height = 512; const x = c.getContext('2d');
+    x.fillStyle = '#e6dfcf'; x.fillRect(0, 0, 512, 512);
+    // fibras y manchas leves del papel
+    for (let i = 0; i < 1400; i++) { const g = 200 + Math.random() * 40 | 0; x.fillStyle = `rgba(${g},${g - 8},${g - 24},${Math.random() * .08})`; x.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 3, 1) }
+    const edge = x.createRadialGradient(256, 256, 160, 256, 256, 380); edge.addColorStop(0, 'rgba(120,100,60,0)'); edge.addColorStop(1, 'rgba(120,100,60,.28)'); x.fillStyle = edge; x.fillRect(0, 0, 512, 512);
+    // pentagramas con notas: una partitura «intervenida»
+    x.strokeStyle = 'rgba(40,36,30,.55)'; x.lineWidth = 1.4;
+    for (let st = 0; st < 6; st++) {
+      const y0 = 58 + st * 74;
+      for (let l = 0; l < 5; l++) { x.beginPath(); x.moveTo(34, y0 + l * 8); x.lineTo(478, y0 + l * 8); x.stroke() }
+      x.fillStyle = 'rgba(30,28,24,.75)';
+      for (let n = 0; n < 11; n++) { const nx = 70 + n * 38 + Math.random() * 10, ny = y0 + (Math.random() * 9 | 0) * 4; x.beginPath(); x.ellipse(nx, ny, 5, 3.6, -.4, 0, 6.283); x.fill(); x.fillRect(nx + 4, ny - 26, 1.4, 26) }
     }
+    // un tajo verde: la intervención de María Clara sobre la obra
+    x.strokeStyle = 'rgba(194,254,11,.85)'; x.lineWidth = 5; x.beginPath(); x.moveTo(60, 430); x.lineTo(450, 300); x.stroke();
+    paperTex = new THREE.CanvasTexture(c); paperTex.colorSpace = THREE.SRGBColorSpace; paperTex.anisotropy = 4;
+    return paperTex;
+  }
+  /* Hoja curvada (como papel que se comba): plano subdividido doblado en arco. */
+  function paperGeometry(w, h) {
+    const g = new THREE.PlaneGeometry(w, h, 12, 4), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const u = p.getX(i) / (w / 2); p.setZ(i, (1 - u * u) * .22 + Math.sin(p.getY(i) * 1.3) * .04) }
+    g.computeVertexNormals();
     return g;
   }
+  const RINGS = [
+    { n: 8, r: 6.6, w: 1.9, h: 2.1, y: 6.6, bob: .18, speed: .035, pitch: .38 },   // anillo interior (antes: seis biombos)
+    { n: 12, r: 9.4, w: 1.4, h: 1.7, y: 7.8, bob: .3, speed: -.022, pitch: .46 }    // anillo exterior, más alto, en sentido contrario
+  ];
+  const _po = new THREE.Object3D(); _po.rotation.order = 'YXZ'; // primero mira al centro, luego se inclina
 
   return {
     noParallax: true,
@@ -157,19 +165,18 @@ export const LA = (() => {
     build() {
       const fy = getFloorY();
 
-      // Paneles móviles estilizados ubicados cerca del perímetro del escenario
+      // Hojas de partitura suspendidas en anillos concéntricos (ver paperTexture / RINGS)
       papers = [];
-      const panelCount = 6;
-      const orbitR = 9.2; // Radio cercano a los paneles fijos del FBX
-
-      for (let i = 0; i < panelCount; i++) {
-        const p = createExhibitionPanel(2.4, 2.2);
-        const a = (i / panelCount) * Math.PI * 2;
-        p.position.set(Math.cos(a) * orbitR, fy + 0.15, Math.sin(a) * orbitR);
-        p.rotation.y = -a + Math.PI / 2;
-        p.userData = { baseAngle: a, orbitR, phase: i * 1.1 };
-        roomGroup.add(p);
-        papers.push(p);
+      const pt = paperTexture();
+      /* un leve brillo propio: papel bajo luz de escena, legible aunque flote sobre los focos */
+      const paperMat = mat(0xffffff, { map: pt, emissive: 0xffffff, emissiveMap: pt, emissiveIntensity: .28, roughness: .92, metalness: 0, side: THREE.DoubleSide });
+      for (const R of RINGS) {
+        const im = new THREE.InstancedMesh(paperGeometry(R.w, R.h), paperMat, R.n);
+        im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false;
+        const items = [];
+        for (let i = 0; i < R.n; i++) items.push({ a: (i / R.n) * Math.PI * 2 + (R.speed < 0 ? .26 : 0), ph: i * 1.1 + R.r, tilt: (Math.random() - .5) * .18 });
+        roomGroup.add(im);
+        papers.push({ R, im, items });
       }
 
       // Colocar al avatar de pie en el piso detrás de la mesa
@@ -198,17 +205,16 @@ export const LA = (() => {
     update() { },
     update3d(dt, t3) {
       const fy = getFloorY();
-      // Órbita y cabeceo sutil de los biombos cerca del borde
-      papers.forEach(p => {
-        const u = p.userData;
-        const curAngle = u.baseAngle + t3 * 0.035;
-        p.position.set(
-          Math.cos(curAngle) * u.orbitR,
-          fy + 0.15 + Math.sin(t3 * 0.7 + u.phase) * 0.1,
-          Math.sin(curAngle) * u.orbitR
-        );
-        p.rotation.y = -curAngle + Math.PI / 2;
-      });
+      // Órbita lenta de las hojas: sentidos opuestos por anillo, flotación y un leve balanceo de papel
+      for (const { R, im, items } of papers) {
+        items.forEach((it, i) => {
+          const ang = it.a + t3 * R.speed;
+          _po.position.set(Math.cos(ang) * R.r, fy + R.y + Math.sin(t3 * .55 + it.ph) * R.bob, Math.sin(ang) * R.r);
+          _po.rotation.set(R.pitch + Math.sin(t3 * .4 + it.ph) * .08 + it.tilt, -ang - Math.PI / 2, Math.cos(t3 * .33 + it.ph) * .06);
+          _po.updateMatrix(); im.setMatrixAt(i, _po.matrix);
+        });
+        im.instanceMatrix.needsUpdate = true;
+      }
       animAvatar(avatarObj, 0, t3, true, A.lvl);
       if (bloom) bloom.strength = .55;
     },

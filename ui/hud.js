@@ -11,7 +11,13 @@ export { toast } from './toast.js';
 
 export function hideRoomDom() { voStop(); $('miUI').style.display = 'none'; $('laUI').style.display = 'none'; $('brief').classList.remove('show'); $('done').classList.remove('show'); $('btnSkip').style.display = 'none' }
 
-export function setRoomInfo(k, t, d) { $('roomKicker').textContent = k; $('roomTitle').textContent = t; $('roomDesc').textContent = d }
+/* La descripción se muestra al llegar y se pliega a los 9 s (style.css · jerarquía): queda la nota y el título. */
+let infoTimer = 0;
+export function setRoomInfo(k, t, d) {
+  $('roomKicker').textContent = k; $('roomTitle').textContent = t; $('roomDesc').textContent = d;
+  reshowRoomInfo();
+}
+export function reshowRoomInfo() { const el = $('roomInfo'); el.classList.add('fresh'); clearTimeout(infoTimer); infoTimer = setTimeout(() => el.classList.remove('fresh'), 9000) }
 export function hint(t) { $('roomHint').textContent = t || '' }
 export function renderProgress() {
   const t = nextRoomId();

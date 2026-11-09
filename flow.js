@@ -25,7 +25,8 @@ import {
 } from './player.js';
 import { setRoomInfo, hint, renderProgress, titleCard, ctlRow, hideRoomDom } from './ui/hud.js';
 import { initPrelude, startPreludeVoice } from './ui/prelude.js';
-import { loaderShow, loaderText, loaderStage, loaderFinish, loaderHide } from './ui/loader.js';
+import { loaderShow, loaderText, loaderStage, loaderFinish, loaderHide, loaderError } from './ui/loader.js';
+import { assetManager } from './AssetManager.js';
 import { showEpilogue } from './ui/epilogue.js';
 import { toast } from './ui/toast.js';
 
@@ -125,9 +126,9 @@ export function bootGame() {
     /* Reutiliza la cortina que ya cubre el primer paint: no hay destello de
        escena vacía entre el HTML y la ejecución de este módulo. */
     await loaderShow({
-      kicker: direct ? `Flauxus · Momento ${direct} de 6 · ${roomMeta.note}` : 'Flauxus · entrada',
+      kicker: direct ? `Momento ${direct} de 6 · ${roomMeta.note}` : 'Atrio central',
       title: direct ? roomMeta.title : 'El museo imposible',
-      sub: direct ? 'Cargando escenario, avatar y sonido' : 'Cargando el atrio, el avatar y la luz'
+      sub: direct ? 'Abriendo el Momento' : 'Preparando el museo'
     });
     /* En la entrada directa no habrá un gesto previo: se prepara el audio acá.
        En el arranque normal lo hace `startGame()`, ya dentro del clic. */
@@ -135,6 +136,7 @@ export function bootGame() {
     try {
       loaderStage(16, 'Cargando el atrio y tu avatar');
       await Promise.all([atriumReady, setAvatar(skinKind(0))]);
+      if (assetManager.failed.has('atrium')) throw new Error('No se pudo descargar el atrio');
       /* La luz, la niebla y el fondo ya están calculados; fijar el color
          exacto evita que el primer frame descubra un resto del anterior. */
       BG.copy(BGT);
@@ -166,7 +168,11 @@ export function bootGame() {
       return true;
     } catch (e) {
       console.error('bootGame', e);
-      loaderHide();
+      /* Aviso claro en la cortina: reintentar (recarga) o seguir con lo que haya cargado. */
+      loaderError('No pudimos preparar el museo. Revisa tu conexión e inténtalo de nuevo.', [
+        { label: 'Reintentar', primary: true, onClick: () => location.reload() },
+        { label: 'Continuar así', onClick: () => loaderHide() }
+      ]);
       /* La portada sigue disponible aunque falle el precalentado; el flujo
          de entrada conserva sus propias esperas como red de seguridad. */
       booted = true;
@@ -181,7 +187,7 @@ export function tryEnter() { if (S.phase !== 'atrium') return; if (!S.nearby) { 
 export const GO_LABEL = `Empezar${TOUCH ? '' : ' <span style="opacity:.6;font-weight:500">· Enter</span>'}`;
 export function noteRec(id) {
   if (!recOk(id)) { toast('No encontré ' + trackFiles.get(id) + ' junto al HTML · uso sonido provisional'); return }
-  if (Rec.fb.has(id) && !S.rfNote) { S.rfNote = true; toast('Modo básico: para el procesado completo abre el prototipo desde un servidor (http), no desde file://') }
+  if (Rec.fb.has(id) && !S.rfNote) { S.rfNote = true; toast('Modo básico de sonido: abre la experiencia desde su página web para escucharla completa') }
 }
 export async function enterRoom(id, { loaderOn = false } = {}) {
   if (S.busy) return;
@@ -195,14 +201,13 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     loaderText({
       kicker: `Momento ${id} de 6 · ${r.note}`,
       title: r.title,
-      sub: 'Cargando escenario, avatar y sonido'
+      sub: 'Abriendo el Momento'
     });
-    loaderStage(30, 'Cargando escenario, avatar y sonido');
   } else {
     await loaderShow({
       kicker: `Momento ${id} de 6 · ${r.note}`,
       title: r.title,
-      sub: 'Cargando escenario, avatar y sonido'
+      sub: 'Abriendo el Momento'
     });
   }
 
@@ -225,6 +230,7 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     need = r.audio === 'real';
     const audioReady = need ? loadRec(id) : Promise.resolve();
     await Promise.all([Promise.resolve(cur.build?.()), avatarReady]);
+    if (assetManager.failed.has(id)) throw new Error('No se pudo descargar el escenario');
 
     loaderStage(62, 'Ajustando luces y cámara');
     camera.fov = 62; camera.updateProjectionMatrix(); camCur.copy(cur.camPos || new V3(0, 2.3, 8.6)); camLook.copy(cur.camLook || new V3(0, 1.7, 0));
@@ -253,7 +259,7 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     /* Preludio / ficha listos, pero todavía ocultos. */
     if (PRELUDE.enabled) initPrelude(id, false);
 
-    loaderStage(90, 'Compilando la escena');
+    loaderStage(90, 'Preparando la imagen');
     await warmScene(15000);
     loaderStage(97, 'Todo listo');
     await loaderFinish();
@@ -268,7 +274,11 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     console.error('enterRoom', id, e);
     S.ready = true;
     if (go) { go.disabled = false; go.innerHTML = GO_LABEL }
-    loaderHide();
+    /* La sala no quedó lista: la cortina avisa y ofrece reintentar o volver al atrio. */
+    loaderError('No pudimos abrir este Momento. Revisa tu conexión e inténtalo de nuevo.', [
+      { label: 'Reintentar', primary: true, onClick: () => enterRoom(id, { loaderOn: true }) },
+      { label: 'Volver al atrio', onClick: () => leaveRoom() }
+    ]);
   } finally {
     S.busy = false;
   }
@@ -291,7 +301,7 @@ export async function leaveRoom() {
   await loaderShow({
     kicker: 'Atrio central',
     title: 'El museo imposible',
-    sub: 'Recuperando el atrio y tu avatar'
+    sub: 'Volviendo al atrio'
   });
   try {
     cur?.stop?.(); killBus(); hideRoomDom(); $('roomUI').classList.remove('active'); $('btnBack').style.display = 'none'; $('sourceChip').style.display = 'none';
@@ -314,7 +324,9 @@ export async function leaveRoom() {
        entrada para no bloquear la caminata del atrio. */
   } catch (e) {
     console.error('leaveRoom', e);
-    loaderHide();
+    loaderError('No pudimos volver al atrio. Inténtalo de nuevo.', [
+      { label: 'Reintentar', primary: true, onClick: () => location.reload() }
+    ]);
   } finally {
     S.busy = false;
   }

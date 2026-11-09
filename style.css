@@ -911,35 +911,23 @@
       margin-top: 4px
     }
 
-    /* ---- preloader animado ---- */
+    /* ---- preloader (ui/loader.js) ----
+       Lenguaje de la landing: negro, verde #C2FE0B, logotipo, titulares en Unbounded y etiquetas en Martian Mono.
+       Indicador de actividad = ecualizador de siete barras (la flauta "suena" mientras carga). La barra solo
+       se llena con bytes reales del escenario (.measured); sin medición es un barrido, sin cifras. */
     #preloader {
       position: fixed;
       inset: 0;
       z-index: 66;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
+      display: grid;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
       overflow: hidden;
-      background:
-        radial-gradient(ellipse at 50% 38%, rgba(194, 254, 11, .07), transparent 54%),
-        radial-gradient(ellipse at 50% 92%, rgba(255, 255, 255, .045), transparent 62%),
-        #221e1d;
+      background: radial-gradient(ellipse at 50% 42%, rgba(194, 254, 11, .08), transparent 58%), var(--rw-negro);
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
       transition: opacity .34s var(--ease), visibility 0s .34s
-    }
-
-    #preloader::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: var(--grain);
-      opacity: .55;
-      mix-blend-mode: soft-light;
-      pointer-events: none
     }
 
     #preloader.on {
@@ -952,193 +940,193 @@
     .pl-glow {
       position: absolute;
       left: 50%;
-      top: 38%;
-      width: min(620px, 86vw);
+      top: 42%;
+      width: min(640px, 92vw);
       aspect-ratio: 1;
       transform: translate(-50%, -50%);
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(194, 254, 11, .11), rgba(194, 254, 11, .03) 42%, transparent 70%);
-      filter: blur(8px);
+      background: radial-gradient(circle, rgba(194, 254, 11, .10), rgba(194, 254, 11, .025) 44%, transparent 70%);
       pointer-events: none
     }
 
-    .pl-orb {
-      position: relative;
-      width: 142px;
-      height: 142px;
-      margin-bottom: 34px
-    }
-
-    .pl-ring {
-      position: absolute;
-      border-radius: 50%;
-      pointer-events: none
-    }
-
-    .pl-ring.r1 {
-      inset: 0;
-      border: 1.5px solid rgba(194, 254, 11, .16);
-      border-top-color: var(--lime);
-      border-right-color: rgba(194, 254, 11, .7);
-      animation: plSpin 2.7s linear infinite;
-      box-shadow: 0 0 24px rgba(194, 254, 11, .13)
-    }
-
-    .pl-ring.r2 {
-      inset: 17px;
-      border: 1px solid rgba(255, 255, 255, .13);
-      border-bottom-color: var(--lime);
-      border-left-color: rgba(194, 254, 11, .55);
-      animation: plSpin 4.4s linear infinite reverse
-    }
-
-    .pl-ring.r3 {
-      inset: 36px;
-      border: 1px dashed rgba(194, 254, 11, .38);
-      animation: plPulse 2.4s ease-in-out infinite
-    }
-
-    .pl-note {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      font: 700 48px/1 var(--serif);
-      color: var(--lime);
-      text-shadow: 0 0 26px rgba(194, 254, 11, .55), 0 0 70px rgba(194, 254, 11, .28);
-      transform: translate(-50%, -50%);
-      animation: plFloat 2.9s ease-in-out infinite;
-      pointer-events: none;
-      font-variation-settings: 'SOFT' 60
-    }
-
-    .pl-copy {
+    .pl-panel {
       position: relative;
       z-index: 1;
+      width: min(460px, 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0 24px;
       text-align: center
     }
 
+    .pl-brand {
+      width: clamp(120px, 26vw, 168px);
+      height: clamp(26px, 5.6vw, 36px);
+      margin-bottom: clamp(26px, 5vh, 40px);
+      background: url("brand/flauxus-horizontal-verde.svg") center / contain no-repeat
+    }
+
+    body.embedded .pl-brand { visibility: hidden }
+
+    /* ecualizador: actividad, no progreso */
+    .pl-eq {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      height: 34px;
+      margin-bottom: 22px
+    }
+
+    .pl-eq i {
+      width: 4px;
+      height: 100%;
+      background: var(--rw-verde);
+      transform-origin: 50% 100%;
+      transform: scaleY(.25);
+      animation: plEq 1.1s ease-in-out infinite;
+      box-shadow: 0 0 12px rgba(194, 254, 11, .45)
+    }
+
+    .pl-eq i:nth-child(2) { animation-delay: -.85s; animation-duration: .95s }
+    .pl-eq i:nth-child(3) { animation-delay: -.4s; animation-duration: 1.25s }
+    .pl-eq i:nth-child(4) { animation-delay: -.2s; animation-duration: .9s }
+    .pl-eq i:nth-child(5) { animation-delay: -.65s; animation-duration: 1.15s }
+    .pl-eq i:nth-child(6) { animation-delay: -.1s; animation-duration: 1.05s }
+    .pl-eq i:nth-child(7) { animation-delay: -.5s; animation-duration: .98s }
+
+    #preloader.ready .pl-eq i { animation: none; transform: scaleY(1); transition: transform .2s }
+
+    @keyframes plEq {
+      0%, 100% { transform: scaleY(.22) }
+      50% { transform: scaleY(1) }
+    }
+
+    .pl-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: center
+    }
+
     .pl-kicker {
-      font: 600 11px var(--sans);
-      letter-spacing: .19em;
+      font: 600 10.5px/1.3 var(--font-mono);
+      letter-spacing: .1em;
       text-transform: uppercase;
-      color: var(--lime);
-      opacity: .9
+      color: var(--rw-verde)
     }
 
     .pl-title {
-      margin: 9px 0 7px;
-      font: 700 clamp(30px, 4.4vw, 48px)/1.02 var(--serif);
-      letter-spacing: -.025em;
+      margin: 10px 0 10px;
+      font: 900 clamp(24px, 6vw, 40px)/.98 var(--font-head);
+      letter-spacing: -.03em;
+      text-transform: uppercase;
       color: var(--fg);
-      text-shadow: 0 10px 34px rgba(0, 0, 0, .35);
-      font-variation-settings: 'SOFT' 60
+      text-wrap: balance
     }
 
     .pl-sub {
-      min-height: 18px;
-      font: 500 13px/1.35 var(--sans);
-      color: var(--fg-2);
-      letter-spacing: .015em
+      min-height: 20px;
+      font: 500 15px/1.35 var(--font-text);
+      color: var(--fg)
     }
 
     .pl-meter {
       position: relative;
-      width: min(420px, 72vw);
+      width: min(360px, 78vw);
       height: 2px;
-      margin-top: 30px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, .15);
+      margin-top: 22px;
+      background: rgba(255, 255, 255, .16);
       overflow: hidden
     }
 
+    /* sin medición: un tramo verde que barre (actividad) */
     .pl-meter i {
-      display: block;
-      width: 0;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, #8b9000, var(--lime) 58%, #f1ff5a);
-      background-size: 220% 100%;
-      box-shadow: 0 0 18px rgba(194, 254, 11, .65);
-      transition: width .32s linear;
-      animation: plShimmer 1.4s linear infinite
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 28%;
+      background: var(--rw-verde);
+      box-shadow: 0 0 14px rgba(194, 254, 11, .6);
+      animation: plSweep 1.3s cubic-bezier(.45, 0, .55, 1) infinite
+    }
+
+    /* con medición (bytes reales): barra determinada */
+    .pl-meter.measured i {
+      animation: none;
+      transition: width .25s linear
+    }
+
+    #preloader.ready .pl-meter i { animation: none; width: 100% !important }
+
+    @keyframes plSweep {
+      from { transform: translateX(-110%) }
+      to { transform: translateX(370%) }
     }
 
     .pl-pct {
+      min-height: 14px;
       margin-top: 10px;
-      font: 600 11px/1 var(--sans);
+      font: 500 10.5px/1.3 var(--font-mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
       color: var(--fg-3);
-      letter-spacing: .09em;
       font-variant-numeric: tabular-nums
     }
 
-    @keyframes plSpin {
-      to {
-        transform: rotate(360deg)
-      }
+    /* etapas: las dos anteriores (✓) y la actual */
+    .pl-steps {
+      list-style: none;
+      margin: 14px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font: 500 10.5px/1.35 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase
     }
 
-    @keyframes plPulse {
+    .pl-steps li { color: var(--fg-3) }
+    .pl-steps li.ok::before { content: "✓ "; color: var(--rw-verde) }
+    .pl-steps li.now { display: none } /* la etapa actual ya está en .pl-sub */
 
-      0%,
-      100% {
-        opacity: .35;
-        transform: scale(.95)
-      }
-
-      50% {
-        opacity: 1;
-        transform: scale(1.04)
-      }
+    /* error: la cortina se queda, con aviso y acciones */
+    .pl-error {
+      margin-top: 26px;
+      padding: 18px 18px 16px;
+      width: 100%;
+      background: var(--rw-carbon);
+      border: 1px solid var(--rw-gris);
+      border-top: 3px solid var(--coral)
     }
 
-    @keyframes plFloat {
-
-      0%,
-      100% {
-        transform: translate(-50%, -52%) rotate(-6deg)
-      }
-
-      50% {
-        transform: translate(-50%, -46%) rotate(5deg)
-      }
+    .pl-error p {
+      margin: 0 0 14px;
+      font: 500 15px/1.4 var(--font-text);
+      color: var(--fg)
     }
 
-    @keyframes plShimmer {
-      from {
-        background-position: 200% 0
-      }
-
-      to {
-        background-position: -120% 0
-      }
+    .pl-error-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center
     }
 
-    @media(max-width:720px) {
-      .pl-orb {
-        width: 112px;
-        height: 112px;
-        margin-bottom: 26px
-      }
+    .pl-error-btns .btn { padding: 0 26px }
+    .pl-error-btns .btns { padding: 0 18px; min-height: 44px }
 
-      .pl-ring.r2 {
-        inset: 14px
-      }
+    #preloader.failed .pl-eq i,
+    #preloader.failed .pl-meter i { animation: none }
+    #preloader.failed .pl-eq i { transform: scaleY(.22); background: var(--fg-3); box-shadow: none }
+    #preloader.failed .pl-meter,
+    #preloader.failed .pl-pct,
+    #preloader.failed .pl-steps { visibility: hidden }
 
-      .pl-ring.r3 {
-        inset: 29px
-      }
-
-      .pl-note {
-        font-size: 39px
-      }
-
-      .pl-meter {
-        margin-top: 24px
-      }
+    @media (max-height: 520px) {
+      .pl-brand { margin-bottom: 14px }
+      .pl-eq { height: 22px; margin-bottom: 12px }
+      .pl-steps { display: none }
     }
 
     #toast {
@@ -2148,14 +2136,6 @@
     .pend,
     .tchip { border-radius: 0 }
 
-    .pl-meter i {
-      background: var(--rw-verde);
-      animation: none
-    }
-
-    #preloader {
-      background: radial-gradient(ellipse at 50% 38%, rgba(194, 254, 11, .07), transparent 54%), var(--rw-negro)
-    }
 
     /* resaltado de la primera palabra del título: negro sobre verde, como la pantalla "inundada" de la landing */
     .hl {
@@ -2382,14 +2362,235 @@
       .pip.next,
       .breath.untouched,
       #compass .mk,
-      .pl-ring,
-      .pl-note,
       .pl-meter i {
         animation: none
+      }
+
+      /* sin movimiento: el ecualizador queda quieto y la barra, a la izquierda */
+      .pl-eq i {
+        animation: none;
+        transform: scaleY(.55)
+      }
+
+      .pl-eq i:nth-child(odd) {
+        transform: scaleY(.85)
       }
 
       #preloader,
       #preloader.on {
         transition: none
       }
+    }
+    /* =====================================================================
+       MENÚ PRINCIPAL · VIDRIO
+       El atrio gira detrás del menú (fase intro): el panel es una superficie de vidrio oscuro con desenfoque
+       acotado a su propia caja (no se procesa todo el lienzo). El fondo solo se oscurece en los bordes, para
+       que el escenario siga visible y el texto conserve contraste AA.
+       Rendimiento: el blur se limita al panel; en táctil baja a 10 px y, sin soporte, el panel es opaco.
+       ===================================================================== */
+    #intro {
+      --glass-accent: var(--rw-verde);
+      --glass-accent-2: var(--rw-verde);
+      --glass-glow: rgba(194, 254, 11, .16);
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 50%, transparent 0%, rgba(0, 0, 0, .28) 60%, rgba(0, 0, 0, .72) 100%),
+        linear-gradient(to bottom, rgba(0, 0, 0, .25), transparent 30%, transparent 70%, rgba(0, 0, 0, .45))
+    }
+
+    /* halo de luz detrás del panel: separa planos sin tapar la escena */
+    #intro::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(760px, 120vw);
+      aspect-ratio: 1.3;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(closest-side, var(--glass-glow), transparent 70%);
+      pointer-events: none
+    }
+
+    #intro .box {
+      position: relative;
+      width: min(560px, 100%);
+      padding: clamp(24px, 4.4vw, 38px) clamp(20px, 4.4vw, 38px) clamp(20px, 3.6vw, 30px);
+      background: linear-gradient(150deg, rgba(26, 26, 26, .72), rgba(10, 10, 10, .52) 55%, rgba(10, 10, 10, .62));
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-top-color: rgba(255, 255, 255, .26);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .07);
+      -webkit-backdrop-filter: blur(16px) saturate(1.15);
+      backdrop-filter: blur(16px) saturate(1.15)
+    }
+
+    #intro .box::before {
+      background: linear-gradient(90deg, var(--glass-accent), var(--glass-accent-2))
+    }
+
+    /* instrucciones en un segundo plano de vidrio, un paso más oscuro */
+    #intro .how {
+      margin: 0 0 6px;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, .34);
+      border: 1px solid rgba(255, 255, 255, .08);
+      color: var(--fg)
+    }
+
+    #intro .eyebrow { color: var(--glass-accent) }
+    #intro .note { color: var(--fg-2) }
+
+    #intro .btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      border-color: var(--glass-accent)
+    }
+
+    body.touch #intro .box {
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px)
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      #intro .box { background: rgba(18, 18, 18, .94) }
+    }
+
+    @media (max-width: 520px) {
+      #intro { align-items: flex-end; padding: 12px 12px max(12px, env(safe-area-inset-bottom)) }
+      #intro .box { max-height: calc(100dvh - 24px) }
+      #intro .how { grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 13px; padding: 12px }
+      #intro .lede { margin-bottom: 14px }
+    }
+
+    @media (max-height: 560px) and (orientation: landscape) {
+      #intro .box { max-height: calc(100dvh - 24px); padding: 18px 24px }
+      #intro .big { height: 44px; margin: 0 0 10px }
+      #intro .lede { font-size: 15px; margin-bottom: 10px }
+      #intro .how { display: none }
+      #intro .btn { margin-top: 12px }
+    }
+
+    /* =====================================================================
+       ACENTOS SEGÚN EL SKIN ACTIVO (core/state.js → body[data-skin])
+       Cyborg (entrada desde el fanzine): cian del traje (#19C6D9, token --rw-cian de la landing) y rosado RGB.
+       Solo acentos: bordes, barra superior, halo, botón y la ficha de habilidad. Fondos oscuros y texto blanco
+       se mantienen para conservar el contraste.
+       ===================================================================== */
+    body[data-skin="cyborg"] {
+      --skin-a: #19C6D9;
+      --skin-b: #FF4FB8;
+    }
+
+    body[data-skin="cyborg"] #intro {
+      --glass-accent: var(--skin-a);
+      --glass-accent-2: var(--skin-b);
+      --glass-glow: rgba(25, 198, 217, .16)
+    }
+
+    body[data-skin="cyborg"] #intro::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 45% 40% at 18% 80%, rgba(255, 79, 184, .14), transparent 70%),
+        radial-gradient(ellipse 45% 40% at 82% 20%, rgba(25, 198, 217, .14), transparent 70%);
+      pointer-events: none
+    }
+
+    body[data-skin="cyborg"] #intro .box {
+      border-color: rgba(25, 198, 217, .32);
+      border-top-color: rgba(255, 79, 184, .45);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 42px rgba(25, 198, 217, .12), inset 0 1px 0 rgba(255, 255, 255, .07)
+    }
+
+    body[data-skin="cyborg"] #intro .btn {
+      border-color: var(--skin-a);
+      background: linear-gradient(100deg, rgba(25, 198, 217, .26), rgba(255, 79, 184, .16));
+      color: var(--rw-blanco)
+    }
+
+    body[data-skin="cyborg"] #intro .btn:hover,
+    body[data-skin="cyborg"] #intro .btn:focus-visible {
+      border-color: var(--skin-b);
+      background: linear-gradient(120deg, rgba(25, 198, 217, .4), rgba(255, 79, 184, .3));
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, .4), 0 0 28px rgba(255, 79, 184, .35)
+    }
+
+    body[data-skin="cyborg"] #intro .big {
+      filter: drop-shadow(0 0 18px rgba(25, 198, 217, .25))
+    }
+
+    body[data-skin="cyborg"] .chip.skill {
+      border-color: var(--skin-b);
+      color: var(--skin-b)
+    }
+
+    body[data-skin="cyborg"] #unlock::before {
+      background: linear-gradient(90deg, var(--skin-a), var(--skin-b))
+    }
+
+    body[data-skin="cyborg"] #unlock .k { color: var(--skin-a) }
+    body[data-skin="cyborg"] .pl-eq i:nth-child(odd) { background: var(--skin-a); box-shadow: 0 0 12px rgba(25, 198, 217, .45) }
+    body[data-skin="cyborg"] .pl-eq i:nth-child(even) { background: var(--skin-b); box-shadow: 0 0 12px rgba(255, 79, 184, .45) }
+
+    #intro .box { z-index: 1 }
+    #intro::before,
+    #intro::after { z-index: 0 }
+
+    /* =====================================================================
+       JERARQUÍA DE LA INFORMACIÓN (body[data-phase] lo fija Main.js)
+       Una sola voz principal a la vez:
+       · intro   → el menú. Se ocultan la ficha del atrio, las pestañas de sala y el objetivo.
+       · atrium  → la descripción de la ficha se pliega a los 9 s (queda nota + título); el aviso de ayuda
+                   sube por encima de la ficha para no pisarla.
+       · prelude → la locución manda: mientras habla María Clara, la descripción y la fuente se apartan.
+       · brief/play → la ficha de juego y las pistas mandan: la descripción de la sala se oculta.
+       · done    → la tarjeta de cierre sola.
+       ===================================================================== */
+    #roomInfo p {
+      max-height: 7.5em;
+      overflow: hidden;
+      transition: opacity .45s var(--ease), max-height .45s var(--ease)
+    }
+
+    #roomInfo:not(.fresh) p {
+      opacity: 0;
+      max-height: 0
+    }
+
+    #roomInfo,
+    #progress,
+    #objective,
+    #sourceChip,
+    #coach {
+      transition: opacity .35s var(--ease), visibility 0s
+    }
+
+    body[data-phase="intro"] #roomInfo,
+    body[data-phase="intro"] #progress,
+    body[data-phase="intro"] #objective,
+    body[data-phase="done"] #roomInfo,
+    body[data-phase="done"] #sourceChip,
+    body[data-phase="done"] #roomHint {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .35s var(--ease), visibility 0s .35s
+    }
+
+    body[data-phase="brief"] #roomInfo p,
+    body[data-phase="play"] #roomInfo p,
+    body:has(#vo.show) #roomInfo p {
+      opacity: 0;
+      max-height: 0
+    }
+
+    body:has(#vo.show) #sourceChip,
+    body:has(#unlock.show) #coach {
+      opacity: 0
+    }
+
+    /* el aviso de ayuda del atrio queda por encima de la ficha (antes la pisaba en ~1280 px) */
+    #coach { bottom: 168px }
+
+    @media (max-width: 720px) {
+      #coach { bottom: auto; top: calc(max(14px, env(safe-area-inset-top)) + 150px) }
     }

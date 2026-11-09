@@ -37,8 +37,10 @@ export const LS = { get(k, d) { try { const v = localStorage.getItem(k); return 
 export const seen = new Set(LS.get('flauxus.entries.v1', []));
 $('entryLabel').textContent = ENTRIES[entry].skill || entryLabel; $('entryLabel').classList.toggle('skill', !!ENTRIES[entry].skill);
 $('introEntry').textContent = (ENTRIES[entry].skill ? entryLabel + ' · ' + ENTRIES[entry].skill : entryLabel) + ' · mejor con audífonos';
-export const DEV_ENTRY_PICKER = true; // herramienta de prueba del prototipo: poner en false para publicar
-if (DEV_ENTRY_PICKER) $('devPick').innerHTML = '<span>Simular entrada:</span>' + Object.keys(ENTRIES).map(k => `<a href="?entry=${k}${k === 'cards' ? '&cards=PAUSA,RETARDA,MI%20INTENCI%C3%93N' : ''}" class="${k === entry ? 'on' : ''}">${ENTRIES[k].tag}</a>`).join(''); else $('devPick').remove();
+/* «Simular entrada» es una herramienta de prueba: ya no se muestra al público. Para usarla, añadir ?dev a la URL
+   (p. ej. /juego/?dev o /juego/?entry=fanzine&dev). */
+export const DEV_ENTRY_PICKER = qs.has('dev');
+if (DEV_ENTRY_PICKER) $('devPick').innerHTML = '<span>Simular entrada:</span>' + Object.keys(ENTRIES).map(k => `<a href="?entry=${k}${k === 'cards' ? '&cards=PAUSA,RETARDA,MI%20INTENCI%C3%93N' : ''}&dev" class="${k === entry ? 'on' : ''}">${ENTRIES[k].tag}</a>`).join(''); else $('devPick').remove();
 
 /* ---------------- calidad (presupuesto de rendimiento) ----------------
    alta: escritorio · baja: táctil (o ?q=low para probarla en escritorio). El nº de luces es fijo por nivel. */

@@ -20,7 +20,7 @@ import { avatarObj, animAvatar } from './engine/avatar.js';
 import { lightingManager, rimSet } from './engine/lighting.js';
 import { groundController, setAtriumFBXObj } from './engine/ground.js';
 import { stairGroups, makeAtrium, paintHuella } from './atrium/atrium.js';
-import { hint, setRoomInfo, renderProgress } from './ui/hud.js';
+import { hint, setRoomInfo, renderProgress, reshowRoomInfo } from './ui/hud.js';
 import { toast } from './ui/toast.js';
 import { updatePrelude, enterZone } from './ui/prelude.js';
 import {
@@ -121,8 +121,10 @@ function frame() {
   const dt = Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
   tickTime(dt); setCamDt(dt); adaptRes(dt);
+  if (document.body.dataset.phase !== S.phase) { if (S.phase === 'atrium' || S.phase === 'prelude') reshowRoomInfo(); document.body.dataset.phase = S.phase } // jerarquía de la interfaz (style.css)
   BG.lerp(BGT, 1 - Math.exp(-3 * dt)); audioLevel();
   const wantJoy = TOUCH && (S.phase === 'atrium' || S.phase === 'prelude' || (S.phase === 'play' && S.room === 4)); if (document.body.classList.contains('joy-on') !== wantJoy) document.body.classList.toggle('joy-on', wantJoy);
+  if (S.room && cur?.ambient) cur.ambient(dt, T); // animación de fondo de la sala (p. ej. el holograma de SOL), en preludio y juego
   if (S.phase === 'atrium' || S.phase === 'intro' || S.phase === 'prelude') { updateAtrium(dt); if (S.phase === 'prelude') { updatePrelude(dt); if (bloom) bloom.strength = .45 } }
   else if (S.room && cur) { roomCamera(dt, cur); cur.update3d?.(dt, T); lightingManager.update(avatarObj.position, dt, false); if (S.phase === 'play') { cur.update?.(dt); if (performance.now() - S.playStart > 45000) $('btnSkip').style.display = 'block' } }
   if (S.phase === 'atrium' && bloom) bloom.strength = .45;

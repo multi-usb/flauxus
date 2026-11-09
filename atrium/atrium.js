@@ -4,6 +4,7 @@
    Toda la geometría provisional vive aquí; el NavMesh aporta las medidas.
    ====================================================================== */
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { ROOMS } from '../Rooms.js';
 import { S, bumpAtriumGen, roomGen } from '../core/state.js';
 import { LIME, LIMEH, SERIF, rand } from '../core/util.js';
@@ -122,9 +123,16 @@ export function makeStair(i, r) {
 
 /* ======================================================================
    BLOQUES FLOTANTES ORBITALES DEL ATRIO
+   Una sola malla instanciada (InstancedMesh): 38 losas = 1 llamada de dibujo
+   (antes 38 mallas y 38 geometrías). La losa es una caja de aristas
+   biseladas compartida; cada instancia guarda su tamaño, órbita, flotación
+   y balanceo, así que la trayectoria y el giro son los mismos de antes.
+   El material es el de piedra del propio atrio (se aplica al cargar el
+   escenario), de modo que las losas comparten su textura en memoria.
    ====================================================================== */
 export const floatingBlocks = [];
-let blockMat = null;
+let blockMat = null, blocksMesh = null;
+const _blk = new THREE.Object3D();
 
 // Función para extraer el material de piedra exacto del modelo FBX y aplicarlo a los bloques
 function applyFbxMaterialToFloatingBlocks(fbxObj) {
@@ -144,9 +152,7 @@ function applyFbxMaterialToFloatingBlocks(fbxObj) {
 
   if (stoneMat) {
     blockMat = stoneMat;
-    for (let i = 0; i < floatingBlocks.length; i++) {
-      floatingBlocks[i].material = stoneMat;
-    }
+    if (blocksMesh) blocksMesh.material = stoneMat;
   }
 }
 
@@ -158,15 +164,22 @@ export function initFloatingBlocks(parent) {
   }
 
   const count = 38; // Cantidad de losas flotantes orbitales
+  /* Losa unitaria con bisel: cada instancia la escala a su medida (w × h × d). */
+  const geo = new RoundedBoxGeometry(1, 1, 1, 2, 0.08);
+  geo.userData.keep = false;
+  blocksMesh = new THREE.InstancedMesh(geo, blockMat, count);
+  blocksMesh.castShadow = QUALITY.shadows;
+  blocksMesh.receiveShadow = QUALITY.shadows;
+  blocksMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  /* Las losas orbitan en un anillo de ~28 m alrededor del atrio: la esfera de recorte del conjunto
+     se calcula sobre todas las instancias, así que basta con no recortar la malla entera. */
+  blocksMesh.frustumCulled = false;
+
   for (let i = 0; i < count; i++) {
     // Dimensiones variadas de losas de piedra similares al render
     const w = rand(2.2, 3.8);
     const h = rand(0.24, 0.45);
     const d = rand(0.9, 1.4);
-    const geo = new THREE.BoxGeometry(w, h, d);
-    const mesh = new THREE.Mesh(geo, blockMat);
-    mesh.castShadow = QUALITY.shadows;
-    mesh.receiveShadow = QUALITY.shadows;
 
     // Distribución en dos bandas orbitales concéntricas fuera de la plataforma
     const orbitRadius = rand(25.5, 28.5);
@@ -177,7 +190,8 @@ export function initFloatingBlocks(parent) {
     const bobAmp = rand(0.25, 0.55);      // Amplitud de subida y bajada
     const tiltAmp = rand(0.04, 0.08);     // Inclinación/balanceo sutil
 
-    mesh.userData = {
+    floatingBlocks.push({
+      w, h, d,
       orbitRadius,
       baseAngle,
       baseY,
@@ -186,17 +200,16 @@ export function initFloatingBlocks(parent) {
       bobAmp,
       tiltAmp,
       phase: rand(0, Math.PI * 2)
-    };
-
-    parent.add(mesh);
-    floatingBlocks.push(mesh);
+    });
   }
+  parent.add(blocksMesh);
+  updateFloatingBlocks(0);
 }
 
 export function updateFloatingBlocks(T) {
+  if (!blocksMesh) return;
   for (let i = 0; i < floatingBlocks.length; i++) {
-    const b = floatingBlocks[i];
-    const u = b.userData;
+    const u = floatingBlocks[i];
 
     // 1. Giro orbital continuo alrededor del atrio
     const ang = u.baseAngle + T * u.orbitSpeed;
@@ -205,13 +218,19 @@ export function updateFloatingBlocks(T) {
 
     // 2. Levitación vertical ondulante (arriba y abajo)
     const y = u.baseY + Math.sin(T * u.bobFreq + u.phase) * u.bobAmp;
-    b.position.set(x, y, z);
+    _blk.position.set(x, y, z);
 
     // 3. Orientación tangencial al círculo con cabeceo y alabeo suave
-    b.rotation.y = -ang + Math.PI / 2;
-    b.rotation.x = Math.sin(T * u.bobFreq * 0.7 + u.phase) * u.tiltAmp;
-    b.rotation.z = Math.cos(T * u.bobFreq * 0.8 + u.phase) * u.tiltAmp;
+    _blk.rotation.set(
+      Math.sin(T * u.bobFreq * 0.7 + u.phase) * u.tiltAmp,
+      -ang + Math.PI / 2,
+      Math.cos(T * u.bobFreq * 0.8 + u.phase) * u.tiltAmp
+    );
+    _blk.scale.set(u.w, u.h, u.d);
+    _blk.updateMatrix();
+    blocksMesh.setMatrixAt(i, _blk.matrix);
   }
+  blocksMesh.instanceMatrix.needsUpdate = true;
 }
 
 export function makeAtrium() {

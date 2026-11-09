@@ -18,6 +18,10 @@ const scene = name => (USE_FBX ? `${name}.fbx` : `modelos/${name}.glb`);
 const V3 = THREE.Vector3;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+/* Destino del progreso de descarga de escenarios (ui/loader.js lo conecta). */
+let progressSink = () => { };
+export function setLoadProgress(fn) { progressSink = typeof fn === 'function' ? fn : () => { }; }
+
 export class AssetManager {
   constructor() {
     this.loader = new FBXLoader();
@@ -25,6 +29,7 @@ export class AssetManager {
     this.cache = new Map();
     this.pending = new Map();
     this.matCache = new Map();
+    this.failed = new Set(); // escenarios cuya descarga falló (el flujo ofrece reintentar)
     this.files = {
       atrium: scene('Atrio_nivel_completo_version_detallada'),
       1: scene('Nivel1_DO_El_sonido_bello_nivel_completo'),
@@ -43,6 +48,7 @@ export class AssetManager {
     if (!file) return Promise.resolve(null);
     const glb = file.endsWith('.glb');
     const p = new Promise(res => {
+      this.failed.delete(key);
       (glb ? this.gltf : this.loader).load(
         new URL(file, document.baseURI).href,
         loaded => {
@@ -52,10 +58,12 @@ export class AssetManager {
           this.pending.delete(key);
           res(obj);
         },
-        undefined,
+        /* Progreso real de la descarga (bytes): el preloader lo muestra solo si el servidor informa el tamaño. */
+        ev => { if (ev && ev.lengthComputable) progressSink(ev.loaded, ev.total); },
         err => {
           console.warn('Scene load error for', key, file, err);
           this.pending.delete(key);
+          this.failed.add(key);
           res(null);
         }
       );

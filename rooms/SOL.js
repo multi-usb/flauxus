@@ -4,6 +4,7 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
+import { createHologram } from '../engine/hologram.js';
 import { pad, tone, pluck, hiss, A } from '../AudioSystem.js';
 import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, TOUCH, ptr, ptrActive, hint, toast, finish, T, roomGen } from './context.js';
 
@@ -59,6 +60,8 @@ export const meta = {
 };
 
 export const SOL = (() => {
+  const _camPos = new THREE.Vector3(), _camLook = new THREE.Vector3();
+  let holo = null;
   const names = ['Muñeca I', 'Muñeca II', 'Cabeza'], HR = 1.0; let orbs = [], cap = [], hold = [0, 0, 0], core, rings = [], order = [], anch = [], pending = false;
   const v3 = new THREE.Vector3(); const proj = o => { o.getWorldPosition(v3); const p = v3.clone().project(camera); return { x: (p.x * .5 + .5) * W, y: (-p.y * .5 + .5) * H } };
   const anchors = () => { avatarObj.updateMatrixWorld(true); camera.updateMatrixWorld(); const j = avatarObj.userData.joints; return [proj(j.wl), proj(j.wr), proj(j.head)] };
@@ -88,7 +91,15 @@ export const SOL = (() => {
     avatarObj.position.y = fy - rel + SOL_TOE_SOLE;
   }
   return {
-    camPos: new THREE.Vector3(0, 2.63, 9), camLook: new THREE.Vector3(0, 2.33, 0),
+    /* Encuadre del juego: antes (0, 2.63, 9) quedaba demasiado cerca de una avatar a escala 1,5. Ahora la cámara
+       se aleja ~1,5 m, sube un poco y mira al pecho: entran la avatar completa, los tres sensores y el núcleo.
+       En pantallas verticales se aleja más para que los sensores laterales no salgan del cuadro. */
+    camPos: new THREE.Vector3(0, 3.0, 10.6), camLook: new THREE.Vector3(0, 2.45, 0),
+    cam() {
+      const a = camera.aspect || 1.6, k = a < .8 ? 1.45 : a < 1.1 ? 1.18 : 1;
+      _camPos.set(0, 3.0 + (k - 1) * 1.2, 1.5 + 9.1 * k); _camLook.set(0, 2.45, 0);
+      return { pos: _camPos, look: _camLook };
+    },
     build() {
       const fy = meta.floorY ?? 0, gp = meta.gameAvatarPos;
       avatarObj.scale.setScalar(1.5);
@@ -97,6 +108,9 @@ export const SOL = (() => {
       avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
       core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 20), mat(0x15170f, { emissive: 0x4a5200, emissiveIntensity: .8, metalness: .4, roughness: .25 })); core.position.set(0, fy + 3.2, -3); roomGroup.add(core);
       rings = []; for (let i = 0; i < 9; i++) { const g = new THREE.Mesh(new THREE.TorusGeometry(2.1 + i * .4, .02, 6, 60), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xefeadb : LIME, transparent: true, opacity: .25 })); g.rotation.x = Math.random() * Math.PI; g.rotation.y = Math.random() * Math.PI; g.position.copy(core.position); roomGroup.add(g); rings.push(g) }
+      /* Holograma coreográfico al fondo (engine/hologram.js): la cyborg gigante y translúcida, lejos del
+         escenario jugable, detrás del núcleo. No colisiona ni participa del minijuego. */
+      holo = createHologram({ low: TOUCH, scale: 4.6 }); holo.place(-27, fy + 5.5, -28, .7); roomGroup.add(holo.group); // a la izquierda, en el vacío: fuera del triángulo de sensores
       /* Escenario real de SOL: plataforma circular de terrazas. */
       return placeFBX(5, roomGroup, 16, { roughness: .9, metalness: .05 }, () => roomGen);
     },
@@ -119,6 +133,8 @@ export const SOL = (() => {
       avatarObj.userData.glowBase = 1.5 + n * 1.2; hint(`Sensores conectados ${n} de 3`);
       if (n === 3 && !pending) { pending = true; setTimeout(() => finish({ order: [...order] }, [['Sensores', '3 de 3'], ['Orden de conexión', order.map(i => names[i]).join(' → ')]]), 900) }
     },
+    /* Se llama en cada cuadro de la sala (preludio y juego): el holograma baila desde que se entra. */
+    ambient(dt, t3) { holo?.update(dt, t3, A.lvl || 0) },
     update3d(dt, t3) { const n = cap.filter(Boolean).length; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
     draw() {
       orbs.forEach((o, i) => {
