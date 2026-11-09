@@ -4,6 +4,8 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
+import { createFireflies } from '../engine/sky.js';
+import { GX } from '../GameContext.js';
 import { recOk, pad, tone, hiss, playClip, stopClips, A, regionFor, splitRegion, recPeaks, wfImg, ensureAudio, fmt } from '../AudioSystem.js';
 import { S, roomGroup, avatarObj, bloom, animAvatar, burst, ringFx, ftext, shake, LIMEH, PAPER, hint, toast, finish, roomGen, mat, T, $ } from './context.js';
 
@@ -145,6 +147,11 @@ export const LA = (() => {
     { n: 12, r: 9.4, w: 1.4, h: 1.7, y: 7.8, bob: .3, speed: -.022, pitch: .46 }    // anillo exterior, más alto, en sentido contrario
   ];
   const _po = new THREE.Object3D(); _po.rotation.order = 'YXZ'; // primero mira al centro, luego se inclina
+  /* Del preludio al juego: en el preludio las hojas flotan libres por la sala (form = 0); al empezar el Momento
+     se ordenan poco a poco en sus anillos (form → 1 en ~6 s). Se interpola posición y giro: sin saltos. */
+  const _pf = new THREE.Object3D(), _v = new THREE.Vector3(), _q = new THREE.Quaternion();
+  let form = 0, forming = false, flies = null;
+  const TOUCH_LOW = matchMedia('(pointer:coarse)').matches;
 
   return {
     noParallax: true,
@@ -166,10 +173,13 @@ export const LA = (() => {
       const fy = getFloorY();
 
       // Hojas de partitura suspendidas en anillos concéntricos (ver paperTexture / RINGS)
-      papers = [];
+      papers = []; form = 0; forming = false;
+      /* Luciérnagas moradas (engine/sky.js): un solo Points animado en el shader; recogen la luz violeta de la sala. */
+      flies = createFireflies({ n: TOUCH_LOW ? 60 : 130, rMin: 2.6, rMax: 13, yMin: fy + .5, yMax: fy + 6.5, colorA: 0xa56bff, colorB: 0xff7ad9, size: .2 });
+      roomGroup.add(flies.points);
       const pt = paperTexture();
       /* un leve brillo propio: papel bajo luz de escena, legible aunque flote sobre los focos */
-      const paperMat = mat(0xffffff, { map: pt, emissive: 0xffffff, emissiveMap: pt, emissiveIntensity: .28, roughness: .92, metalness: 0, side: THREE.DoubleSide });
+      const paperMat = mat(0xffffff, { map: pt, emissive: 0xffffff, emissiveMap: pt, emissiveIntensity: .14, roughness: .92, metalness: 0, side: THREE.DoubleSide });
       for (const R of RINGS) {
         const im = new THREE.InstancedMesh(paperGeometry(R.w, R.h), paperMat, R.n);
         im.instanceMatrix.setUsage(THREE.DynamicDrawUsage); im.frustumCulled = false;
@@ -189,6 +199,7 @@ export const LA = (() => {
       return placeFBX(6, roomGroup, 16, { roughness: 0.78, metalness: 0.16 }, () => roomGen);
     },
     start() {
+      forming = true; // las hojas dejan de vagar y buscan su formación
       const fy = getFloorY();
       const gp = meta.gameAvatarPos || { x: 0, y: fy, z: -2.1, yaw: 0 };
       avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
@@ -203,18 +214,34 @@ export const LA = (() => {
       render(); hint(real ? 'Toca un fragmento para oírlo · arrástralo al pentagrama' : 'No encontré la grabación: modo provisional (compón la secuencia y entrégala)')
     },
     update() { },
-    update3d(dt, t3) {
+    /* Cada cuadro de la sala, también en el preludio: hojas y luciérnagas. */
+    ambient(dt, t3) {
       const fy = getFloorY();
-      // Órbita lenta de las hojas: sentidos opuestos por anillo, flotación y un leve balanceo de papel
+      if (forming && form < 1) form = Math.min(1, form + dt / 6);
+      const k = form * form * (3 - 2 * form);
+      let n = 0;
       for (const { R, im, items } of papers) {
         items.forEach((it, i) => {
+          /* formación: órbita lenta en su anillo (sentidos opuestos), flotación y balanceo de papel */
           const ang = it.a + t3 * R.speed;
           _po.position.set(Math.cos(ang) * R.r, fy + R.y + Math.sin(t3 * .55 + it.ph) * R.bob, Math.sin(ang) * R.r);
           _po.rotation.set(R.pitch + Math.sin(t3 * .4 + it.ph) * .08 + it.tilt, -ang - Math.PI / 2, Math.cos(t3 * .33 + it.ph) * .06);
-          _po.updateMatrix(); im.setMatrixAt(i, _po.matrix);
+          if (k < 1) {
+            /* vuelo libre: cada hoja deriva por la sala en una espiral propia que se abre y se cierra,
+               sube y baja, y da vueltas sobre sí misma — objetos suspendidos, sin rumbo fijo */
+            const s = n * 2.399, fa = s + t3 * (.07 + (n % 5) * .018) * (n % 2 ? 1 : -1), fr = 7.4 + 2.6 * Math.sin(t3 * .11 + s);
+            _pf.position.set(Math.cos(fa) * fr, fy + 3.3 + 2.1 * (.5 + .5 * Math.sin(t3 * .19 + s * 1.7)) + Math.sin(t3 * .7 + s) * .25, Math.sin(fa) * fr);
+            _pf.rotation.set(t3 * (.21 + (n % 3) * .06) + s, t3 * (.13 + (n % 4) * .04) + s * 2, Math.sin(t3 * .3 + s) * .8);
+            _v.copy(_po.position); _q.copy(_po.quaternion);
+            _po.position.lerpVectors(_pf.position, _v, k); _po.quaternion.slerpQuaternions(_pf.quaternion, _q, k);
+          }
+          _po.updateMatrix(); im.setMatrixAt(i, _po.matrix); n++;
         });
         im.instanceMatrix.needsUpdate = true;
       }
+      flies?.update(t3, GX.renderer);
+    },
+    update3d(dt, t3) {
       animAvatar(avatarObj, 0, t3, true, A.lvl);
       if (bloom) bloom.strength = .55;
     },

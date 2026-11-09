@@ -3,7 +3,7 @@
    Partitura de la huella: resumen de las seis salas y descarga del PNG.
    ====================================================================== */
 import { $, clamp, INKH, LIMEH, SERIF } from '../core/util.js';
-import { S, rooms } from '../core/state.js';
+import { S, rooms, resetProgress } from '../core/state.js';
 import { entry, entryLabel, ENTRIES, seen } from '../core/config.js';
 import { A, killBus, tone } from '../AudioSystem.js';
 import { drawMotif } from '../rooms/motif.js';
@@ -31,4 +31,4 @@ export function drawTrace() {
   x.fillStyle = 'rgba(239,234,219,.45)'; x.font = `italic 400 22px ${SERIF}`; x.textAlign = 'left'; x.fillText('Flauxus · la partitura de la huella · ' + entryLabel, w * .04, h * .95); x.textAlign = 'right'; x.fillText(new Date().toLocaleDateString('es-CO'), w * .96, h * .95)
 }
 $('downloadTrace').onclick = () => { const a = document.createElement('a'); a.download = 'flauxus-partitura-huella.png'; a.href = $('traceCanvas').toDataURL('image/png'); a.click() };
-$('restart').onclick = () => location.href = location.pathname + location.search;
+$('restart').onclick = () => { resetProgress(); location.href = location.pathname + location.search };

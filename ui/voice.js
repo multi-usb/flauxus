@@ -43,6 +43,8 @@ export async function voRun(id) {
         if (tok !== VO.tok) { clearInterval(iv); res(); return }
         const el2 = (performance.now() - t0) / 1000, p = useEl && el.duration ? el.currentTime / el.duration : el2 / dur;
         const n = Math.floor(clamp(p, 0, 1) * spans.length * 1.04); spans.forEach((sp, i) => sp.classList.toggle('on', i < n));
+        /* si el texto no cabe en la caja (pantallas bajas), la caja acompaña a la palabra que suena */
+        const box = $('vo'), cw = spans[Math.min(spans.length - 1, n)]; if (cw && box.scrollHeight > box.clientHeight + 2) box.scrollTop = Math.max(0, cw.offsetTop - box.clientHeight * .55);
         if ((useEl ? el.ended : p >= 1) || el2 > dur + 5) { clearInterval(iv); res() }
       }, 80)
     });

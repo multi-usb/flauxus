@@ -4,7 +4,7 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
-import { createMagicTrail } from '../engine/trail.js';
+import { createMagicTrail, createFloorRibbon } from '../engine/trail.js';
 import { GX } from '../GameContext.js';
 import { recOk, Voice, pad, A } from '../AudioSystem.js';
 import { S, roomGroup, avatarObj, camera, bloom, makeDust, makeTextSprite, animAvatar, ctx, W, H, burst, ringFx, shake, toScreen, LIME, LIMEH, SERIF, PALE, EXPERIMENT, clamp, lerp, lerpAngle, TOUCH, keys, hint, toast, finish, moveInput, groundController, roomGen } from './context.js';
@@ -51,7 +51,7 @@ export const FA = (() => {
   ];
   const ZR = 2.4, DW = 1.5, RM = 14.0, NAMES = ['I · grave', 'II · eco', 'III · brillo'];
   
-  let pos = new THREE.Vector3(0, 0, 3.2), target = null, prog = [0, 0, 0], on = [false, false, false], pads = null, zObj = [], trail, tPos, tCol, tN = 0, discs = [], discI = 0, lastDrop = new THREE.Vector3(), path = [], dist = 0, doneT = 0, moving = false, startedMove = false, base = null, layers = [], real = false, magic = null;
+  let pos = new THREE.Vector3(0, 0, 3.2), target = null, prog = [0, 0, 0], on = [false, false, false], pads = null, zObj = [], trail, tPos, tCol, tN = 0, discs = [], discI = 0, lastDrop = new THREE.Vector3(), path = [], dist = 0, doneT = 0, moving = false, startedMove = false, base = null, layers = [], real = false, magic = null, ribbon = null;
   const rc = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const getFloorY = () => meta.floorY ?? 1.80;
   return {
@@ -117,6 +117,8 @@ export const FA = (() => {
       const dust = makeDust(180, RM, 5, 0xf0eddc, .12); dust.position.y = fy; roomGroup.add(dust);
       /* Estela mágica: partículas verdes que nacen del cuerpo al moverse y se disipan girando (engine/trail.js). */
       magic = createMagicTrail({ low: TOUCH }); roomGroup.add(magic.points);
+      /* Cinta de recorrido sobre el piso (reemplaza la línea de 1 px): búfer fijo de 160 puntos, viva en el shader. */
+      ribbon = createFloorRibbon({ max: 160 }); roomGroup.add(ribbon.mesh); trail.visible = false;
       /* Room 4 FBX + lighting (retornamos la promesa para sincronizar con la cortina negra) */
       return placeFBX(4, roomGroup, 16, { roughness: 0.88, metalness: 0.08 }, () => roomGen);
     },
@@ -144,6 +146,7 @@ export const FA = (() => {
       avatarObj.position.copy(pos); if (moving) startedMove = true;
       if (pos.distanceTo(lastDrop) > .45) {
         dist += pos.distanceTo(lastDrop); lastDrop.copy(pos); path.push([+pos.x.toFixed(2), +pos.z.toFixed(2)]); const dd = discs[discI++ % discs.length]; dd.position.set(pos.x, pos.y + .07, pos.z); dd.material.opacity = .8; dd.scale.setScalar(1);
+        ribbon?.push(pos.x, pos.y + .06, pos.z);
         if (tN < 240) { tPos.set([pos.x, pos.y + .09, pos.z], tN * 3); tN++ } else { tPos.copyWithin(0, 3); tPos.set([pos.x, pos.y + .09, pos.z], 239 * 3) }
         for (let i = 0; i < tN; i++) { const f = i / Math.max(1, tN - 1); tCol[i * 3] = .35 + .4 * f; tCol[i * 3 + 1] = .36 + .4 * f; tCol[i * 3 + 2] = .1 } trail.geometry.attributes.position.needsUpdate = true; trail.geometry.attributes.color.needsUpdate = true; trail.geometry.setDrawRange(0, tN)
       }
@@ -162,7 +165,8 @@ export const FA = (() => {
     update3d(dt, t3) {
       zObj.forEach((o, i) => { const p = prog[i], done = on[i]; o.fill.material.opacity = p * .4; o.fill.scale.setScalar(.2 + p * .8); o.ring.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.opacity = .12 + p * .4; o.ring.rotation.z += dt * .5 });
       discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) });
-      if (magic) { magic.emit(avatarObj.position, moving ? (keys.has('ShiftLeft') ? 8 : 5.4) : 0, dt); magic.update(dt, GX.renderer) } animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
+      if (magic) { magic.emit(avatarObj.position, moving ? (keys.has('ShiftLeft') ? 8 : 5.4) : 0, dt); magic.update(dt, GX.renderer) }
+      ribbon?.update(t3, .85 + Math.min(.6, (A.lvl || 0) * .6)); // la cinta late con el volumen de la música animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
     },
     draw() {
       const k = TOUCH ? .78 : 1, cx = W - 112 * k, cy = H - (TOUCH ? 250 : 200), r = 74 * k, s = r / RM; ctx.save(); ctx.fillStyle = 'rgba(13,14,9,.72)'; ctx.strokeStyle = 'rgba(194,254,11,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill(); ctx.stroke();

@@ -241,7 +241,9 @@ async function waitTextures(root, timeout = 4000) {
   const start = performance.now();
   for (const t of textures) {
     while (!t.image && performance.now() - start < timeout) await new Promise(r => setTimeout(r, 50));
-    if (t.image?.decode) await t.image.decode().catch(() => { });
+    /* El navegador aplaza decode() si la pestaña no se está pintando (segundo plano): con un tope de 1,2 s
+       la carga no se queda esperando; la textura termina de decodificarse al dibujarse. */
+    if (t.image?.decode) await Promise.race([t.image.decode().catch(() => { }), new Promise(r => setTimeout(r, 1200))]);
   }
 }
 

@@ -14,6 +14,8 @@ import { clearGroup, mat, glowSprite, makeTextSprite, makeDust, GLOW } from '../
 import { onAtriumLoaded } from '../NavMesh.js';
 import { placeFBX } from '../AssetManager.js';
 import { drawMotif } from '../rooms/motif.js';
+import { buildAtriumMemory, refreshAtriumMemory, updateAtriumMemory } from './memory.js';
+export { refreshAtriumMemory, updateAtriumMemory };
 
 /* Calibración de la huella del atrio (antes vivía en NavMesh.js). */
 export const HUELLA_CONFIG = {
@@ -199,33 +201,48 @@ export function initFloatingBlocks(parent) {
       bobFreq,
       bobAmp,
       tiltAmp,
-      phase: rand(0, Math.PI * 2)
+      phase: rand(0, Math.PI * 2),
+      /* dramatismo: la órbita respira (radio variable), la altura viaja más y algunas losas giran sobre sí mismas */
+      rAmp: rand(.6, 3.2), rFreq: rand(.05, .14),
+      rise: rand(.6, 2.2), riseFreq: rand(.09, .22),
+      tumble: Math.random() < .22 ? rand(.08, .22) * (Math.random() < .5 ? -1 : 1) : 0,
+      /* seis «viajeras» cruzan el atrio por lo alto (≥ 12,5 m: por encima de portales, rótulos, cámara y jugador) */
+      cross: i < 6 ? { w: rand(.035, .06), ph: rand(0, 6.283), y: rand(13, 17), span: rand(17, 23), spin: rand(.1, .25) } : null
     });
   }
   parent.add(blocksMesh);
   updateFloatingBlocks(0);
 }
 
+/* Arquitectura encantada: cada losa combina una órbita que respira, una deriva vertical lenta sobre la que
+   se monta su flotación corta, y —en una de cada cinco— un giro tridimensional sobre sí misma. Seis losas
+   «viajeras» abandonan el anillo y cruzan el atrio por lo alto siguiendo una rosa (r = span·cos(wt)): pasan
+   sobre el centro, se alejan y vuelven. Todas las trayectorias son funciones cerradas del tiempo (sin estado):
+   no derivan, no acumulan error y cuestan lo mismo que antes (una matriz por losa en la misma InstancedMesh).
+   Ninguna baja de 0,9 m dentro del anillo exterior (radio ≥ 22 m, fuera del área caminable) ni de 12,5 m sobre él. */
 export function updateFloatingBlocks(T) {
   if (!blocksMesh) return;
   for (let i = 0; i < floatingBlocks.length; i++) {
     const u = floatingBlocks[i];
-
-    // 1. Giro orbital continuo alrededor del atrio
-    const ang = u.baseAngle + T * u.orbitSpeed;
-    const x = Math.cos(ang) * u.orbitRadius;
-    const z = Math.sin(ang) * u.orbitRadius;
-
-    // 2. Levitación vertical ondulante (arriba y abajo)
-    const y = u.baseY + Math.sin(T * u.bobFreq + u.phase) * u.bobAmp;
+    let x, y, z, ang, rx, rz;
+    if (u.cross) {
+      const c = u.cross, a = c.ph + T * c.w * 1.7, r = c.span * Math.cos(T * c.w + c.ph * 2);
+      ang = a; x = Math.cos(a) * r; z = Math.sin(a) * r;
+      y = c.y + Math.sin(T * .23 + u.phase) * 1.6;
+      rx = Math.sin(T * c.spin + u.phase) * .5; rz = T * c.spin * .6 + u.phase;
+    } else {
+      // 1. Órbita que respira alrededor del atrio
+      ang = u.baseAngle + T * u.orbitSpeed;
+      const r = Math.max(22.5, u.orbitRadius + Math.sin(T * u.rFreq + u.phase) * u.rAmp);
+      x = Math.cos(ang) * r; z = Math.sin(ang) * r;
+      // 2. Deriva vertical lenta + flotación corta
+      y = Math.max(.9, u.baseY + Math.sin(T * u.riseFreq + u.phase * 1.7) * u.rise + Math.sin(T * u.bobFreq + u.phase) * u.bobAmp);
+      // 3. Cabeceo y alabeo; las que «giran» dan vueltas completas, muy despacio
+      rx = Math.sin(T * u.bobFreq * 0.7 + u.phase) * u.tiltAmp + (u.tumble ? T * u.tumble : 0);
+      rz = Math.cos(T * u.bobFreq * 0.8 + u.phase) * u.tiltAmp + (u.tumble ? Math.sin(T * u.tumble * .7) * .6 : 0);
+    }
     _blk.position.set(x, y, z);
-
-    // 3. Orientación tangencial al círculo con cabeceo y alabeo suave
-    _blk.rotation.set(
-      Math.sin(T * u.bobFreq * 0.7 + u.phase) * u.tiltAmp,
-      -ang + Math.PI / 2,
-      Math.cos(T * u.bobFreq * 0.8 + u.phase) * u.tiltAmp
-    );
+    _blk.rotation.set(rx, -ang + Math.PI / 2, rz);
     _blk.scale.set(u.w, u.h, u.d);
     _blk.updateMatrix();
     blocksMesh.setMatrixAt(i, _blk.matrix);
@@ -260,6 +277,10 @@ export function makeAtrium() {
     });
   const stars = makeDust(400, 95, 60, 0xc9d6a0, .45); stars.position.y = -5; stars.frustumCulled = false; world.add(stars);
   initFloatingBlocks(world);
+  /* Memoria del atrio (atrium/memory.js): huellas de los Momentos completados. Se colocan cuando el modelo ya
+     calibró escaleras y portales, y se encienden según el progreso guardado. */
+  buildAtriumMemory(world);
+  atriumReady.then(() => refreshAtriumMemory(S.completed, stairGroups, true));
   paintHuella();
   return atriumReady;
 }

@@ -26,11 +26,19 @@ export function perfTick(dt) {
   pf.n = 0; pf.t = 0;
 }
 
-const PR_MAX = renderer.getPixelRatio(); let prAvg = 16, prCool = 3;
+const PR_MAX = renderer.getPixelRatio(); let prAvg = 16, prCool = 3, prCap = 1;
+/* Tope temporal de resolución (0–1). Con una tarjeta abierta la escena va desenfocada: renderizarla a media
+   resolución no se nota y libera GPU para el filtro. Al cerrar, la resolución adaptativa vuelve a subir sola. */
+export function setResCap(k) {
+  prCap = k; const top = Math.max(.5, PR_MAX * prCap), cur = renderer.getPixelRatio();
+  const nx = k < 1 ? Math.min(cur, top) : Math.max(cur, Math.min(PR_MAX, cur / .55));
+  if (nx !== cur) { renderer.setPixelRatio(nx); composer?.setPixelRatio(nx); renderer.setSize(innerWidth, innerHeight); composer?.setSize(innerWidth, innerHeight); prCool = 1.5 }
+}
 export function adaptRes(dt) { // resolución adaptativa: baja el pixel ratio si el frame time se dispara, lo recupera si hay margen
   prAvg += (dt * 1000 - prAvg) * Math.min(1, dt / 1.2); prCool -= dt; if (prCool > 0) return;
   const cur = renderer.getPixelRatio(); let nx = cur;
-  if (prAvg > 24 && cur > .6) nx = Math.max(.6, cur - .15); else if (prAvg < 14.5 && cur < PR_MAX) nx = Math.min(PR_MAX, cur + .1);
+  const top = Math.max(.5, PR_MAX * prCap);
+  if (cur > top) nx = top; else if (prAvg > 24 && cur > .6) nx = Math.max(.6, cur - .15); else if (prAvg < 14.5 && cur < top) nx = Math.min(top, cur + .1);
   if (nx !== cur) { renderer.setPixelRatio(nx); composer?.setPixelRatio(nx); renderer.setSize(innerWidth, innerHeight); composer?.setSize(innerWidth, innerHeight); prCool = 3 }
 }
 

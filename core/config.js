@@ -40,7 +40,9 @@ $('introEntry').textContent = (ENTRIES[entry].skill ? entryLabel + ' · ' + ENTR
 /* «Simular entrada» es una herramienta de prueba: ya no se muestra al público. Para usarla, añadir ?dev a la URL
    (p. ej. /juego/?dev o /juego/?entry=fanzine&dev). */
 export const DEV_ENTRY_PICKER = qs.has('dev');
-if (DEV_ENTRY_PICKER) $('devPick').innerHTML = '<span>Simular entrada:</span>' + Object.keys(ENTRIES).map(k => `<a href="?entry=${k}${k === 'cards' ? '&cards=PAUSA,RETARDA,MI%20INTENCI%C3%93N' : ''}&dev" class="${k === entry ? 'on' : ''}">${ENTRIES[k].tag}</a>`).join(''); else $('devPick').remove();
+/* Botones de los satélites (tarjeta del menú): cada uno vuelve a abrir el museo por esa puerta, con su habilidad.
+   Es el comportamiento original de «Simular entrada», ahora como parte de la interfaz. Conserva ?dev si estaba. */
+$('devPick').innerHTML = '<span class="sats-k">Satélites · entra al museo desde</span>' + Object.keys(ENTRIES).map(k => `<a href="?entry=${k}${k === 'cards' ? '&cards=PAUSA,RETARDA,MI%20INTENCI%C3%93N' : ''}${DEV_ENTRY_PICKER ? '&dev' : ''}" class="${k === entry ? 'on' : ''}"${k === entry ? ' aria-current="true"' : ''}>${ENTRIES[k].tag}<small>${ENTRIES[k].skill || 'Sin habilidad extra'}</small></a>`).join('');
 
 /* ---------------- calidad (presupuesto de rendimiento) ----------------
    alta: escritorio · baja: táctil (o ?q=low para probarla en escritorio). El nº de luces es fijo por nivel. */

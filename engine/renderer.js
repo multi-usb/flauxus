@@ -23,6 +23,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
 renderer.sortObjects = true; // transparencias de los FBX ordenadas correctamente (con pocos objetos cuesta ~0)
 try { const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromScene(new RoomEnvironment(), .04).texture; pm.dispose(); scene.environmentIntensity = .5 } catch (e) { console.warn('IBL no disponible', e) }
+renderer.domElement.id = 'gl3d'; // style.css lo desenfoca cuando hay una tarjeta abierta
 document.body.insertBefore(renderer.domElement, document.body.firstChild);
 export let composer = null, bloom = null;
 if (!TOUCH) (async () => {

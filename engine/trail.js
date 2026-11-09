@@ -135,3 +135,82 @@ export function createMagicTrail({ color = 0xc2fe0b, low = false } = {}) {
     }
   };
 }
+
+/* ======================================================================
+   Cinta de recorrido sobre el piso (FA♯): la trayectoria que queda inscrita.
+
+   Una sola malla (tira de triángulos) con un búfer FIJO de `max` puntos: al
+   llenarse, el punto más viejo sale por la cola. No crece la geometría ni la
+   memoria por mucho que dure la partida.
+   El shader le da vida: la cinta ondula levemente, su brillo «corre» hacia
+   la cabeza, los bordes son suaves y la cola se disuelve.
+   ====================================================================== */
+export function createFloorRibbon({ max = 160, color = 0xc2fe0b, width = .8 } = {}) {
+  const pts = new Float32Array(max * 3); let n = 0;
+  const pos = new Float32Array(max * 2 * 3), aU = new Float32Array(max * 2), aSide = new Float32Array(max * 2), aW = new Float32Array(max * 2);
+  const idx = new Uint16Array((max - 1) * 6);
+  for (let i = 0; i < max - 1; i++) { const a = i * 2; idx.set([a, a + 1, a + 2, a + 1, a + 3, a + 2], i * 6); }
+  for (let i = 0; i < max; i++) { aSide[i * 2] = -1; aSide[i * 2 + 1] = 1; }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aU', new THREE.BufferAttribute(aU, 1).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aSide', new THREE.BufferAttribute(aSide, 1));
+  geo.setAttribute('aW', new THREE.BufferAttribute(aW, 1).setUsage(THREE.DynamicDrawUsage));
+  geo.setIndex(new THREE.BufferAttribute(idx, 1));
+  geo.setDrawRange(0, 0);
+  const uni = { uTime: { value: 0 }, uColor: { value: new THREE.Color(color) }, uGain: { value: 1 } };
+  const mat = new THREE.ShaderMaterial({
+    uniforms: uni, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    vertexShader: /* glsl */`
+      attribute float aU; attribute float aSide; attribute float aW; uniform float uTime;
+      varying float vU; varying float vSide;
+      void main() {
+        vU = aU; vSide = aSide;
+        vec3 p = position;
+        p.y += 0.02 + 0.03 * sin(aU * 40.0 - uTime * 2.0) * aU;   // respira: leve ondulación vertical
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: /* glsl */`
+      uniform float uTime; uniform vec3 uColor; uniform float uGain; varying float vU; varying float vSide;
+      float h(float x) { return fract(sin(x * 91.7) * 43758.5453); }
+      void main() {
+        float edge = 1.0 - vSide * vSide;                          // bordes suaves
+        float core = pow(edge, 3.0);
+        float flow = 0.55 + 0.45 * sin(vU * 60.0 - uTime * 3.2);   // pulsos que corren hacia la cabeza
+        float grain = 0.8 + 0.2 * h(floor(vU * 140.0));            // textura orgánica
+        float tail = pow(vU, 1.35);                                // la cola se disuelve
+        float head = smoothstep(0.9, 1.0, vU);                     // la cabeza brilla
+        vec3 col = mix(uColor, vec3(1.0, 1.0, 0.9), core * 0.45 + head * 0.4);
+        float a = edge * (0.25 + 0.75 * tail) * flow * grain * (0.85 + head * 0.9) * uGain;
+        gl_FragColor = vec4(col * a, a);
+      }`
+  });
+  const mesh = new THREE.Mesh(geo, mat); mesh.frustumCulled = false; mesh.renderOrder = 2;
+
+  function rebuild() {
+    for (let i = 0; i < n; i++) {
+      const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1);
+      let tx = pts[b * 3] - pts[a * 3], tz = pts[b * 3 + 2] - pts[a * 3 + 2]; const l = Math.hypot(tx, tz) || 1; tx /= l; tz /= l;
+      /* ancho variable: nace fino en la cola, engorda hacia la cabeza y ondula a lo largo */
+      const u = n > 1 ? i / (n - 1) : 1, w = width * (.35 + .65 * u) * (.75 + .25 * Math.sin(i * .9)) * .5;
+      const x = pts[i * 3], y = pts[i * 3 + 1], z = pts[i * 3 + 2];
+      pos.set([x - tz * w, y, z + tx * w, x + tz * w, y, z - tx * w], i * 6);
+      aU[i * 2] = aU[i * 2 + 1] = u; aW[i * 2] = aW[i * 2 + 1] = w;
+    }
+    geo.attributes.position.needsUpdate = true; geo.attributes.aU.needsUpdate = true; geo.attributes.aW.needsUpdate = true;
+    geo.setDrawRange(0, Math.max(0, n - 1) * 6);
+  }
+
+  return {
+    mesh,
+    /** Añade un punto al recorrido (posición del piso). */
+    push(x, y, z) {
+      if (n === max) { pts.copyWithin(0, 3); n--; }
+      pts.set([x, y, z], n * 3); n++;
+      rebuild();
+    },
+    reset() { n = 0; geo.setDrawRange(0, 0); },
+    update(t, gain = 1) { uni.uTime.value = t; uni.uGain.value = gain; }
+  };
+}

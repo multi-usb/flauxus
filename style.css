@@ -2610,3 +2610,411 @@
     body.touch #vo {
       bottom: calc(max(36px, env(safe-area-inset-bottom)) + 204px)
     }
+
+    /* =====================================================================
+       HUD POR REGIONES
+       Causa de las superposiciones anteriores: cada pieza del HUD tenía coordenadas propias (position:absolute
+       con top/left/bottom fijos) y ninguna «sabía» dónde estaban las demás. Ahora #hud es una rejilla y cada
+       pieza vive en una región; dentro de una región las piezas se apilan (flex), así que no pueden encimarse.
+       Lo oculto no ocupa sitio (display:none con transición discreta), para que los vecinos se reacomoden.
+
+       Ancho:    izquierda · centro · derecha   (≥ 961 px, y también celulares en horizontal)
+       Estrecho: las tres columnas se disuelven (display:contents) y cada grupo pasa a su franja:
+                 salir/marca · iconos → pestañas → volver · saltar → ficha → avisos → (escena) → voz → controles
+       ===================================================================== */
+    #hud {
+      --hud-pad: clamp(12px, 1.6vw, 22px);
+      --hud-gap: clamp(8px, 1.2vh, 14px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, min(620px, 46vw)) minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "tl   tc     tr"
+        "left center right";
+      gap: var(--hud-gap) clamp(12px, 2vw, 28px);
+      padding:
+        max(var(--hud-pad), env(safe-area-inset-top)) max(var(--hud-pad), env(safe-area-inset-right))
+        max(var(--hud-pad), env(safe-area-inset-bottom)) max(var(--hud-pad), env(safe-area-inset-left))
+    }
+
+    /* todas las piezas vuelven al flujo: ya no tienen coordenadas propias */
+    #hud #btnBack, #hud #roomInfo, #hud #joy, #hud #unlock, #hud #roomHint, #hud #vo, #hud #coach, #hud #prompt,
+    #hud #btnVoSkip, #hud #btnSkip, #hud #btnLook, #hud #btnWalk, #hud #sourceChip, #hud .card {
+      position: relative;
+      inset: auto;
+      transform: none;
+      margin: 0
+    }
+
+    #hud .hud-tl { grid-area: tl; display: flex; align-items: center; gap: 12px; min-width: 0 }
+    #hud .mid { grid-area: tc; min-width: 0 }
+    #hud .rightTop { grid-area: tr; justify-self: end; align-self: start }
+
+    #hud .hud-left,
+    #hud .hud-center,
+    #hud .hud-right { display: flex; flex-direction: column; gap: var(--hud-gap); min-width: 0; min-height: 0 }
+    #hud .hud-left { grid-area: left; align-items: flex-start }
+    #hud .hud-center { grid-area: center; align-items: center; justify-content: space-between }
+    #hud .hud-right { grid-area: right; align-items: flex-end; justify-content: space-between }
+
+    #hud .hud-notice,
+    #hud .hud-speech { display: flex; flex-direction: column; align-items: center; gap: var(--hud-gap); width: 100%; min-width: 0 }
+    #hud .hud-skips,
+    #hud .hud-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--hud-gap); min-width: 0 }
+
+    /* --- salir del juego (solo embebido en la landing) --- */
+    #btnExit {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 14px;
+      border: 1px solid var(--rw-verde);
+      background: linear-gradient(var(--rw-verde), var(--rw-verde)) no-repeat 0 0 / 0% 100%, var(--rw-negro);
+      color: var(--rw-verde);
+      font: 600 12px/1 var(--font-mono);
+      letter-spacing: .02em;
+      transition: background-size 220ms steps(6, jump-none), color 0s 110ms
+    }
+
+    #btnExit[hidden] { display: none }
+    #btnExit:hover, #btnExit:focus-visible { background-size: 100% 100%, auto; color: var(--rw-negro); outline: none }
+    body.embedded .brandwrap { display: none }
+
+    /* --- pestañas de sala: se encogen antes que desbordar --- */
+    #hud #progress { flex-wrap: nowrap; gap: clamp(3px, .6vw, 7px) }
+    #hud .pip { flex: 1 1 44px; min-width: 0; max-width: 64px; padding: 6px 4px 5px }
+    #hud .pip b { white-space: nowrap; font-size: clamp(9px, 2.6vw, 10.5px) }
+
+    /* --- columna izquierda --- */
+    #hud #btnBack { top: auto; left: auto; white-space: nowrap }
+    #hud #roomInfo {
+      margin-top: auto;                 /* escritorio: la ficha descansa abajo a la izquierda */
+      max-width: 100%;
+      padding: 14px 18px 14px 0;
+      background: linear-gradient(90deg, rgba(0, 0, 0, .6), rgba(0, 0, 0, .42) 70%, rgba(0, 0, 0, 0));
+      -webkit-mask-image: none;
+      mask-image: none;
+      box-shadow: -60px 0 0 rgba(0, 0, 0, .6)   /* la banda llega al borde de la pantalla */
+    }
+    #hud #roomInfo h1 { font-size: clamp(18px, 2.6vw, 32px); overflow-wrap: anywhere }
+    #hud #joy { margin-top: auto; flex: none }
+    body.touch #hud #roomInfo { margin-top: 0 }      /* táctil: la ficha sube; abajo va el círculo */
+
+    /* --- columna central --- */
+    #hud #unlock { width: min(430px, 100%); left: auto; top: auto }
+    #hud #roomHint {
+      max-width: 100%;
+      white-space: normal;
+      text-align: center;
+      text-wrap: balance;
+      top: auto;
+      bottom: auto;
+      left: auto
+    }
+    #hud #vo { width: 100%; max-height: 42dvh; overflow: hidden; bottom: auto }
+    #hud #coach { max-width: 100%; bottom: auto; top: auto; left: auto }
+    #hud #prompt { max-width: 100%; white-space: normal; text-wrap: balance; left: auto; right: auto; bottom: auto }
+
+    /* --- columna derecha --- */
+    #hud #btnVoSkip, #hud #btnSkip { top: auto; right: auto; white-space: nowrap }
+    #hud #btnLook { right: auto; bottom: auto }
+    #hud #btnWalk { right: auto; bottom: auto; max-width: 100%; white-space: normal; text-align: center }
+    #hud #sourceChip { right: auto; bottom: auto; max-width: 100% }
+
+    /* --- lo oculto no ocupa sitio --- */
+    #hud #unlock, #hud #vo, #hud #coach, #hud #prompt, #hud #btnWalk {
+      display: none;
+      opacity: 0;
+      transition: opacity .28s var(--ease), display .28s allow-discrete
+    }
+    #hud #unlock.show, #hud #vo.show, #hud #coach.show { display: block; opacity: 1 }
+    #hud #prompt.show, #hud #btnWalk.show { display: inline-block; opacity: 1; pointer-events: auto }
+    @starting-style {
+      #hud #unlock.show, #hud #vo.show, #hud #coach.show, #hud #prompt.show, #hud #btnWalk.show { opacity: 0 }
+    }
+    #hud #roomHint:empty { display: none }
+
+    body[data-phase="intro"] #hud #roomInfo,
+    body[data-phase="done"] #hud #roomInfo,
+    body[data-phase="epilogue"] #hud #roomInfo,
+    body.touch[data-phase="play"] #hud #roomInfo { display: none }
+    body[data-phase="intro"] #hud .mid { visibility: hidden }
+
+    /* --- tarjetas de sala: región central, bajo la barra superior --- */
+    #hud .card {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      place-self: center;
+      z-index: 2;
+      width: min(500px, 100%);
+      max-height: 100%;
+      overflow: auto
+    }
+    #hud .card.show { animation: cardRise .4s var(--ease) }
+    @keyframes cardRise { from { opacity: 0; translate: 0 18px } to { opacity: 1; translate: 0 0 } }
+
+    /* con una tarjeta abierta, el resto del HUD central se aparta: una sola voz */
+    body:has(#hud .card.show) #hud #roomInfo,
+    body:has(#hud .card.show) #hud .hud-notice,
+    body:has(#hud .card.show) #hud .hud-speech,
+    body:has(#hud .card.show) #hud .hud-actions,
+    body:has(#hud .card.show) #hud .hud-skips,
+    body:has(#hud .card.show) #hud #joy { display: none }
+
+    /* ---------- ESTRECHO: franjas ---------- */
+    @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) {
+      #hud {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+          "tl     tr"
+          "tc     tc"
+          "back   skips"
+          "info   info"
+          "notice notice"
+          ".      ."
+          "speech speech"
+          "joy    actions";
+        row-gap: 8px
+      }
+
+      #hud .hud-left, #hud .hud-center, #hud .hud-right { display: contents }
+      #hud #btnBack { grid-area: back; justify-self: start }
+      #hud .hud-skips { grid-area: skips; align-self: start }
+      #hud #roomInfo { grid-area: info; margin-top: 0; justify-self: start; max-width: min(100%, 520px) }
+      #hud #roomInfo p { display: none }
+      #hud .hud-notice { grid-area: notice }
+      #hud .hud-speech { grid-area: speech; align-self: end }
+      #hud #joy { grid-area: joy; align-self: end; justify-self: start; margin: 0 }
+      #hud .hud-actions { grid-area: actions; align-self: end }
+      #hud .card { grid-row: 4 / -1 }
+      #hud #vo { max-height: 34dvh }
+      #hud .subbrand, #hud #objective, #hud #sourceChip, #hud .chip { display: none }
+      #hud #btnBack kbd { display: none }
+      #btnExit span { display: none }
+    }
+
+    /* ---------- BAJO Y ANCHO (celular en horizontal): tres columnas compactas ---------- */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+      #hud { --hud-gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(0, 46vw) minmax(0, 1fr) }
+      #hud #roomInfo p, #hud .subbrand, #hud #objective, #hud #sourceChip { display: none }
+      #hud #roomInfo { padding: 8px 12px 8px 0 }
+      #hud #roomInfo h1 { font-size: 16px; margin: 0 }
+      #hud #joy { width: 104px; height: 104px }
+      #hud #vo { max-height: 46dvh; padding: 10px 14px }
+      #hud #voText { font-size: 14px; line-height: 1.4 }
+      #hud .btn { min-height: 44px }
+      #hud .card { padding: 16px 18px }
+      #hud #btnBack kbd { display: none }
+      #btnExit span { display: none }
+    }
+
+    /* =====================================================================
+       ESCENA EN SEGUNDO PLANO CUANDO HAY UNA TARJETA
+       Con la ficha, el cierre o la ayuda abiertas, el escenario 3D (y el lienzo 2D de efectos) se desenfoca y
+       se oscurece: el holograma y el movimiento del fondo dejan de competir con la lectura.
+       Es un filtro del compositor sobre el <canvas> (no un posproceso dentro del motor) y, mientras dura, el
+       motor renderiza a menor resolución (ui/debug.js · setResCap): el desenfoque sale más barato, no más caro.
+       ===================================================================== */
+    #gl3d, #g2d { transition: filter .4s var(--ease) }
+    body.card-open #gl3d { filter: blur(9px) brightness(.5) saturate(.8) }
+    body.card-open #g2d { filter: blur(6px) brightness(.6) }
+    @media (prefers-reduced-motion: reduce) { #gl3d, #g2d { transition: none } }
+
+    /* =====================================================================
+       SATÉLITES · botones de entrada en la tarjeta del menú
+       ===================================================================== */
+    .sats {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 8px
+    }
+    .sats .sats-k {
+      grid-column: 1 / -1;
+      font: 500 10.5px/1.3 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--fg-2)
+    }
+    .sats a {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 48px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      background: rgba(0, 0, 0, .34);
+      color: var(--fg);
+      text-decoration: none;
+      font: 700 12px/1.1 var(--font-mono);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      transition: border-color .15s, background .15s
+    }
+    .sats a small { font: 500 10px/1.25 var(--font-text); letter-spacing: 0; text-transform: none; color: var(--fg-2) }
+    .sats a:hover, .sats a:focus-visible { border-color: var(--rw-verde); background: rgba(194, 254, 11, .1); outline: none }
+    .sats a.on { border-color: var(--rw-verde); background: var(--rw-verde); color: var(--rw-negro) }
+    .sats a.on small { color: rgba(0, 0, 0, .7) }
+    body[data-skin="cyborg"] .sats a.on { border-color: var(--skin-a); background: linear-gradient(100deg, var(--skin-a), var(--skin-b)) }
+    @media (max-height: 560px) and (orientation: landscape) { .sats { display: none } }
+
+    /* --- «Salir» (embebido): fijo en la esquina, por encima de todo; el HUD y las pantallas le dejan su hueco --- */
+    :root { --exit-w: 92px; --exit-h: 44px; --edge: clamp(12px, 1.6vw, 22px) }
+    #btnExit {
+      position: fixed;
+      z-index: 90;
+      top: max(var(--edge), env(safe-area-inset-top));
+      left: max(var(--edge), env(safe-area-inset-left));
+      width: var(--exit-w);
+      height: var(--exit-h);
+      justify-content: center;
+      padding: 0
+    }
+    .exit-slot { display: none; flex: none; width: var(--exit-w); height: var(--exit-h) }
+    body.embedded .exit-slot { display: block }
+    body.embedded #intro,
+    body.embedded #help,
+    body.embedded #epilogue { padding-top: calc(max(var(--edge), env(safe-area-inset-top)) + var(--exit-h) + 10px) }
+    body.embedded #preloader { padding-top: calc(max(24px, env(safe-area-inset-top)) + var(--exit-h)) }
+    @media (max-width: 960px), (max-height: 500px) { :root { --exit-w: 52px } }
+
+    /* --- ajustes del HUD por regiones tras la primera pasada del banco de pruebas --- */
+    @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) {
+      /* el JS muestra estas piezas con style.display: aquí manda el formato */
+      #hud #sourceChip, #hud .chip { display: none !important }
+      #hud #vo { overflow-y: auto; scrollbar-width: none }
+      #hud #btnBack, #hud #btnVoSkip, #hud #btnSkip { font-size: 11px; padding: 8px 10px; min-height: 44px }
+    }
+
+    /* muy estrecho: «Volver» y «Saltar» en filas propias (no caben lado a lado) */
+    @media (max-width: 380px) {
+      #hud {
+        grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+          "tl     tr"
+          "tc     tc"
+          "back   back"
+          "skips  skips"
+          "info   info"
+          "notice notice"
+          ".      ."
+          "speech speech"
+          "joy    actions"
+      }
+      #hud .hud-skips { justify-self: start; align-items: flex-start }
+      #hud .card { grid-row: 3 / -1 }
+    }
+
+    /* poca altura en vertical (celulares compactos): controles más pequeños y la voz cede sitio */
+    @media (max-height: 700px) and (max-width: 960px) {
+      #hud #joy { width: 104px; height: 104px }
+      #hud #joyKnob { width: 46px; height: 46px }
+      #hud #vo { max-height: 26dvh; padding: 10px 14px }
+      #hud #voText { font-size: 15px; line-height: 1.4 }
+      body:has(#vo.show) #hud #roomInfo { display: none }
+    }
+
+    #help .box #btnReset { display: block; margin: 12px auto 0; min-height: 44px; padding: 0 16px }
+
+    /* =====================================================================
+       MINIJUEGOS CON INTERFAZ PROPIA (LA♯ y MI) · misma regla que el HUD
+       Antes cada bloque tenía un «top» en porcentaje (21 %, 55 %, 78 %, 84 %): cuando la bandeja de fragmentos
+       pasaba a dos filas, tapaba el contador y el botón. Ahora LA♯ es una columna: pentagrama → bandeja →
+       contador → botones, en ese orden, con el espacio que cada uno necesite. La columna respeta la franja
+       superior del HUD (--ui-top) y, si la pantalla es muy baja, se desplaza en vez de recortarse.
+       ===================================================================== */
+    :root { --ui-top: 118px }
+    @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) { :root { --ui-top: 196px } }
+    @media (max-width: 380px) { :root { --ui-top: 248px } }
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) { :root { --ui-top: 96px } }
+
+    #laUI[style*="block"] {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      gap: clamp(8px, 1.6vh, 16px);
+      padding: var(--ui-top) max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      overflow-y: auto;
+      scrollbar-width: none
+    }
+
+    #laUI .frame, #laUI .tray, #laUI #laStatus, #laUI #laBtns {
+      position: relative;
+      inset: auto;
+      transform: none;
+      flex: none
+    }
+    #laUI .frame { width: min(780px, 100%); gap: clamp(6px, 1.2vw, 12px) }
+    #laUI .tray { width: min(820px, 100%); gap: clamp(6px, 1.2vw, 12px) }
+    #laUI #laBtns { width: 100% }
+    #laUI #laStatus { white-space: normal; text-align: center; padding: 4px 12px; background: rgba(0, 0, 0, .6) }
+    #laUI .slot, #laUI .lcard { width: min(150px, 21vw); height: clamp(66px, 12vh, 108px) }
+    #laUI .lcard strong { font-size: clamp(10px, 2.6vw, 14px) }
+    @media (max-width: 520px) { #laUI .lcard .tiny { display: none } }
+
+    /* MI: los botones descansan abajo, centrados, por encima del área segura; la carta de intención no invade
+       la columna derecha del HUD */
+    #miUI #miBtns { top: auto; bottom: max(18px, env(safe-area-inset-bottom)); width: min(94vw, 720px) }
+    #miUI #intentionCard { top: calc(var(--ui-top) + 56px); right: max(16px, env(safe-area-inset-right)); max-width: 46vw }
+
+    /* con un minijuego de interfaz propia en juego, la ficha de sala y la fuente sonora se apartan (el título ya
+       está marcado en las pestañas superiores) */
+    body[data-phase="play"]:has(#laUI[style*="block"], #miUI[style*="block"]) #hud #roomInfo,
+    body[data-phase="play"]:has(#laUI[style*="block"], #miUI[style*="block"]) #hud #sourceChip { display: none !important }
+
+    /* =====================================================================
+       SEGUNDA PASADA DEL BANCO DE PRUEBAS (105 combinaciones)
+       ===================================================================== */
+    /* Menú, ayuda y epílogo son pantallas completas: el HUD no se dibuja debajo de ellas. */
+    body[data-phase="intro"] #hud,
+    body[data-phase="epilogue"] #hud,
+    body:has(#help.show) #hud { visibility: hidden }
+
+    /* ⟳ (girar la vista) solo existe mientras se camina: atrio y preludio. Antes quedaba encendido en los
+       minijuegos y pisaba sus botones. */
+    body:not([data-phase="atrium"]):not([data-phase="prelude"]) #hud #btnLook { display: none !important }
+
+    /* Celular en horizontal: la tarjeta ocupa la columna central, sin invadir «Volver al atrio». */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+      #hud .card { grid-column: 2; width: 100%; max-height: 100% }
+      #hud .card h2 { font-size: 20px }
+      #hud .card p { font-size: 13px; margin-bottom: 8px }
+    }
+
+    /* Pantallas muy bajas en vertical (≤ 600 px): todo un punto más compacto para que los controles no se salgan. */
+    @media (max-height: 600px) and (max-width: 960px) {
+      #hud { row-gap: 6px }
+      #hud #roomInfo { padding: 6px 12px 6px 0 }
+      #hud #roomInfo h1 { font-size: 16px; margin: 0 }
+      #hud #joy { width: 92px; height: 92px }
+      #hud #btnLook { width: 46px; height: 46px }
+      #hud #prompt { padding: 10px 16px; font-size: 12px }
+      #hud #coach { padding: 8px 12px; font-size: 13px }
+    }
+
+    /* LA♯ en horizontal bajo: dos columnas (pentagrama + acciones | bandeja) en vez de una columna que no cabe. */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+      #laUI[style*="block"] {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas: "frame tray" "status tray" "btns tray";
+        align-content: center;
+        justify-items: center;
+        column-gap: 16px;
+        row-gap: 6px
+      }
+      #laUI .frame { grid-area: frame; padding: 16px 8px 8px }
+      #laUI .tray { grid-area: tray; align-self: center }
+      #laUI #laStatus { grid-area: status }
+      #laUI #laBtns { grid-area: btns }
+      #laUI .slot, #laUI .lcard { width: min(92px, 10.5vw); height: 58px }
+      #laUI .lcard img { height: 20px }
+      #laUI .lcard .tiny { display: none }
+      #laUI .btns { min-height: 40px; padding: 6px 10px; font-size: 11px }
+    }

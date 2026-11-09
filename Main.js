@@ -7,7 +7,7 @@
 import { $, clamp, lerp, damp, rand, lerpAngle, TOUCH, qs, V3, LIME, LIMEH, PAPER, PALE, FONT, SERIF } from './core/util.js';
 import { T, tickTime } from './core/time.js';
 import { QUALITY, CARDS, OPLIST, HAND, EXPERIMENT } from './core/config.js';
-import { S, roomGen } from './core/state.js';
+import { S, roomGen, resetProgress } from './core/state.js';
 import { ptr, keys, ptrActive } from './core/inputState.js';
 import { A, ensureAudio, setMuted, audioLevel } from './AudioSystem.js';
 import { navInit, navVizUpdate } from './NavMesh.js';
@@ -28,7 +28,7 @@ import {
   clickToGo, tryJump, setLookHold, setCamDt, setPlayerCallbacks, resetPlayerPhysics, stairLocal
 } from './player.js';
 import { startGame, tryEnter, enterRoom, startRoom, leaveRoom, afterDone, cur, bootGame, finish } from './flow.js';
-import { initDebug, perfTick, adaptRes, perfEl } from './ui/debug.js';
+import { initDebug, perfTick, adaptRes, perfEl, setResCap } from './ui/debug.js';
 
 /* ======================================================================
    CONTEXTO COMPARTIDO + NAVMESH
@@ -101,6 +101,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => keys.delete(e.code));
 function toggleHelp() { $('help').classList.toggle('show') }
+$('btnReset').onclick = () => { if (confirm('¿Borrar el progreso guardado y empezar de nuevo?')) { resetProgress(); location.reload() } };
 $('btnHelp').onclick = toggleHelp; $('helpClose').onclick = toggleHelp; $('btnSound').onclick = () => { ensureAudio(); setMuted(!A.muted) };
 $('btnWalk').innerHTML = `Ir a la siguiente sala${TOUCH ? '' : ' <kbd>C</kbd>'}`; $('btnWalk').onclick = () => { $('btnWalk').blur(); walkNext() };
 $('btnStart').onclick = startGame; $('prompt').onclick = () => S.phase === 'prelude' ? enterZone() : tryEnter(); $('btnBack').onclick = () => leaveRoom();
@@ -121,6 +122,15 @@ function frame() {
   const dt = Math.min((now - lastTime) / 1000, .05);
   lastTime = now;
   tickTime(dt); setCamDt(dt); adaptRes(dt);
+  /* Tarjeta abierta (ficha, cierre o ayuda) → la escena pasa a segundo plano: desenfoque en CSS + menor resolución. */
+  const cardOpen = $('brief').classList.contains('show') || $('done').classList.contains('show') || $('help').classList.contains('show');
+  /* Franja superior ocupada por el HUD (pestañas, «Volver», «Saltar», pista): las interfaces de los minijuegos
+     empiezan debajo de ella (--ui-top en style.css). Se mide, no se supone: vale para cualquier tamaño. */
+  if ((frame.n = (frame.n || 0) + 1) % 10 === 0 && S.room) {
+    let top = 0; for (const id of ['progress', 'btnBack', 'btnSkip', 'btnVoSkip', 'roomHint']) { const el = $(id); if (el.offsetParent) top = Math.max(top, el.getBoundingClientRect().bottom) }
+    top = Math.round(top + 10); if (top !== frame.uiTop) { frame.uiTop = top; document.documentElement.style.setProperty('--ui-top', top + 'px') }
+  }
+  if (cardOpen !== frame.cardOpen) { frame.cardOpen = cardOpen; document.body.classList.toggle('card-open', cardOpen); setResCap(cardOpen ? .55 : 1) }
   if (document.body.dataset.phase !== S.phase) { if (S.phase === 'atrium' || S.phase === 'prelude') reshowRoomInfo(); document.body.dataset.phase = S.phase } // jerarquía de la interfaz (style.css)
   BG.lerp(BGT, 1 - Math.exp(-3 * dt)); audioLevel();
   const wantJoy = TOUCH && (S.phase === 'atrium' || S.phase === 'prelude' || (S.phase === 'play' && S.room === 4)); if (document.body.classList.contains('joy-on') !== wantJoy) document.body.classList.toggle('joy-on', wantJoy);
