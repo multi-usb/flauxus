@@ -3878,3 +3878,129 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
   #m1 .hero-scroll i,
   #m1 .hero-scroll small { animation: none !important; }
 }
+
+/* =====================================================================
+   INICIO Y PRELOADER EN CELULAR · columna que se apila sola
+   Antes cada pieza (logotipo, cinta de carga, lema, botón, leyenda) tenía su «top» en porcentaje del alto. En
+   celular el logotipo es la versión cuadrada —mucho más alta— y terminaba encima del lema y del botón (hasta
+   46 px de solape medidos entre 320 y 430 px de ancho). Ahora #boot es una columna centrada: el logotipo se
+   acota por ancho Y por alto, y lo demás fluye debajo con su separación. Las figuras de fondo no cambian.
+   ===================================================================== */
+@media (max-width: 767px) {
+  #boot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(12px, 2.6svh, 24px);
+    padding: max(20px, env(safe-area-inset-top)) 5vw max(20px, env(safe-area-inset-bottom));
+  }
+
+  /* !important: reglas posteriores de esta misma pantalla (variantes por orientación) fijan top/left */
+  #boot .boot-logo,
+  #boot .boot-tape,
+  #boot .home-tagline,
+  #boot .press-start,
+  #boot .home-audio-caption {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    flex: none;
+  }
+
+  #boot .boot-logo,
+  #boot.ready .boot-logo {
+    top: auto;
+    transform: none;
+    width: min(76vw, 40svh);
+  }
+
+  #boot .boot-tape { transform: none; width: min(78vw, 408px); }
+  #boot .tape-bar { top: 0; height: min(12svh, 96px); }
+  #boot.ready .boot-tape { display: none; }
+
+  /* lo del inicio no ocupa sitio mientras carga; al aparecer, entra con su fundido */
+  #boot:not(.ready) .home-tagline,
+  #boot:not(.ready) .press-start,
+  #boot:not(.ready) .home-audio-caption { display: none; }
+
+  #boot.ready .home-tagline,
+  #boot.ready .home-audio-caption { transform: none; }
+  #boot .home-tagline { width: 100%; max-width: 92vw; white-space: normal; text-wrap: balance; }
+
+  #boot .press-start,
+  #boot .press-start:hover:not(:disabled),
+  #boot .press-start:focus-visible:not(:disabled) {
+    transform: none;
+    width: min(86vw, 420px);
+    height: auto;
+    min-height: 56px;
+  }
+
+  @starting-style {
+    #boot.ready .home-tagline,
+    #boot.ready .home-audio-caption { opacity: 0; }
+  }
+}
+
+/* celular en horizontal (poco alto): la misma columna, más compacta */
+@media (max-height: 480px) and (orientation: landscape) {
+  .boot-logo, #boot.ready .boot-logo { width: min(46vw, 560px); }
+}
+
+/* El ◀◀ de la landing sobre el juego es solo un respaldo mientras el juego carga: ocupa exactamente el mismo
+   lugar y tamaño que el «◀◀ Salir» que el juego dibuja después, para que el relevo no produzca ningún salto. */
+#game .game-close {
+  top: max(clamp(12px, 1.6vw, 22px), env(safe-area-inset-top));
+  left: max(clamp(12px, 1.6vw, 22px), env(safe-area-inset-left));
+  width: 92px;
+  min-width: 0;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: .02em;
+  z-index: 2;
+}
+
+#game.game-ready .game-close { display: none; }
+
+@media (max-width: 960px), (max-height: 500px) {
+  #game .game-close { width: 52px; }
+  #game .game-close span { display: none; }
+}
+
+/* =====================================================================
+   M4 · dos casos que la auditoría encontró fuera del escritorio
+   ===================================================================== */
+/* Celulares: la cita larga mide en píxeles (líneas de texto), pero su hueco estaba en vh (34 % del alto). En
+   pantallas bajas (320×568, 375×667) no cabía y la foto siguiente la pisaba. Todo lo que va después de la cita
+   baja exactamente lo que le falte al hueco (--m4-shift); en pantallas altas el desplazamiento es 0. */
+@media (max-width: 767px) {
+  .m4-stage { --m4-shift: max(0px, 310px - 34vh); height: calc(310vh + var(--m4-shift)); }
+  .ph-c { top: calc(196vh + var(--m4-shift)); }
+  .ph-d { top: calc(214vh + var(--m4-shift)); }
+  .ph-e { top: calc(246vh + var(--m4-shift)); }
+  .m4-quote.q2 { top: calc(290vh + var(--m4-shift)); }
+}
+
+/* Celular en horizontal y ventanas muy bajas (≥ 768 px de ancho, ≤ 560 px de alto): los textos miden lo mismo
+   en píxeles pero el vh es diminuto, así que las posiciones en vh se amontonaban. Aquí la composición usa una
+   unidad con suelo (--u = 6,4 px, como si la pantalla midiera 640 px de alto) y las fotos se acotan por ambas
+   dimensiones, igual que en escritorio. */
+@media (min-width: 768px) and (max-height: 560px) {
+  .m4-stage { --u: 6.4px; height: calc(300 * var(--u)); }
+  .m4-name { top: calc(22 * var(--u)); }
+  .ph-a { top: calc(28 * var(--u)); left: 33vw; width: min(27vw, calc(60 * var(--u))); }
+  .ph-b { top: calc(18 * var(--u)); width: min(40vw, calc(78 * var(--u))); }
+  .m4-facts { top: calc(70 * var(--u)); width: min(24vw, 380px); }
+  .ph-d { top: calc(96 * var(--u)); width: min(46vw, calc(90 * var(--u))); }
+  .m4-quote.q1 { top: calc(98 * var(--u)); width: min(32vw, 540px); }
+  .ph-c { top: calc(150 * var(--u)); width: min(24vw, calc(46 * var(--u))); }
+  .ph-e { top: calc(168 * var(--u)); width: min(26vw, calc(42 * var(--u))); }
+  .m4-quote.q2 { top: calc(246 * var(--u)); }
+}
