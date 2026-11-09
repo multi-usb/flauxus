@@ -2591,6 +2591,22 @@
     /* el aviso de ayuda del atrio queda por encima de la ficha (antes la pisaba en ~1280 px) */
     #coach { bottom: 168px }
 
+
+    /* Táctil dentro de una sala: «Volver al atrio» ocupa la franja superior (top 106 px en ≤720 px), así que la
+       ficha baja por debajo; en juego, la ficha y la fuente sonora se apartan para dejar la pista y los controles. */
     @media (max-width: 720px) {
-      #coach { bottom: auto; top: calc(max(14px, env(safe-area-inset-top)) + 150px) }
+      body[data-phase="prelude"] #roomInfo,
+      body[data-phase="brief"] #roomInfo,
+      body[data-phase="play"] #roomInfo { top: 158px }
+    }
+
+    body.touch[data-phase="play"] #roomInfo,
+    body.touch[data-phase="play"] #sourceChip {
+      opacity: 0;
+      visibility: hidden
+    }
+
+    /* Táctil: la locución sube por encima del botón ⟳ (girar la vista), que antes quedaba tapado en el preludio. */
+    body.touch #vo {
+      bottom: calc(max(36px, env(safe-area-inset-bottom)) + 204px)
     }
