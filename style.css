@@ -1,21 +1,68 @@
-    /* ============ FLAUXUS · sistema visual v6.1 ============
-   Dirección: cuaderno de ensayo. Escenas en tinta oscura cálida; todo lo que
-   "habla" (instrucciones, resultados) es papel con grano, cinta y marcador.
-   Color principal del grupo: #c9d000 (--lime).                              */
+    /* ============ FLAUXUS · sistema visual v7 (identidad de la landing) ============
+   La interfaz del juego usa el mismo sistema que la landing (../landing/src/styles/tokens.css y fonts.css):
+   negro dominante, verde eléctrico #C2FE0B (reemplazó al #C9D200 del manual), blanco, fichas en carbón #121212;
+   Unbounded en titulares, Tektur en notas y cifras, Space Grotesk en textos, Martian Mono en datos y botones.
+   Solo cambia la capa de interfaz: luces, escenarios y colores 3D siguen en core/util.js y engine/.
+   Fuentes servidas desde fonts/ (copiadas de @fontsource, subset latin, variables).                      */
+    @font-face {
+      font-family: "Tektur";
+      src: url("fonts/tektur-latin-standard-normal.woff2") format("woff2-variations");
+      font-weight: 400 900;
+      font-stretch: 75% 100%;
+      font-display: swap
+    }
+
+    @font-face {
+      font-family: "Unbounded";
+      src: url("fonts/unbounded-latin-wght-normal.woff2") format("woff2-variations");
+      font-weight: 200 900;
+      font-display: swap
+    }
+
+    @font-face {
+      font-family: "Space Grotesk";
+      src: url("fonts/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+      font-weight: 300 700;
+      font-display: swap
+    }
+
+    @font-face {
+      font-family: "Martian Mono";
+      src: url("fonts/martian-mono-latin-wght-normal.woff2") format("woff2-variations");
+      font-weight: 100 800;
+      font-display: swap
+    }
+
     :root {
-      --ink: #0d0e09;
-      --ink2: #171911;
-      --paper: #efeadb;
-      --paper2: #e3dcc6;
-      --lime: #c9d000;
-      --lime-d: #8b9000;
+      /* tokens de la landing (mismos nombres) */
+      --rw-verde: #C2FE0B;
+      --rw-negro: #000000;
+      --rw-blanco: #FFFFFF;
+      --rw-carbon: #121212;
+      --rw-gris: #383838;
+      --rw-ease: cubic-bezier(.2, .8, .2, 1);
+      --rw-tactil-min: 56px;
+      --font-display: "Tektur", "Space Grotesk", system-ui, sans-serif;
+      --font-head: "Unbounded", "Tektur", system-ui, sans-serif;
+      --font-text: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "Martian Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+      /* tokens propios del juego, ahora apuntando a la landing */
+      --ink: var(--rw-negro);
+      --ink2: var(--rw-carbon);
+      --paper: var(--rw-carbon);        /* las antiguas "tarjetas de papel" son fichas en carbón */
+      --paper2: var(--rw-carbon);
+      --lime: var(--rw-verde);
+      --lime-d: var(--rw-verde);
       --coral: #ff7a5c;
-      --fg: #f1eee3;
-      --muted: #a6a392;
-      --serif: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
-      --sans: 'Instrument Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --ease: cubic-bezier(.2, .8, .2, 1);
-      --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .2  0 0 0 0 .18  0 0 0 0 .1  0 0 0 .13 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      --fg: var(--rw-blanco);
+      --fg-2: rgba(255, 255, 255, .78); /* texto secundario: blanco con opacidad, como la landing */
+      --fg-3: rgba(255, 255, 255, .5);  /* datos y notas (--rw-opacidad-controles) */
+      --muted: var(--fg-3);
+      --serif: var(--font-display);
+      --sans: var(--font-text);
+      --ease: var(--rw-ease);
+      --grain: none;                    /* sin grano de papel */
     }
 
     * {
@@ -74,9 +121,9 @@
 
     .dk kbd,
     kbd.dk {
-      border-color: #555846;
+      border-color: var(--rw-gris);
       background: #1b1d14;
-      color: var(--paper);
+      color: var(--fg);
       box-shadow: 0 2px 0 #000
     }
 
@@ -119,7 +166,7 @@
     }
 
     .brand {
-      font: italic 700 30px/1 var(--serif);
+      font: 700 30px/1 var(--serif);
       letter-spacing: -.02em;
       font-variation-settings: 'SOFT' 60, 'opsz' 72;
       display: flex;
@@ -151,9 +198,9 @@
     .pip {
       min-width: 44px;
       padding: 6px 8px 5px;
-      border: 1.5px solid #3b3d2f;
+      border: 1.5px solid var(--rw-gris);
       border-radius: 999px;
-      background: rgba(13, 14, 9, .62);
+      background: rgba(0, 0, 0, .62);
       text-align: center;
       transition: .3s var(--ease);
       backdrop-filter: blur(4px)
@@ -162,7 +209,7 @@
     .pip b {
       display: block;
       font: 700 12px/1 var(--sans);
-      color: #8d8b7c
+      color: var(--fg-3)
     }
 
     .pip.done {
@@ -191,19 +238,19 @@
 
       0%,
       100% {
-        box-shadow: 0 0 0 0 rgba(201, 208, 0, .5)
+        box-shadow: 0 0 0 0 rgba(194, 254, 11, .5)
       }
 
       50% {
-        box-shadow: 0 0 0 7px rgba(201, 208, 0, 0)
+        box-shadow: 0 0 0 7px rgba(194, 254, 11, 0)
       }
     }
 
     #objective {
       margin-top: 9px;
       text-align: center;
-      font: italic 400 15px var(--serif);
-      color: #cfcbb8
+      font: 400 15px var(--serif);
+      color: var(--fg-2)
     }
 
     .rightTop {
@@ -217,17 +264,17 @@
       font-size: 11px;
       color: var(--muted);
       padding: 6px 11px;
-      border: 1px solid #34362a;
+      border: 1px solid var(--rw-gris);
       border-radius: 20px;
-      background: rgba(13, 14, 9, .6)
+      background: rgba(0, 0, 0, .6)
     }
 
     .icon {
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      border: 1.5px solid #484a3b;
-      background: rgba(13, 14, 9, .72);
+      border: 1.5px solid var(--rw-gris);
+      background: rgba(0, 0, 0, .72);
       font-size: 15px;
       line-height: 1;
       transition: .15s
@@ -250,7 +297,7 @@
       bottom: max(18px, env(safe-area-inset-bottom));
       max-width: min(560px, 60vw);
       padding: 16px 40px 16px max(22px, env(safe-area-inset-left));
-      background: linear-gradient(90deg, rgba(13, 14, 9, .72) 0%, rgba(13, 14, 9, .56) 72%, rgba(13, 14, 9, 0) 100%);
+      background: linear-gradient(90deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, .56) 72%, rgba(0, 0, 0, 0) 100%);
       -webkit-mask-image: linear-gradient(to top, #000 78%, transparent);
       mask-image: linear-gradient(to top, #000 78%, transparent);
       text-shadow: 0 1px 10px #000
@@ -265,7 +312,7 @@
     }
 
     #roomInfo h1 {
-      font: italic 700 clamp(26px, 4vw, 40px)/1 var(--serif);
+      font: 700 clamp(26px, 4vw, 40px)/1 var(--serif);
       letter-spacing: -.02em;
       margin: 0 0 8px;
       font-variation-settings: 'SOFT' 60
@@ -274,7 +321,7 @@
     #roomInfo p {
       font-size: 13px;
       line-height: 1.5;
-      color: #dcd8c6;
+      color: var(--fg-2);
       margin: 0
     }
 
@@ -309,7 +356,7 @@
       transition: .22s var(--ease);
       white-space: nowrap;
       pointer-events: none;
-      box-shadow: 0 4px 0 var(--lime-d), 0 12px 32px rgba(201, 208, 0, .28)
+      box-shadow: 0 4px 0 var(--lime-d), 0 12px 32px rgba(194, 254, 11, .28)
     }
 
     #prompt.show {
@@ -355,9 +402,9 @@
       display: none;
       font: 600 13px var(--sans);
       padding: 10px 15px;
-      border: 1.5px solid #484a3b;
+      border: 1.5px solid var(--rw-gris);
       border-radius: 999px;
-      background: rgba(13, 14, 9, .72);
+      background: rgba(0, 0, 0, .72);
       min-height: 44px
     }
 
@@ -374,8 +421,8 @@
       min-height: 48px;
       border: 1.5px solid var(--lime);
       border-radius: 999px;
-      background: rgba(13, 14, 9, .78);
-      color: var(--paper);
+      background: rgba(0, 0, 0, .78);
+      color: var(--fg);
       opacity: 0;
       transform: translateY(8px);
       pointer-events: none;
@@ -390,7 +437,7 @@
     }
 
     #btnWalk:hover {
-      background: rgba(201, 208, 0, .16)
+      background: rgba(194, 254, 11, .16)
     }
 
     #btnWalk kbd {
@@ -404,9 +451,9 @@
       width: 52px;
       height: 52px;
       border-radius: 50%;
-      border: 1.5px solid rgba(239, 234, 219, .4);
-      background: rgba(13, 14, 9, .6);
-      color: var(--paper);
+      border: 1.5px solid rgba(255, 255, 255, .4);
+      background: rgba(0, 0, 0, .6);
+      color: var(--fg);
       font-size: 22px;
       display: none;
       touch-action: none;
@@ -414,7 +461,7 @@
     }
 
     #btnLook:active {
-      background: rgba(201, 208, 0, .3);
+      background: rgba(194, 254, 11, .3);
       border-color: var(--lime)
     }
 
@@ -439,7 +486,7 @@
       height: 48px;
       border-radius: 50%;
       border: 2px solid var(--lime);
-      box-shadow: 0 0 26px rgba(201, 208, 0, .6);
+      box-shadow: 0 0 26px rgba(194, 254, 11, .6);
       animation: pipPulse 1.5s infinite
     }
 
@@ -462,10 +509,10 @@
       top: 32px;
       padding: 3px 10px;
       border-radius: 999px;
-      background: rgba(13, 14, 9, .78);
+      background: rgba(0, 0, 0, .78);
       white-space: nowrap;
       font: 600 12px var(--sans);
-      color: var(--paper)
+      color: var(--fg)
     }
 
     #joy {
@@ -475,8 +522,8 @@
       width: 132px;
       height: 132px;
       border-radius: 50%;
-      border: 1.5px solid rgba(239, 234, 219, .35);
-      background: radial-gradient(circle, rgba(13, 14, 9, .25), rgba(13, 14, 9, .55));
+      border: 1.5px solid rgba(255, 255, 255, .35);
+      background: radial-gradient(circle, rgba(0, 0, 0, .25), rgba(0, 0, 0, .55));
       display: none;
       touch-action: none
     }
@@ -492,9 +539,9 @@
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      background: rgba(201, 208, 0, .82);
+      background: rgba(194, 254, 11, .82);
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 22px rgba(201, 208, 0, .4);
+      box-shadow: 0 0 22px rgba(194, 254, 11, .4);
       pointer-events: none
     }
 
@@ -543,10 +590,10 @@
       left: 50%;
       top: 92px;
       transform: translateX(-50%);
-      font: italic 400 16px var(--serif);
-      color: var(--paper);
+      font: 400 16px var(--serif);
+      color: var(--fg);
       padding: 8px 18px;
-      background: rgba(13, 14, 9, .66);
+      background: rgba(0, 0, 0, .66);
       border-radius: 999px;
       backdrop-filter: blur(4px);
       white-space: nowrap;
@@ -582,7 +629,7 @@
       left: 26px;
       width: 78px;
       height: 24px;
-      background: rgba(201, 208, 0, .82);
+      background: rgba(194, 254, 11, .82);
       transform: rotate(-4deg);
       box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
       mix-blend-mode: multiply
@@ -620,14 +667,14 @@
 
     .card .k {
       font: 600 12px var(--sans);
-      color: #6b6a52;
+      color: var(--fg-3);
       margin-bottom: 10px;
       letter-spacing: .03em
     }
 
     .card h2 {
       margin: 0 0 12px;
-      font: italic 700 clamp(30px, 6vw, 40px)/1 var(--serif);
+      font: 700 clamp(30px, 6vw, 40px)/1 var(--serif);
       letter-spacing: -.02em;
       font-variation-settings: 'SOFT' 60
     }
@@ -641,7 +688,7 @@
       margin: 0 0 16px;
       font-size: 15px;
       line-height: 1.55;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     .ctl {
@@ -650,7 +697,7 @@
       gap: 14px;
       margin: 9px 0;
       font-size: 14px;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     .ctl .keys {
@@ -664,10 +711,10 @@
       display: inline-block;
       margin: 2px 0 4px;
       padding: 4px 10px;
-      border: 1.5px dashed #6b6a52;
+      border: 1.5px dashed var(--fg-3);
       border-radius: 20px;
       font: 600 12px var(--sans);
-      color: #5a5943
+      color: var(--fg-3)
     }
 
     .btn {
@@ -682,7 +729,7 @@
       color: var(--ink);
       font: 700 16px var(--sans);
       transition: .15s;
-      box-shadow: 0 4px 0 var(--lime-d), 0 10px 26px rgba(201, 208, 0, .25)
+      box-shadow: 0 4px 0 var(--lime-d), 0 10px 26px rgba(194, 254, 11, .25)
     }
 
     .btn:hover {
@@ -696,7 +743,7 @@
 
     .btn[disabled] {
       background: #cfcbb4;
-      color: #7b7964;
+      color: var(--fg-3);
       box-shadow: 0 4px 0 #a9a58f;
       cursor: wait
     }
@@ -704,10 +751,10 @@
     .btns {
       min-height: 46px;
       padding: 11px 18px;
-      border: 1.5px solid var(--paper);
+      border: 1.5px solid var(--fg);
       border-radius: 999px;
-      background: rgba(13, 14, 9, .78);
-      color: var(--paper);
+      background: rgba(0, 0, 0, .78);
+      color: var(--fg);
       font: 600 14px var(--sans);
       transition: .15s;
       backdrop-filter: blur(4px)
@@ -735,7 +782,7 @@
       gap: 8px;
       font-size: 14px;
       padding: 6px 0;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     .stat span {
@@ -744,13 +791,13 @@
 
     .stat u {
       flex: 1;
-      border-bottom: 2px dotted #8d8a73;
+      border-bottom: 2px dotted var(--fg-3);
       transform: translateY(-3px);
       text-decoration: none
     }
 
     .stat b {
-      font: italic 700 17px var(--serif);
+      font: 700 17px var(--serif);
       color: var(--ink)
     }
 
@@ -761,7 +808,7 @@
       padding: 6px 14px;
       border: 3px solid var(--ink);
       border-radius: 50%/40%;
-      font: italic 700 17px var(--serif);
+      font: 700 17px var(--serif);
       transform: rotate(9deg);
       background: var(--lime);
       animation: stampIn .5s .25s var(--ease) both
@@ -785,10 +832,10 @@
       top: 76px;
       font: 500 13px var(--sans);
       padding: 10px 14px;
-      border: 1.5px dashed #6a6c58;
+      border: 1.5px dashed var(--rw-gris);
       border-radius: 999px;
-      background: rgba(13, 14, 9, .7);
-      color: #b9b6a4;
+      background: rgba(0, 0, 0, .7);
+      color: var(--fg-2);
       display: none;
       min-height: 44px
     }
@@ -851,16 +898,16 @@
     }
 
     .tc-note {
-      font: italic 800 clamp(70px, 16vw, 190px)/1 var(--serif);
+      font: 800 clamp(70px, 16vw, 190px)/1 var(--serif);
       color: var(--lime);
       letter-spacing: -.04em;
-      text-shadow: 0 0 70px rgba(201, 208, 0, .5);
+      text-shadow: 0 0 70px rgba(194, 254, 11, .5);
       font-variation-settings: 'SOFT' 60
     }
 
     .tc-title {
-      font: italic 400 clamp(16px, 2.4vw, 24px) var(--serif);
-      color: var(--paper);
+      font: 400 clamp(16px, 2.4vw, 24px) var(--serif);
+      color: var(--fg);
       margin-top: 4px
     }
 
@@ -876,8 +923,8 @@
       gap: 0;
       overflow: hidden;
       background:
-        radial-gradient(ellipse at 50% 38%, rgba(201, 208, 0, .07), transparent 54%),
-        radial-gradient(ellipse at 50% 92%, rgba(239, 234, 219, .045), transparent 62%),
+        radial-gradient(ellipse at 50% 38%, rgba(194, 254, 11, .07), transparent 54%),
+        radial-gradient(ellipse at 50% 92%, rgba(255, 255, 255, .045), transparent 62%),
         #221e1d;
       opacity: 0;
       visibility: hidden;
@@ -910,7 +957,7 @@
       aspect-ratio: 1;
       transform: translate(-50%, -50%);
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(201, 208, 0, .11), rgba(201, 208, 0, .03) 42%, transparent 70%);
+      background: radial-gradient(circle, rgba(194, 254, 11, .11), rgba(194, 254, 11, .03) 42%, transparent 70%);
       filter: blur(8px);
       pointer-events: none
     }
@@ -930,24 +977,24 @@
 
     .pl-ring.r1 {
       inset: 0;
-      border: 1.5px solid rgba(201, 208, 0, .16);
+      border: 1.5px solid rgba(194, 254, 11, .16);
       border-top-color: var(--lime);
-      border-right-color: rgba(201, 208, 0, .7);
+      border-right-color: rgba(194, 254, 11, .7);
       animation: plSpin 2.7s linear infinite;
-      box-shadow: 0 0 24px rgba(201, 208, 0, .13)
+      box-shadow: 0 0 24px rgba(194, 254, 11, .13)
     }
 
     .pl-ring.r2 {
       inset: 17px;
-      border: 1px solid rgba(239, 234, 219, .13);
+      border: 1px solid rgba(255, 255, 255, .13);
       border-bottom-color: var(--lime);
-      border-left-color: rgba(201, 208, 0, .55);
+      border-left-color: rgba(194, 254, 11, .55);
       animation: plSpin 4.4s linear infinite reverse
     }
 
     .pl-ring.r3 {
       inset: 36px;
-      border: 1px dashed rgba(201, 208, 0, .38);
+      border: 1px dashed rgba(194, 254, 11, .38);
       animation: plPulse 2.4s ease-in-out infinite
     }
 
@@ -955,9 +1002,9 @@
       position: absolute;
       left: 50%;
       top: 50%;
-      font: italic 700 48px/1 var(--serif);
+      font: 700 48px/1 var(--serif);
       color: var(--lime);
-      text-shadow: 0 0 26px rgba(201, 208, 0, .55), 0 0 70px rgba(201, 208, 0, .28);
+      text-shadow: 0 0 26px rgba(194, 254, 11, .55), 0 0 70px rgba(194, 254, 11, .28);
       transform: translate(-50%, -50%);
       animation: plFloat 2.9s ease-in-out infinite;
       pointer-events: none;
@@ -984,7 +1031,7 @@
 
     .pl-title {
       margin: 9px 0 7px;
-      font: italic 700 clamp(30px, 4.4vw, 48px)/1.02 var(--serif);
+      font: 700 clamp(30px, 4.4vw, 48px)/1.02 var(--serif);
       letter-spacing: -.025em;
       color: var(--fg);
       text-shadow: 0 10px 34px rgba(0, 0, 0, .35);
@@ -994,7 +1041,7 @@
     .pl-sub {
       min-height: 18px;
       font: 500 13px/1.35 var(--sans);
-      color: #b8b29e;
+      color: var(--fg-2);
       letter-spacing: .015em
     }
 
@@ -1004,7 +1051,7 @@
       height: 2px;
       margin-top: 30px;
       border-radius: 999px;
-      background: rgba(239, 234, 219, .15);
+      background: rgba(255, 255, 255, .15);
       overflow: hidden
     }
 
@@ -1015,7 +1062,7 @@
       border-radius: inherit;
       background: linear-gradient(90deg, #8b9000, var(--lime) 58%, #f1ff5a);
       background-size: 220% 100%;
-      box-shadow: 0 0 18px rgba(201, 208, 0, .65);
+      box-shadow: 0 0 18px rgba(194, 254, 11, .65);
       transition: width .32s linear;
       animation: plShimmer 1.4s linear infinite
     }
@@ -1023,7 +1070,7 @@
     .pl-pct {
       margin-top: 10px;
       font: 600 11px/1 var(--sans);
-      color: #8d8b7c;
+      color: var(--fg-3);
       letter-spacing: .09em;
       font-variant-numeric: tabular-nums
     }
@@ -1139,13 +1186,13 @@
       font: 600 11px var(--sans);
       letter-spacing: .07em;
       text-transform: uppercase;
-      color: #6b6a52;
+      color: var(--fg-3);
       margin-bottom: 4px
     }
 
     #unlock strong {
       display: block;
-      font: italic 700 24px/1.1 var(--serif);
+      font: 700 24px/1.1 var(--serif);
       margin-bottom: 5px
     }
 
@@ -1153,7 +1200,7 @@
       display: block;
       font-size: 13.5px;
       line-height: 1.45;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     #unlock span.cards {
@@ -1237,8 +1284,8 @@
 
     .cardchip.menu {
       background: var(--ink2);
-      color: var(--paper);
-      border-color: #555846;
+      color: var(--fg);
+      border-color: var(--rw-gris);
       box-shadow: 0 3px 0 #000
     }
 
@@ -1254,7 +1301,7 @@
       transform: translateX(-50%) translateY(10px);
       width: min(720px, calc(100vw - 32px));
       padding: 14px 20px 15px;
-      background: rgba(13, 14, 9, .74);
+      background: rgba(0, 0, 0, .74);
       backdrop-filter: blur(6px);
       border-left: 3px solid var(--lime);
       border-radius: 4px 14px 14px 4px;
@@ -1278,8 +1325,8 @@
 
     #voText {
       margin: 0;
-      font: italic 400 clamp(16px, 2.2vw, 21px)/1.5 var(--serif);
-      color: var(--paper)
+      font: 400 clamp(16px, 2.2vw, 21px)/1.5 var(--serif);
+      color: var(--fg)
     }
 
     #voText .w {
@@ -1303,10 +1350,10 @@
       top: 76px;
       font: 500 13px var(--sans);
       padding: 10px 14px;
-      border: 1.5px dashed #6a6c58;
+      border: 1.5px dashed var(--rw-gris);
       border-radius: 999px;
-      background: rgba(13, 14, 9, .7);
-      color: #b9b6a4;
+      background: rgba(0, 0, 0, .7);
+      color: var(--fg-2);
       display: none;
       min-height: 44px
     }
@@ -1328,12 +1375,12 @@
       align-items: center;
       flex-wrap: wrap;
       font-size: 12px;
-      color: #6b6a52
+      color: var(--fg-3)
     }
 
     .devpick a {
       padding: 5px 11px;
-      border: 1.5px dashed #6b6a52;
+      border: 1.5px dashed var(--fg-3);
       border-radius: 20px;
       color: var(--ink);
       text-decoration: none;
@@ -1360,15 +1407,15 @@
     .ent {
       min-width: 150px;
       padding: 10px 14px;
-      border: 1.5px dashed #484a3b;
+      border: 1.5px dashed var(--rw-gris);
       border-radius: 10px;
       color: var(--muted)
     }
 
     .ent b {
       display: block;
-      font: italic 700 17px var(--serif);
-      color: #8d8b7c
+      font: 700 17px var(--serif);
+      color: var(--fg-3)
     }
 
     .ent span {
@@ -1380,7 +1427,7 @@
     }
 
     .ent.on b {
-      color: var(--paper)
+      color: var(--fg)
     }
 
     .ent.on span {
@@ -1388,7 +1435,7 @@
     }
 
     .ent.now {
-      background: rgba(201, 208, 0, .1)
+      background: rgba(194, 254, 11, .1)
     }
 
     .entnote {
@@ -1400,11 +1447,11 @@
 
       0%,
       100% {
-        box-shadow: 0 0 0 0 rgba(201, 208, 0, .7)
+        box-shadow: 0 0 0 0 rgba(194, 254, 11, .7)
       }
 
       50% {
-        box-shadow: 0 0 0 10px rgba(201, 208, 0, 0)
+        box-shadow: 0 0 0 10px rgba(194, 254, 11, 0)
       }
     }
 
@@ -1422,7 +1469,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(ellipse at center, rgba(13, 14, 9, .35), rgba(13, 14, 9, .9));
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, .35), rgba(0, 0, 0, .9));
       transition: opacity .6s;
       padding: 16px
     }
@@ -1443,21 +1490,21 @@
 
     #intro .eyebrow {
       font: 600 12px var(--sans);
-      color: #6b6a52;
+      color: var(--fg-3);
       margin-bottom: 6px
     }
 
     #intro .big {
-      font: italic 800 clamp(54px, 12vw, 92px)/.95 var(--serif);
+      font: 800 clamp(54px, 12vw, 92px)/.95 var(--serif);
       margin: 0 0 14px;
       letter-spacing: -.04em;
       font-variation-settings: 'SOFT' 60, 'opsz' 144
     }
 
     #intro .lede {
-      font: italic 400 clamp(17px, 2.6vw, 20px)/1.4 var(--serif);
+      font: 400 clamp(17px, 2.6vw, 20px)/1.4 var(--serif);
       margin: 0 0 20px;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     #intro .how {
@@ -1467,13 +1514,13 @@
       align-items: center;
       font-size: 14px;
       margin-bottom: 6px;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     #intro .note {
       margin-top: 14px;
       font-size: 12px;
-      color: #6b6a52;
+      color: var(--fg-3);
       text-align: center
     }
 
@@ -1481,7 +1528,7 @@
       position: fixed;
       inset: 0;
       z-index: 55;
-      background: rgba(8, 9, 5, .78);
+      background: rgba(0, 0, 0, .78);
       display: none;
       align-items: center;
       justify-content: center;
@@ -1500,7 +1547,7 @@
 
     #help h3 {
       margin: 0 0 14px;
-      font: italic 700 28px var(--serif)
+      font: 700 28px var(--serif)
     }
 
     /* ---- MI ---- */
@@ -1518,7 +1565,7 @@
       border-radius: 50%;
       background: var(--paper);
       border: 3px solid var(--ink);
-      box-shadow: 0 0 0 3px rgba(239, 234, 219, .3), 0 6px 14px rgba(0, 0, 0, .5);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 6px 14px rgba(0, 0, 0, .5);
       cursor: ns-resize;
       pointer-events: auto;
       touch-action: none;
@@ -1534,18 +1581,18 @@
 
     .breath.active {
       background: var(--lime);
-      box-shadow: 0 0 0 6px rgba(201, 208, 0, .35), 0 6px 14px rgba(0, 0, 0, .5)
+      box-shadow: 0 0 0 6px rgba(194, 254, 11, .35), 0 6px 14px rgba(0, 0, 0, .5)
     }
 
     @keyframes bpulse {
 
       0%,
       100% {
-        box-shadow: 0 0 0 3px rgba(239, 234, 219, .3), 0 0 0 0 rgba(201, 208, 0, .6)
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 0 0 0 rgba(194, 254, 11, .6)
       }
 
       50% {
-        box-shadow: 0 0 0 3px rgba(239, 234, 219, .3), 0 0 0 14px rgba(201, 208, 0, 0)
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 0 0 14px rgba(194, 254, 11, 0)
       }
     }
 
@@ -1584,7 +1631,7 @@
 
     #intentionCard strong {
       display: block;
-      font: italic 700 18px var(--serif);
+      font: 700 18px var(--serif);
       margin-bottom: 4px
     }
 
@@ -1593,7 +1640,7 @@
       font-size: 12px;
       line-height: 1.4;
       margin-bottom: 10px;
-      color: #2a2a1f
+      color: var(--fg-2)
     }
 
     #intentionCard .btns {
@@ -1620,8 +1667,8 @@
       width: min(780px, 94vw);
       padding: 26px 16px 18px;
       border-radius: 6px;
-      background: rgba(239, 234, 219, .07);
-      border: 1.5px solid rgba(239, 234, 219, .2);
+      background: rgba(255, 255, 255, .07);
+      border: 1.5px solid rgba(255, 255, 255, .2);
       display: flex;
       gap: 12px;
       justify-content: center;
@@ -1635,8 +1682,8 @@
       top: -11px;
       padding: 0 8px;
       background: var(--ink);
-      font: italic 400 14px var(--serif);
-      color: var(--paper)
+      font: 400 14px var(--serif);
+      color: var(--fg)
     }
 
     .slot,
@@ -1647,32 +1694,32 @@
 
     .slot {
       position: relative;
-      border: 2px dashed rgba(239, 234, 219, .35);
+      border: 2px dashed rgba(255, 255, 255, .35);
       border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font: italic 600 20px var(--serif);
-      color: rgba(239, 234, 219, .45);
+      font: 600 20px var(--serif);
+      color: rgba(255, 255, 255, .45);
       transition: .15s;
       pointer-events: auto
     }
 
     .slot.hover {
       border-color: var(--lime);
-      background: rgba(201, 208, 0, .14);
+      background: rgba(194, 254, 11, .14);
       transform: scale(1.05)
     }
 
     .slot.playing {
       border-color: var(--lime);
-      background: rgba(201, 208, 0, .2);
-      box-shadow: 0 0 34px rgba(201, 208, 0, .4)
+      background: rgba(194, 254, 11, .2);
+      box-shadow: 0 0 34px rgba(194, 254, 11, .4)
     }
 
     .slot.full {
       border-style: solid;
-      border-color: rgba(239, 234, 219, .3)
+      border-color: rgba(255, 255, 255, .3)
     }
 
     .tray {
@@ -1712,7 +1759,7 @@
 
     .lcard strong {
       display: block;
-      font: italic 700 13px var(--serif)
+      font: 700 13px var(--serif)
     }
 
     .lcard img {
@@ -1725,7 +1772,7 @@
 
     .lcard .tiny {
       font-size: 10px;
-      color: #6b6a52
+      color: var(--fg-3)
     }
 
     .lcard.drag {
@@ -1765,8 +1812,8 @@
       left: 50%;
       top: 78%;
       transform: translateX(-50%);
-      font: italic 400 15px var(--serif);
-      color: var(--paper);
+      font: 400 15px var(--serif);
+      color: var(--fg);
       white-space: nowrap
     }
 
@@ -1816,14 +1863,14 @@
     }
 
     #epilogue h2 {
-      font: italic 800 clamp(40px, 8vw, 72px)/.95 var(--serif);
+      font: 800 clamp(40px, 8vw, 72px)/.95 var(--serif);
       letter-spacing: -.03em;
       margin: 10px 0 14px;
       font-variation-settings: 'SOFT' 60
     }
 
     #epilogue p {
-      color: #bcb8a5;
+      color: var(--fg-2);
       line-height: 1.6;
       max-width: 680px;
       font-size: 15px
@@ -1847,7 +1894,7 @@
     .epBtns button {
       padding: 14px 20px;
       border-radius: 999px;
-      border: 1.5px solid var(--paper);
+      border: 1.5px solid var(--fg);
       background: transparent;
       font: 600 14px var(--sans);
       min-height: 48px
@@ -1901,6 +1948,432 @@
       #btnBack,
       #btnSkip {
         top: 96px
+      }
+    }
+
+    /* =====================================================================
+       CAPA DE MARCA · interfaz del juego con el lenguaje de la landing
+       Reglas de componente sobre las anteriores (misma especificidad, van después).
+       Referencias en la landing: .prompt-btn (botón recto, borde verde de 1 px, relleno a pasos),
+       .cta de [ JUEGA YA ] (cápsula de vidrio verde), fichas en carbón, etiquetas en Martian Mono.
+       ===================================================================== */
+    body {
+      font-variant-numeric: tabular-nums
+    }
+
+    /* ---- marca: logotipo oficial en lugar del texto ---- */
+    .brand {
+      width: 132px;
+      height: 28px;
+      font-size: 0;
+      background: url("brand/flauxus-horizontal-verde.svg") left center / contain no-repeat
+    }
+
+    .brand i {
+      display: none
+    }
+
+    .subbrand {
+      margin-top: 6px;
+      font: 500 10px/1.3 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase
+    }
+
+    /* Dentro de la landing (iframe) la marca ya está en la página y esa esquina es la salida ◀◀. */
+    body.embedded .brand,
+    body.embedded .subbrand {
+      visibility: hidden
+    }
+
+    #intro .big {
+      height: clamp(52px, 11vw, 84px);
+      font-size: 0;
+      margin: 4px 0 20px;
+      background: url("brand/flauxus-horizontal-verde.svg") left center / contain no-repeat
+    }
+
+    /* ---- tipografía ---- */
+    #roomInfo h1,
+    .card h2,
+    #epilogue h2,
+    .pl-title,
+    #help h3,
+    #unlock strong,
+    .tc-title {
+      font-family: var(--font-head);
+      font-weight: 900;
+      font-style: normal;
+      text-transform: uppercase;
+      letter-spacing: -.03em;
+      line-height: .95
+    }
+
+    #roomInfo h1 { font-size: clamp(22px, 3.2vw, 34px) }
+    .card h2 { font-size: clamp(24px, 4.6vw, 32px) }
+    #epilogue h2 { font-size: clamp(32px, 6.4vw, 60px) }
+    .pl-title { font-size: clamp(24px, 3.6vw, 40px) }
+    #help h3 { font-size: 22px }
+    #unlock strong { font-size: 19px }
+    .tc-title { font-size: clamp(14px, 2vw, 20px); font-weight: 700; letter-spacing: .02em; margin-top: 10px }
+
+    /* notas y cifras: Tektur pesada, como las notas de las seis salas en la landing */
+    .tc-note,
+    .pl-note,
+    .stat b,
+    .stamp,
+    .ent b,
+    .slot,
+    .lcard strong,
+    #intentionCard strong {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-style: normal;
+      font-stretch: 85%;
+      letter-spacing: -.01em
+    }
+
+    /* textos y citas: Space Grotesk */
+    #roomHint,
+    #laStatus { font: 500 15px/1.35 var(--font-text) }
+    #voText { font: 400 clamp(16px, 2.1vw, 20px)/1.5 var(--font-text) }
+    #intro .lede { font: 500 clamp(16px, 2.3vw, 19px)/1.45 var(--font-text); color: var(--fg) }
+
+    /* datos, etiquetas y avisos: Martian Mono en mayúsculas */
+    #objective,
+    #roomInfo .k,
+    .card .k,
+    #intro .eyebrow,
+    #epilogue .eyebrow,
+    .pl-kicker,
+    .pl-pct,
+    #vo .who,
+    #vo .src,
+    .handlbl,
+    #unlock .k,
+    .chip,
+    .pip b,
+    #sourceChip,
+    #compass .lbl,
+    .frame::before,
+    .pend,
+    .tchip,
+    .devpick,
+    .lcard .tiny,
+    .lcard.cut::after,
+    #intro .note {
+      font-family: var(--font-mono);
+      font-style: normal;
+      font-weight: 500;
+      font-size: 10.5px;
+      letter-spacing: .05em;
+      text-transform: uppercase
+    }
+
+    #objective { font-size: 11px; color: var(--fg-2) }
+    #compass .lbl,
+    .pip b { font-weight: 700 }
+
+    kbd,
+    .dk kbd,
+    kbd.dk {
+      border: 1px solid var(--fg-3);
+      border-radius: 0;
+      background: var(--rw-negro);
+      color: var(--fg);
+      font: 600 10px/1.2 var(--font-mono);
+      box-shadow: 0 2px 0 var(--rw-gris)
+    }
+
+    /* ---- superficies: fichas en carbón, rectas, con la barra verde de la landing ---- */
+    .paper {
+      background: var(--rw-carbon);
+      color: var(--fg);
+      border: 1px solid var(--rw-gris);
+      border-radius: 0;
+      box-shadow: 0 22px 50px rgba(0, 0, 0, .55)
+    }
+
+    .paper::before {
+      top: -1px;
+      left: -1px;
+      width: 56px;
+      height: 4px;
+      background: var(--rw-verde);
+      transform: none;
+      box-shadow: none;
+      mix-blend-mode: normal
+    }
+
+    .card { transform: translate(-50%, -50%) }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translate(-50%, -46%) }
+      to { opacity: 1; transform: translate(-50%, -50%) }
+    }
+
+    #intro .box,
+    #help .box,
+    #intentionCard { transform: none }
+    #unlock { transform: translateX(-50%) translateY(-14px) }
+    #unlock.show { transform: translateX(-50%) }
+
+    #coach {
+      transform: translateX(-50%);
+      border-radius: 0;
+      border-left: 3px solid var(--rw-verde);
+      color: var(--fg);
+      font: 500 14px/1.35 var(--font-text)
+    }
+
+    #toast {
+      border-radius: 0;
+      border: 1px solid var(--rw-verde);
+      background: var(--rw-negro);
+      color: var(--fg);
+      font: 500 11px/1.4 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase
+    }
+
+    #roomHint,
+    #compass .lbl,
+    #vo,
+    .ent,
+    .frame,
+    .slot,
+    #traceCanvas,
+    .pl-meter,
+    .pl-meter i,
+    .pend,
+    .tchip { border-radius: 0 }
+
+    .pl-meter i {
+      background: var(--rw-verde);
+      animation: none
+    }
+
+    #preloader {
+      background: radial-gradient(ellipse at 50% 38%, rgba(194, 254, 11, .07), transparent 54%), var(--rw-negro)
+    }
+
+    /* resaltado de la primera palabra del título: negro sobre verde, como la pantalla "inundada" de la landing */
+    .hl {
+      background: var(--rw-verde);
+      color: var(--rw-negro);
+      padding: 0 .12em
+    }
+
+    .stat u { border-bottom-color: var(--rw-gris) }
+    .stat b { color: var(--fg) }
+
+    .stamp {
+      border: 0;
+      border-radius: 0;
+      color: var(--rw-negro);
+      transform: rotate(-4deg)
+    }
+
+    @keyframes stampIn {
+      from { opacity: 0; transform: rotate(-4deg) scale(2.2) }
+      to { opacity: 1; transform: rotate(-4deg) scale(1) }
+    }
+
+    .tchip,
+    .pend { border: 1px dashed var(--fg-3); color: var(--fg-2) }
+
+    .devpick a {
+      border: 1px dashed var(--fg-3);
+      border-radius: 0;
+      color: var(--fg-2)
+    }
+
+    .devpick a.on {
+      border: 1px solid var(--rw-verde);
+      color: var(--rw-negro)
+    }
+
+    /* baraja: fichas rectas en carbón; la elegida, en verde */
+    .cardchip,
+    .cardchip:nth-child(even) {
+      border: 1px solid var(--fg-3);
+      border-radius: 0;
+      background: var(--rw-carbon);
+      color: var(--fg);
+      box-shadow: none;
+      transform: none;
+      font: 600 11px/1 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase
+    }
+
+    .cardchip:hover { border-color: var(--rw-verde); transform: translateY(-2px) }
+    .cardchip.sel { background: var(--rw-verde); border-color: var(--rw-verde); color: var(--rw-negro); box-shadow: none }
+    .cardchip.menu { background: var(--rw-negro); border-color: var(--rw-gris); box-shadow: none }
+
+    /* objetos del minijuego con contenido oscuro dentro (onda, flecha): claros, en blanco puro */
+    .breath { background: var(--rw-blanco) }
+    .lcard,
+    .lcard.cut { background: var(--rw-blanco); border-radius: 0 }
+    .lcard .tiny { color: rgba(0, 0, 0, .55) }
+
+    /* ---- chips, pestañas de sala e iconos: rectos ---- */
+    .chip {
+      border-radius: 0;
+      border-color: var(--rw-gris);
+      background: rgba(0, 0, 0, .6);
+      color: var(--fg-2)
+    }
+
+    .pip {
+      border: 1px solid var(--rw-gris);
+      border-radius: 0;
+      background: rgba(0, 0, 0, .62);
+      backdrop-filter: none
+    }
+
+    .pip b { color: var(--fg-3) }
+    .pip.cur { border-color: var(--fg) }
+
+    .icon {
+      border: 1px solid var(--fg-3);
+      border-radius: 0;
+      background: rgba(0, 0, 0, .72)
+    }
+
+    /* ---- botones secundarios = .prompt-btn de la landing ---- */
+    .btns,
+    #btnBack,
+    #btnSkip,
+    #btnVoSkip,
+    #btnWalk,
+    .epBtns button,
+    #intentionCard .btns {
+      border: 1px solid var(--rw-verde);
+      border-radius: 0;
+      background: linear-gradient(var(--rw-verde), var(--rw-verde)) no-repeat 0 0 / 0% 100%, var(--rw-negro);
+      color: var(--rw-verde);
+      font: 600 12px/1.2 var(--font-mono);
+      letter-spacing: .02em;
+      backdrop-filter: none;
+      box-shadow: none;
+      transition: background-size 220ms steps(6, jump-none), color 0s 110ms, opacity .22s var(--ease), transform .22s var(--ease)
+    }
+
+    /* acciones de escape (saltar), un paso por debajo: borde y texto neutros hasta el hover */
+    #btnSkip,
+    #btnVoSkip {
+      border-color: var(--fg-3);
+      color: var(--fg-2)
+    }
+
+    .btns:hover,
+    .btns:focus-visible,
+    #btnBack:hover,
+    #btnBack:focus-visible,
+    #btnSkip:hover,
+    #btnSkip:focus-visible,
+    #btnVoSkip:hover,
+    #btnVoSkip:focus-visible,
+    #btnWalk:hover,
+    #btnWalk:focus-visible,
+    .epBtns button:hover,
+    .epBtns button:focus-visible,
+    #intentionCard .btns:hover {
+      background: linear-gradient(var(--rw-verde), var(--rw-verde)) no-repeat 0 0 / 100% 100%, var(--rw-negro);
+      border-color: var(--rw-verde);
+      color: var(--rw-negro);
+      outline: none
+    }
+
+    /* estado activo / confirmación: verde lleno, texto negro */
+    .btns.go,
+    #chiselBtn.on,
+    .epBtns .primary {
+      background: var(--rw-verde);
+      border-color: var(--rw-verde);
+      color: var(--rw-negro);
+      box-shadow: none
+    }
+
+    .btns[disabled],
+    .btns[disabled]:hover {
+      background-size: 0% 100%, auto;
+      border-color: var(--fg-3);
+      color: var(--fg-3)
+    }
+
+    /* ---- botón principal = [ JUEGA YA ] de la landing (.cta) ---- */
+    .btn {
+      min-height: var(--rw-tactil-min);
+      border: 1px solid var(--rw-verde);
+      border-radius: 9999px;
+      background: linear-gradient(100deg, rgba(194, 254, 11, .28), rgba(194, 254, 11, .12));
+      color: var(--rw-blanco);
+      font: 900 16px/1 var(--font-display);
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      box-shadow: none;
+      transition: transform 120ms steps(2, jump-none), box-shadow .2s
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: rgba(255, 255, 255, .82);
+      background: linear-gradient(120deg, rgba(229, 255, 221, .34), rgba(170, 214, 174, .18) 48%, rgba(194, 254, 11, .28));
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 0 0 28px rgba(194, 254, 11, .35);
+      transform: skewX(-6deg);
+      outline: none
+    }
+
+    .btn:active { transform: translateY(2px); box-shadow: none }
+
+    .btn[disabled] {
+      border-color: var(--fg-3);
+      background: transparent;
+      color: var(--fg-3);
+      box-shadow: none;
+      transform: none
+    }
+
+    /* ---- aviso contextual (Entrar a la sala · E): verde lleno, recto ---- */
+    #prompt {
+      border-radius: 0;
+      font: 600 13px/1.2 var(--font-mono);
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      box-shadow: 0 0 28px rgba(194, 254, 11, .35)
+    }
+
+    #prompt:active { box-shadow: none }
+
+    @media(max-width:720px) {
+      .brand {
+        width: 108px;
+        height: 23px;
+        font-size: 0
+      }
+
+      /* la mono es más ancha que la sans anterior: en pantallas estrechas, botones más compactos para que
+         «Volver al atrio» y «Saltar …» quepan en la misma fila, debajo de las pestañas de sala */
+      .btns,
+      #btnBack,
+      #btnSkip,
+      #btnVoSkip,
+      #btnWalk {
+        font-size: 11px;
+        letter-spacing: 0;
+        padding: 8px 10px
+      }
+
+      #btnBack kbd {
+        display: none
+      }
+
+      #btnBack,
+      #btnSkip,
+      #btnVoSkip {
+        top: 106px
       }
     }
 
