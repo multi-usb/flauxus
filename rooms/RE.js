@@ -9,7 +9,7 @@ import { S, roomGroup, avatarObj, bloom, mat, animAvatar, rimSet, ctx, W, H, bur
 
 export const meta = {
   key: 're',
-  id: 2, note: 'RE4', short: 'RE', title: 'El pulso', desc: 'Marca el pulso, escucha el click y desplázate fuera de la rejilla.', source: 'sonido provisional', audio: 'pending', color: 0xc9d000, hex: '#c9d000', avatar: 'disciplined',
+  id: 2, note: 'RE4', short: 'RE', title: 'El pulso', desc: 'Marca el pulso, escucha el click y desplázate fuera de la rejilla.', source: 'sonido provisional', audio: 'pending', color: 0xc2fe0b, hex: '#c2fe0b', avatar: 'disciplined',
   /* Altura de suelo y configuración espacial de RE */
   floorY: 1.80,
   start: { x: 0.0, y: 1.80, z: 4.2, yaw: Math.PI },
@@ -25,8 +25,8 @@ export const meta = {
   ctl: [[['Espacio', 'D', 'Clic'], ['Toca'], 'Tocar el pulso']],
   light: {
     /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
-    bg: 0x221e1d, fog: .022, exp: 1.0, env: .28, hemi: [0xffe0c0, 0x241a12, .3], key: { c: 0xffd9b0, i: 1.0, p: [6, 16, 9] }, rim: { c: 0xc9d000, base: 2.2, k: 8 }, bloomT: .82,
-    pts: [{ c: 0xff9944, e: 1.3, r: 5, p: [5, 4, -3] }, { c: 0xc9d000, e: 1.0, r: 5, p: [-5, 3, 2] }], spot: { c: 0xffeedd, e: 1.3, r: 14, p: [0, 14, 3], t: [0, 0, 0], ang: .78, pen: .6 }
+    bg: 0x221e1d, fog: .022, exp: 1.0, env: .28, hemi: [0xffe0c0, 0x241a12, .3], key: { c: 0xffd9b0, i: 1.0, p: [6, 16, 9] }, rim: { c: 0xc2fe0b, base: 2.2, k: 8 }, bloomT: .82,
+    pts: [{ c: 0xff9944, e: 1.3, r: 5, p: [5, 4, -3] }, { c: 0xc2fe0b, e: 1.0, r: 5, p: [-5, 3, 2] }], spot: { c: 0xffeedd, e: 1.3, r: 14, p: [0, 14, 3], t: [0, 0, 0], ang: .78, pen: .6 }
   },
   /* Huella de RE: los golpes certeros y las notas que se escaparon. */
   motif(x, m, cx, cy, s) { const n = Math.min(24, (m.hits || 0) + (m.miss || 0)); for (let i = 0; i < n; i++) { const ok = i < (m.hits || 0); x.globalAlpha = ok ? 1 : .35; x.beginPath(); x.arc(cx - s * .9 + i * (s * 1.8 / Math.max(1, n - 1)), cy + (ok ? 0 : s * .22), s * (ok && i < (m.perfect || 0) ? .09 : .05), 0, 6.283); x.fill() } },
@@ -87,12 +87,12 @@ export const RE = (() => {
       if (red > 0) { ctx.fillStyle = `rgba(255,122,92,${red * .08})`; ctx.fillRect(0, 0, W, H) }
       ctx.strokeStyle = 'rgba(239,234,219,.14)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W * .04, Y); ctx.lineTo(W * .97, Y); ctx.stroke();
       const b0 = Math.floor((t - .5) / B), b1 = Math.ceil((t + (W - X) / sp) / B); for (let n = Math.max(0, b0); n <= b1; n++) { const x = X + (n * B - t) * sp; if (x < W * .03 || x > W * .98) continue; ctx.strokeStyle = n % 4 === 0 ? 'rgba(239,234,219,.42)' : 'rgba(239,234,219,.17)'; ctx.lineWidth = n % 4 === 0 ? 3 : 2; ctx.beginPath(); ctx.moveTo(x, Y - 22); ctx.lineTo(x, Y + 22); ctx.stroke() }
-      const pr = 46 + pulse * 8; ctx.globalCompositeOperation = 'lighter'; glowCircle(X, Y, pr * 2.2, `rgba(201,208,0,${.1 + pulse * .3})`, 'rgba(201,208,0,0)'); ctx.globalCompositeOperation = 'source-over';
+      const pr = 46 + pulse * 8; ctx.globalCompositeOperation = 'lighter'; glowCircle(X, Y, pr * 2.2, `rgba(194,254,11,${.1 + pulse * .3})`, 'rgba(194,254,11,0)'); ctx.globalCompositeOperation = 'source-over';
       ctx.lineWidth = 4; ctx.strokeStyle = LIMEH; ctx.beginPath(); ctx.arc(X, Y, pr, 0, 6.283); ctx.stroke();
       for (const n of notes) {
         if (n.done) continue; const x = X + (n.t - t) * sp; if (x > W * 1.02 || x < -40) continue; const near = Math.abs(n.t - t) < .11; ctx.save(); ctx.translate(x, Y); ctx.fillStyle = n.off ? LIMEH : PAPER; ctx.shadowColor = n.off ? LIMEH : PAPER; ctx.shadowBlur = near ? 30 : 12;
         if (n.off) { ctx.rotate(Math.PI / 4); ctx.fillRect(-17, -17, 34, 34) } else { ctx.beginPath(); ctx.arc(0, 0, 21, 0, 6.283); ctx.fill() } ctx.restore();
-        if (n.off && x < W * .9) { ctx.fillStyle = 'rgba(201,208,0,.8)'; ctx.font = `italic 400 13px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText('contratiempo', x, Y - 42) }
+        if (n.off && x < W * .9) { ctx.fillStyle = 'rgba(194,254,11,.8)'; ctx.font = `italic 400 13px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText('contratiempo', x, Y - 42) }
       }
       if (t < B * 4) { const n = 4 - Math.floor(t / B), f = 1 - ((t % B) / B); ctx.globalAlpha = .25 + f * .65; ctx.fillStyle = PAPER; ctx.font = `italic 800 ${150 + f * 50}px ${SERIF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n, W / 2, H * .3); ctx.globalAlpha = 1 }
       for (let i = 0; i < NEED; i++) { const x = W / 2 + (i - (NEED - 1) / 2) * 26; ctx.fillStyle = i < hits ? LIMEH : 'rgba(239,234,219,.16)'; ctx.beginPath(); ctx.arc(x, Y + 120, 7, 0, 6.283); ctx.fill() }

@@ -266,7 +266,7 @@ export function paintHuella() {
   x.fill();
 
   // 2. Línea orbital guía discontinua
-  x.strokeStyle = 'rgba(201, 208, 0, 0.25)';
+  x.strokeStyle = 'rgba(194, 254, 11, 0.25)';
   x.lineWidth = 1.5;
   x.setLineDash([4, 6]);
   x.beginPath();
@@ -283,7 +283,7 @@ export function paintHuella() {
     const m = S.metrics[r.id];
 
     if (m && !m.skipped) {
-      x.fillStyle = 'rgba(201, 208, 0, 0.18)';
+      x.fillStyle = 'rgba(194, 254, 11, 0.18)';
       x.beginPath();
       x.arc(px, py, 34, 0, 6.283);
       x.fill();

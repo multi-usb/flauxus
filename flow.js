@@ -278,7 +278,7 @@ export function startRoom() { if (S.phase !== 'brief' || !S.ready) return; docum
 export function finish(m, lines, skipped = false) {
   if (S.phase !== 'play') return; S.phase = 'done'; S.completed.add(S.room); S.metrics[S.room] = { ...m, skipped, duration: (performance.now() - S.playStart) / 1000 };
   cur.stop?.(); sting(); shake(14); paintHuella();
-  const f = $('flash'); f.style.background = '#c9d000'; f.style.opacity = '.16'; f.classList.remove('on'); setTimeout(() => { f.style.opacity = ''; f.style.background = '' }, 260);
+  const f = $('flash'); f.style.background = '#c2fe0b'; f.style.opacity = '.16'; f.classList.remove('on'); setTimeout(() => { f.style.opacity = ''; f.style.background = '' }, 260);
   burst(W / 2, H / 2, LIMEH, 60, 420, 1.1, 4); ringFx(W / 2, H / 2, '#fff', 20, 320, .9, 3); hint(''); hideRoomDom(); renderProgress();
   const r = rooms[S.room - 1];
   $('done').innerHTML = `<div class="stamp">${skipped ? 'Saltada' : 'Hecho'}</div><div class="k">Momento completado · ${r.note}</div><h2>${r.title}</h2>${(skipped ? [['Sala', 'saltada']] : lines).map(l => `<div class="stat"><span>${l[0]}</span><u></u><b>${l[1]}</b></div>`).join('')}<button class="btn" id="btnNext">${S.room === 6 ? 'Ver mi partitura' : 'Volver al atrio'}${TOUCH ? '' : ' <span style="opacity:.6;font-weight:500">· Enter</span>'}</button>`;

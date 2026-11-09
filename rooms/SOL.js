@@ -15,7 +15,7 @@ const SOL_FLOOR = 0.234, SOL_DAIS = 0.358;
 
 export const meta = {
   key: 'sol',
-  id: 5, note: 'SOL♯4', short: 'SOL♯', title: 'El unicornio cyborg', desc: 'Cuerpo, sensor y máquina: captura los tres puntos y haz reaccionar el espacio.', source: 'sonido procedural · sin grabación', audio: 'none', color: 0xc9d000, hex: '#c9d000', avatar: 'cyborg',
+  id: 5, note: 'SOL♯4', short: 'SOL♯', title: 'El unicornio cyborg', desc: 'Cuerpo, sensor y máquina: captura los tres puntos y haz reaccionar el espacio.', source: 'sonido procedural · sin grabación', audio: 'none', color: 0xc2fe0b, hex: '#c2fe0b', avatar: 'cyborg',
   /* El suelo central del FBX queda a y≈0.23 tras el fit; el avatar y la
      cámara se elevan con él. SOL tiene terrazas a distintas alturas, así
      que el suelo se muestrea del propio escenario (`floorRay`) en vez de
@@ -36,8 +36,8 @@ export const meta = {
   ctl: [[['Mouse'], ['Dedo'], 'Seguir y mantener sobre el sensor']],
   light: {
     /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
-    bg: 0x221e1d, fog: .024, exp: 1.0, env: .25, hemi: [0xdde4f0, 0x1a1e26, .3], key: { c: 0xe8f0ff, i: .8, p: [8, 16, 8] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .8,
-    pts: [{ c: 0xc9d000, e: 2.0, r: 3.2, p: [0, 3.2, -3] }, { c: 0xaaccff, e: 1.0, r: 5, p: [4, 5, 2] }], spot: { c: 0xfffaec, e: 1.2, r: 14, p: [0, 14, 2], t: [0, 1.5, 0], ang: .9, pen: .5 }
+    bg: 0x221e1d, fog: .024, exp: 1.0, env: .25, hemi: [0xdde4f0, 0x1a1e26, .3], key: { c: 0xe8f0ff, i: .8, p: [8, 16, 8] }, rim: { c: 0xc2fe0b, base: 2, k: 8 }, bloomT: .8,
+    pts: [{ c: 0xc2fe0b, e: 2.0, r: 3.2, p: [0, 3.2, -3] }, { c: 0xaaccff, e: 1.0, r: 5, p: [4, 5, 2] }], spot: { c: 0xfffaec, e: 1.2, r: 14, p: [0, 14, 2], t: [0, 1.5, 0], ang: .9, pen: .5 }
   },
   /* Huella de SOL: el orden en que se conectaron los tres sensores. */
   motif(x, m, cx, cy, s) { const o = m.order || [0, 1, 2], P = [[cx - s * .7, cy + s * .5], [cx + s * .7, cy + s * .5], [cx, cy - s * .7]]; x.beginPath(); o.forEach((k, i) => { if (i) x.lineTo(P[k][0], P[k][1]); else x.moveTo(P[k][0], P[k][1]) }); x.stroke(); P.forEach(q => { x.beginPath(); x.arc(q[0], q[1], s * .1, 0, 6.283); x.fill() }) },
@@ -122,12 +122,12 @@ export const SOL = (() => {
     update3d(dt, t3) { const n = cap.filter(Boolean).length; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
     draw() {
       orbs.forEach((o, i) => {
-        if (!anch[i]) return; if (cap[i]) { bolt(o.x, o.y, anch[i].x, anch[i].y, LIMEH, 10, 16); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(anch[i].x, anch[i].y, 50, 'rgba(201,208,0,.5)', 'rgba(201,208,0,0)'); ctx.restore(); return }
-        const p = hold[i] / HR, inside = ptrActive() && Math.hypot(ptr.x - o.x, ptr.y - o.y) < (TOUCH ? 64 : 50); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(o.x, o.y, 70, `rgba(201,208,0,${.12 + p * .4})`, 'rgba(201,208,0,0)'); ctx.restore();
-        ctx.strokeStyle = inside ? LIMEH : '#a6a392'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, 30 + Math.sin(T * 3 + i) * 2 + (inside ? 4 : 0), 0, 6.283); ctx.stroke(); ctx.fillStyle = `rgba(201,208,0,${.15 + p * .6})`; ctx.beginPath(); ctx.arc(o.x, o.y, 14, 0, 6.283); ctx.fill();
+        if (!anch[i]) return; if (cap[i]) { bolt(o.x, o.y, anch[i].x, anch[i].y, LIMEH, 10, 16); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(anch[i].x, anch[i].y, 50, 'rgba(194,254,11,.5)', 'rgba(194,254,11,0)'); ctx.restore(); return }
+        const p = hold[i] / HR, inside = ptrActive() && Math.hypot(ptr.x - o.x, ptr.y - o.y) < (TOUCH ? 64 : 50); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(o.x, o.y, 70, `rgba(194,254,11,${.12 + p * .4})`, 'rgba(194,254,11,0)'); ctx.restore();
+        ctx.strokeStyle = inside ? LIMEH : '#a6a392'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, 30 + Math.sin(T * 3 + i) * 2 + (inside ? 4 : 0), 0, 6.283); ctx.stroke(); ctx.fillStyle = `rgba(194,254,11,${.15 + p * .6})`; ctx.beginPath(); ctx.arc(o.x, o.y, 14, 0, 6.283); ctx.fill();
         if (p > 0) { ctx.strokeStyle = PAPER; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(o.x, o.y, 42, -Math.PI / 2, -Math.PI / 2 + 6.283 * p); ctx.stroke(); ctx.lineCap = 'butt' }
         ctx.fillStyle = 'rgba(239,234,219,.7)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText(names[i], o.x, o.y + 64);
-        if (ptrActive() && !inside && hold[i] === 0) { ctx.strokeStyle = 'rgba(201,208,0,.25)'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.setLineDash([]) }
+        if (ptrActive() && !inside && hold[i] === 0) { ctx.strokeStyle = 'rgba(194,254,11,.25)'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.setLineDash([]) }
       });
       if (ptrActive()) { ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 5, 0, 6.283); ctx.fill(); ctx.strokeStyle = 'rgba(239,234,219,.5)'; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 12, 0, 6.283); ctx.stroke() }
     },

@@ -9,13 +9,13 @@ import { roomGroup, avatarObj, bloom, makeDust, animAvatar, rimSet, ctx, W, H, b
 
 export const meta = {
   key: 'do',
-  id: 1, note: 'DO4', short: 'DO', title: 'El sonido bello', desc: 'Control del aire: encuentra un sonido y sostén su claridad.', source: 'CPEBMov1.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'disciplined',
+  id: 1, note: 'DO4', short: 'DO', title: 'El sonido bello', desc: 'Control del aire: encuentra un sonido y sostén su claridad.', source: 'CPEBMov1.wav', audio: 'real', color: 0xc2fe0b, hex: '#c2fe0b', avatar: 'disciplined',
   goal: 'El sonido empieza velado, como detrás de una pared. Sopla y mantén la luz dentro del campo: se abre y se aclara. Llena el círculo.',
   ctl: [[['Mouse'], ['Dedo'], 'Sigue la luz que se mueve'], [['Clic', 'Espacio'], ['Mantén'], 'Mantén para soplar (con el dedo: mantenlo sobre la luz)']],
   light: {
     /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
-    bg: 0x221e1d, fog: .020, exp: 1.05, env: .32, hemi: [0xf0e8d0, 0x2a281c, .38], key: { c: 0xffe8c0, i: 1.2, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
-    pts: [{ c: 0xffe8c0, e: 1.2, r: 5, p: [0, 5, -2] }, { c: 0xc9d000, e: .9, r: 5, p: [-3, 3, 4] }], spot: { c: 0xfff6e0, e: 1.3, r: 12, p: [0, 12, 0], t: [0, 0, 0], ang: .62, pen: .5 }
+    bg: 0x221e1d, fog: .020, exp: 1.05, env: .32, hemi: [0xf0e8d0, 0x2a281c, .38], key: { c: 0xffe8c0, i: 1.2, p: [8, 18, 10] }, rim: { c: 0xc2fe0b, base: 2, k: 8 }, bloomT: .85,
+    pts: [{ c: 0xffe8c0, e: 1.2, r: 5, p: [0, 5, -2] }, { c: 0xc2fe0b, e: .9, r: 5, p: [-3, 3, 4] }], spot: { c: 0xfff6e0, e: 1.3, r: 12, p: [0, 12, 0], t: [0, 0, 0], ang: .62, pen: .5 }
   },
   /* Huella de DO: cuatro aros que se abren con el aire sostenido. */
   motif(x, m, cx, cy, s) { for (let i = 1; i <= 4; i++) { x.globalAlpha = .95 / i; x.beginPath(); x.arc(cx, cy, s * .2 * i + Math.min(s * .1, (m.air || 0) * .6), 0, 6.283); x.stroke() } },
@@ -74,9 +74,9 @@ export const DO = (() => {
     },
     update3d(dt, t) { ring3.scale.setScalar(1 + purity * .3 + Math.sin(t * 2) * .03); ring3.material.opacity = .25 + stable / NEED * .7; col.material.opacity = purity * .25; dust.rotation.y += dt * (.05 + purity * .3); rimSet(2 + purity * 3 + A.lvl * 1.75); if (bloom) bloom.strength = .5 + purity * .4; animAvatar(avatarObj, 0, t, true, air * .5 + A.lvl) },
     draw() {
-      const bx = tgt.x, by = tgt.y; ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(bx, by, R * 2.4, `rgba(201,208,0,${.1 + purity * .3})`, 'rgba(201,208,0,0)');
-      for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(201,208,0,${.07 + purity * .1})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(bx, by, R * (1.4 + i * .55 + Math.sin(T * 2 + i) * .06 * (1 + purity)), 0, 6.283); ctx.stroke() } ctx.restore();
-      ctx.lineWidth = 3; ctx.strokeStyle = inside ? LIMEH : 'rgba(201,208,0,.6)'; ctx.beginPath(); ctx.arc(bx, by, R, 0, 6.283); ctx.stroke();
+      const bx = tgt.x, by = tgt.y; ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(bx, by, R * 2.4, `rgba(194,254,11,${.1 + purity * .3})`, 'rgba(194,254,11,0)');
+      for (let i = 0; i < 3; i++) { ctx.strokeStyle = `rgba(194,254,11,${.07 + purity * .1})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(bx, by, R * (1.4 + i * .55 + Math.sin(T * 2 + i) * .06 * (1 + purity)), 0, 6.283); ctx.stroke() } ctx.restore();
+      ctx.lineWidth = 3; ctx.strokeStyle = inside ? LIMEH : 'rgba(194,254,11,.6)'; ctx.beginPath(); ctx.arc(bx, by, R, 0, 6.283); ctx.stroke();
       ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.strokeStyle = PAPER; ctx.beginPath(); ctx.arc(bx, by, R + 14, -Math.PI / 2, -Math.PI / 2 + 6.283 * stable / NEED); ctx.stroke(); ctx.lineCap = 'butt';
       ctx.fillStyle = inside && air > .3 ? LIMEH : 'rgba(239,234,219,.55)'; ctx.font = `italic 700 15px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText(Math.round(stable / NEED * 100) + '%', bx, by + 5);
       if (ptrActive()) {

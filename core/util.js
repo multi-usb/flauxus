@@ -16,7 +16,7 @@ export const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const TOUCH = matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window);
 document.body.classList.toggle('touch', TOUCH);
 export const V3 = THREE.Vector3;
-export const LIME = 0xc9d000, LIMEH = '#c9d000', PAPER = '#efeadb', INKH = '#0d0e09', PALE = 0x8f8c7c;
+export const LIME = 0xc2fe0b, LIMEH = '#c2fe0b', PAPER = '#efeadb', INKH = '#0d0e09', PALE = 0x8f8c7c;
 // Tipografía de los textos dibujados en canvas (minijuegos, rótulos del atrio, epílogo): la de la landing.
 // SERIF conserva su nombre histórico; ahora es la display Tektur (notas, cifras, rótulos).
 export const FONT = "'Space Grotesk','Segoe UI',system-ui,sans-serif", SERIF = "'Tektur','Space Grotesk',system-ui,sans-serif";

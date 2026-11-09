@@ -9,7 +9,7 @@ import { S, roomGroup, avatarObj, bloom, glowSprite, animAvatar, ctx, W, H, burs
 
 export const meta = {
   key: 'mi',
-  id: 3, note: 'MI4', short: 'MI', title: 'El fraseo', desc: 'Decide dónde respira la música. La pausa es una decisión, no un botón.', source: 'Sarabanda ornamentada.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'disciplined',
+  id: 3, note: 'MI4', short: 'MI', title: 'El fraseo', desc: 'Decide dónde respira la música. La pausa es una decisión, no un botón.', source: 'Sarabanda ornamentada.wav', audio: 'real', color: 0xc2fe0b, hex: '#c2fe0b', avatar: 'disciplined',
   /* Altura de suelo y configuración espacial de MI */
   floorY: 1.40,
   start: { x: 0.0, y: 1.40, z: 4.2, yaw: Math.PI },
@@ -18,7 +18,7 @@ export const meta = {
   ctl: [[['Arrastrar ↕'], ['Arrastrar ↕'], 'Duración de cada pausa'], [['▶ Original'], ['▶ Original'], 'Cómo suena sin tus decisiones']],
   light: {
     /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
-    bg: 0x221e1d, fog: .020, exp: 1.05, env: .32, hemi: [0xf4f0dc, 0x262a1c, .4], key: { c: 0xfff0d4, i: 1.1, p: [6, 14, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
+    bg: 0x221e1d, fog: .020, exp: 1.05, env: .32, hemi: [0xf4f0dc, 0x262a1c, .4], key: { c: 0xfff0d4, i: 1.1, p: [6, 14, 10] }, rim: { c: 0xc2fe0b, base: 2, k: 8 }, bloomT: .85,
     pts: [{ c: 0xfff0d4, e: 1.1, r: 5, p: [3, 5, -3] }, { c: 0xd4e8a0, e: .9, r: 5, p: [-4, 3, 2] }], spot: { c: 0xfff8e8, e: 1.2, r: 10, p: [0, 10, 4], t: [0, 0, -2], ang: 1.0, pen: .7 }
   },
   /* Huella de MI: cuatro respiraciones, cada una con su altura. */
@@ -131,14 +131,14 @@ export const MI = (() => {
       if (now >= 0) { for (let i = 0; i < seq.length - 1; i++) { const a = seq[i], b = seq[i + 1]; if (now >= a.t && now <= b.t) { px = lerp(a.x, b.x, (now - a.t) / Math.max(.001, b.t - a.t)); activeI = a.i; if (i % 3 === 0) { } break } } if (px === null) px = seq[seq.length - 1].x }
       for (let i = 0; i < 4; i++) {
         const p = L[i].p, g = L[i].g, w = p.x1 - p.x0; const act = activeI === i;
-        ctx.fillStyle = act ? 'rgba(201,208,0,.12)' : 'rgba(239,234,219,.05)'; ctx.strokeStyle = act ? LIMEH : 'rgba(239,234,219,.18)'; ctx.lineWidth = act ? 2 : 1.5; ctx.beginPath(); ctx.roundRect(p.x0, yp - 56, w, 112, 10); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = act ? 'rgba(194,254,11,.12)' : 'rgba(239,234,219,.05)'; ctx.strokeStyle = act ? LIMEH : 'rgba(239,234,219,.18)'; ctx.lineWidth = act ? 2 : 1.5; ctx.beginPath(); ctx.roundRect(p.x0, yp - 56, w, 112, 10); ctx.fill(); ctx.stroke();
         if (ops[i]) { ctx.fillStyle = LIMEH; ctx.font = `700 11px ${FONT}`; ctx.textAlign = 'right'; ctx.fillText(CARDS[ops[i]].n, p.x1 - 4, yp - 64) }
         ctx.fillStyle = 'rgba(239,234,219,.55)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'left'; ctx.fillText('frase ' + (i + 1), p.x0 + 8, yp - 64);
         // forma de onda REAL de la grabación
         const pk = wf[i] || [], bw = w / pk.length; ctx.fillStyle = act ? LIMEH : 'rgba(239,234,219,.75)'; pk.forEach((v, k) => { const h = Math.max(3, v * 88); ctx.fillRect(p.x0 + k * bw + 1, yp - h / 2, Math.max(1, bw - 2), h) });
         const gx = (g.x0 + g.x1) / 2; ctx.strokeStyle = 'rgba(239,234,219,.14)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.moveTo(gx, yBase()); ctx.lineTo(gx, yBase() - tl); ctx.stroke(); ctx.setLineDash([]);
         ctx.strokeStyle = LIMEH; ctx.lineWidth = 3; ctx.globalAlpha = .7; ctx.beginPath(); ctx.moveTo(gx, yBase()); ctx.lineTo(gx, yBase() - vals[i] * tl); ctx.stroke(); ctx.globalAlpha = 1;
-        ctx.strokeStyle = 'rgba(201,208,0,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(g.x0 + 3, yp + 4); ctx.quadraticCurveTo(gx, yp + 4 + vals[i] * 38, g.x1 - 3, yp + 4); ctx.stroke();
+        ctx.strokeStyle = 'rgba(194,254,11,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(g.x0 + 3, yp + 4); ctx.quadraticCurveTo(gx, yp + 4 + vals[i] * 38, g.x1 - 3, yp + 4); ctx.stroke();
         ctx.fillStyle = touched.has(i) ? LIMEH : 'rgba(239,234,219,.5)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText(touched.has(i) ? Math.round(vals[i] * 900) + ' ms' : 'respira', gx, yBase() + 40)
       }
       if (px !== null) { ctx.strokeStyle = PAPER; ctx.lineWidth = 2; ctx.shadowColor = LIMEH; ctx.shadowBlur = 18; ctx.beginPath(); ctx.moveTo(px, yp - 72); ctx.lineTo(px, yp + 72); ctx.stroke(); ctx.shadowBlur = 0; if (Math.random() < .25) burst(px, yp, LIMEH, 2, 80, .4, 2) }

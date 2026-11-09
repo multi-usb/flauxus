@@ -37,7 +37,7 @@ export function adaptRes(dt) { // resolución adaptativa: baja el pixel ratio si
 export function initDebug() {
   if (qs.has('perf') || qs.has('light')) {
     perfEl = document.createElement('pre');
-    perfEl.style.cssText = 'position:fixed;left:8px;top:8px;z-index:90;margin:0;padding:6px 9px;font:11px/1.45 ui-monospace,Menlo,monospace;color:#c9d000;background:rgba(0,0,0,.65);border-radius:6px;pointer-events:none';
+    perfEl.style.cssText = 'position:fixed;left:8px;top:8px;z-index:90;margin:0;padding:6px 9px;font:11px/1.45 ui-monospace,Menlo,monospace;color:#c2fe0b;background:rgba(0,0,0,.65);border-radius:6px;pointer-events:none';
     document.body.appendChild(perfEl); renderer.info.autoReset = false
   }
   if (qs.has('light')) (async () => {

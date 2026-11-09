@@ -9,7 +9,7 @@ import { S, roomGroup, avatarObj, camera, bloom, makeDust, makeTextSprite, animA
 
 export const meta = {
   key: 'fa',
-  id: 4, note: 'FA♯4', short: 'FA♯', title: 'El cuerpo', desc: 'Tocar ocupando espacio: el movimiento modifica la música y deja memoria.', source: 'Stockhausen.wav', audio: 'real', color: 0xc9d000, hex: '#c9d000', avatar: 'body',
+  id: 4, note: 'FA♯4', short: 'FA♯', title: 'El cuerpo', desc: 'Tocar ocupando espacio: el movimiento modifica la música y deja memoria.', source: 'Stockhausen.wav', audio: 'real', color: 0xc2fe0b, hex: '#c2fe0b', avatar: 'body',
   /* Altura de suelo y configuración espacial de FA */
   floorY: 1.80,
   start: { x: 0.0, y: 1.80, z: 4.2, yaw: Math.PI },
@@ -18,7 +18,7 @@ export const meta = {
   ctl: [[['W', 'A', 'S', 'D'], ['Círculo'], 'Mover el cuerpo'], [['Clic'], ['Toca'], 'Ir a un punto del suelo']],
   light: {
     /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
-    bg: 0x221e1d, fog: .020, exp: 1.0, env: .28, hemi: [0xdfe8e4, 0x1c241e, .32], key: { c: 0xfff4dc, i: 1.0, p: [8, 18, 10] }, rim: { c: 0xc9d000, base: 2, k: 8 }, bloomT: .85,
+    bg: 0x221e1d, fog: .020, exp: 1.0, env: .28, hemi: [0xdfe8e4, 0x1c241e, .32], key: { c: 0xfff4dc, i: 1.0, p: [8, 18, 10] }, rim: { c: 0xc2fe0b, base: 2, k: 8 }, bloomT: .85,
     pts: [{ c: 0xff6633, e: 1.2, r: 5, p: [5, 5, -3] }, { c: 0x33ccff, e: 1.1, r: 5, p: [-5, 4, 4] }], spot: { c: 0xfff4dc, e: 1.2, r: 18, p: [0, 18, 5], t: [0, 0, 0], ang: 1.0, pen: .5 }
   },
   /* Huella de FA: el recorrido corporal inscrito en el espacio. */
@@ -160,8 +160,8 @@ export const FA = (() => {
       discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) }); animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
     },
     draw() {
-      const k = TOUCH ? .78 : 1, cx = W - 112 * k, cy = H - (TOUCH ? 250 : 200), r = 74 * k, s = r / RM; ctx.save(); ctx.fillStyle = 'rgba(13,14,9,.72)'; ctx.strokeStyle = 'rgba(201,208,0,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill(); ctx.stroke();
-      zones.forEach((z, i) => { ctx.strokeStyle = on[i] ? LIMEH : 'rgba(239,234,219,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + z.x * s, cy + z.z * s, ZR * s, 0, 6.283); ctx.stroke(); if (prog[i] > 0 && !on[i]) { ctx.fillStyle = 'rgba(201,208,0,.35)'; ctx.beginPath(); ctx.arc(cx + z.x * s, cy + z.z * s, ZR * s * prog[i], 0, 6.283); ctx.fill() } if (on[i]) { ctx.fillStyle = 'rgba(201,208,0,.45)'; ctx.beginPath(); ctx.arc(cx + z.x * s, cy + z.z * s, ZR * s, 0, 6.283); ctx.fill() } });
+      const k = TOUCH ? .78 : 1, cx = W - 112 * k, cy = H - (TOUCH ? 250 : 200), r = 74 * k, s = r / RM; ctx.save(); ctx.fillStyle = 'rgba(13,14,9,.72)'; ctx.strokeStyle = 'rgba(194,254,11,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill(); ctx.stroke();
+      zones.forEach((z, i) => { ctx.strokeStyle = on[i] ? LIMEH : 'rgba(239,234,219,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + z.x * s, cy + z.z * s, ZR * s, 0, 6.283); ctx.stroke(); if (prog[i] > 0 && !on[i]) { ctx.fillStyle = 'rgba(194,254,11,.35)'; ctx.beginPath(); ctx.arc(cx + z.x * s, cy + z.z * s, ZR * s * prog[i], 0, 6.283); ctx.fill() } if (on[i]) { ctx.fillStyle = 'rgba(194,254,11,.45)'; ctx.beginPath(); ctx.arc(cx + z.x * s, cy + z.z * s, ZR * s, 0, 6.283); ctx.fill() } });
       ctx.strokeStyle = 'rgba(239,234,219,.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); path.slice(-120).forEach((p, i) => { const x = cx + p[0] * s, y = cy + p[1] * s; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y) }); ctx.lineTo(cx + pos.x * s, cy + pos.z * s); ctx.stroke();
       ctx.fillStyle = LIMEH; ctx.beginPath(); ctx.arc(cx + pos.x * s, cy + pos.z * s, 4, 0, 6.283); ctx.fill(); ctx.fillStyle = 'rgba(239,234,219,.6)'; ctx.font = `italic 400 13px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText('mapa · memoria', cx, cy + r + 17); ctx.restore()
     },
