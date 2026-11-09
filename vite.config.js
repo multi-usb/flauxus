@@ -16,6 +16,22 @@ const MIME = {
 };
 const skipGameFile = (p) => /(^|[\\/])\.git(ignore)?($|[\\/])/.test(p);
 
+// ../juego/.webignore: másters y herramientas que no se publican (ver el propio archivo).
+function webIgnore() {
+  const file = path.join(GAME_DIR, '.webignore');
+  if (!fs.existsSync(file)) return () => false;
+  const rules = fs.readFileSync(file, 'utf8').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  return (rel) => {
+    const p = rel.split(path.sep).join('/');
+    return rules.some((r) => {
+      if (r.endsWith('/')) return p === r.slice(0, -1) || p.startsWith(r);
+      if (r.startsWith('**/')) return p.endsWith(r.slice(3));
+      if (r.startsWith('*.')) return !p.includes('/') && p.toLowerCase().endsWith(r.slice(1).toLowerCase());
+      return p === r;
+    });
+  };
+}
+
 function flauxusGame() {
   return {
     name: 'flauxus-game',
@@ -42,7 +58,12 @@ function flauxusGame() {
     closeBundle() {
       if (!fs.existsSync(GAME_DIR)) { this.warn(`No se encontró el juego en ${GAME_DIR}; dist/ queda sin /juego/`); return; }
       const out = path.resolve('dist', GAME_BASE.slice(1, -1));
-      fs.cpSync(GAME_DIR, out, { recursive: true, filter: (src) => !skipGameFile(path.relative(GAME_DIR, src)) });
+      const ignored = webIgnore();
+      fs.rmSync(out, { recursive: true, force: true }); // dist/juego viejo con másters de una build anterior
+      fs.cpSync(GAME_DIR, out, {
+        recursive: true,
+        filter: (src) => { const rel = path.relative(GAME_DIR, src); return !rel || (!skipGameFile(rel) && !ignored(rel)); },
+      });
     },
   };
 }
