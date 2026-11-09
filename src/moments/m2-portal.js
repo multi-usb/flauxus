@@ -1,6 +1,6 @@
 import gsap from 'gsap';
 import { track } from '../lib/track.js';
-import { GAME_URL } from '../config.js';
+import { GAME_URL, SCROLL_SCREENS } from '../config.js';
 
 // Momento 2 · PORTAL — JUEGA YA. El portal vive en el lienzo 3D (scenes/portal.js); aquí se alinea su HUD
 // en HTML (esquinas, prompts del juego que rotan y el CTA). Se llega en ~2,7 pantallas de scroll.
@@ -24,7 +24,7 @@ export function createM2({ profile, backend, channels, player, sfx, audioRunning
   let visible = false;
   let ctaOn = false;
   let ignited = false;
-  const t = track(section, 1.2);
+  const t = track(section, SCROLL_SCREENS.m2);
 
   cta.addEventListener('pointerenter', (ev) => {
     if (ev.pointerType !== 'mouse') return;

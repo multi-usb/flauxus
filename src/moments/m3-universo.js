@@ -1,3 +1,4 @@
+import { SCROLL_SCREENS } from '../config.js';
 import { track } from '../lib/track.js';
 import { span } from '../ui/type.js';
 import { createWords } from '../ui/words.js';
@@ -43,7 +44,7 @@ export function createM3({ profile, pulseRewind }) {
 
   return {
     id: 'm3',
-    track: track(section, 1.6),
+    track: track(section, SCROLL_SCREENS.m3),
     dom(e, q) {
       // A
       a1(span(q, 0.0, 0.16));

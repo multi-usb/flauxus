@@ -1,3 +1,4 @@
+import { SCROLL_SCREENS } from '../config.js';
 import { track } from '../lib/track.js';
 import { createTyper } from '../ui/type.js';
 import { clamp01 } from '../lib/math.js';
@@ -28,7 +29,7 @@ export function createM4({ profile }) {
 
   return {
     id: 'm4',
-    track: track(section, 2.4),
+    track: track(section, SCROLL_SCREENS.m4),
     dom(e, q, { active }) {
       if (!stageH) measure();
       const vh = innerHeight;

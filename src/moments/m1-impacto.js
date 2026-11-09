@@ -1,3 +1,4 @@
+import { SCROLL_SCREENS } from '../config.js';
 import { track } from '../lib/track.js';
 
 // Momento 1 · Impacto. Todo ocurre en el 3D: la pantalla monumental (scenes/wall.js), la activación
@@ -10,7 +11,7 @@ export function createM1() {
 
   return {
     id: 'm1',
-    track: track(document.getElementById('m1'), 1.2, { entry: false }),
+    track: track(document.getElementById('m1'), SCROLL_SCREENS.m1, { entry: false }),
     start() {},
     dom(e, q) {
       // q progresa de 0 a 1 mientras la cámara gira hacia la espalda de María Clara.

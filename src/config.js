@@ -3,6 +3,19 @@
 // URL del juego. Vacía = el CTA [ JUEGA YA ] reproduce el concept art a pantalla completa (fuente de verdad §19).
 export const GAME_URL = '';
 
+// Recorrido de scroll de cada momento fijado, en pantallas (1 = la altura de la ventana).
+// Las animaciones de cada momento están escritas en proporciones de este recorrido, así que alargarlo
+// no cambia la coreografía: solo le da a cada cuadro más espacio. Antes M3/M4/M5 apretaban 3–4 cuadros
+// por pantalla (M5: una sala cada ~0,3 pantallas) y el scroll se sentía hipersensible después del portal.
+// Ritmo objetivo: ~0,6–0,7 pantallas por cuadro, parecido al de M1 y M2.
+export const SCROLL_SCREENS = {
+  m1: 1.2,
+  m2: 1.2,
+  m3: 3.2, // antes 1.6 · A, B (+ rebobinado), C y la escala de notas
+  m4: 3.2, // antes 2.4 · cinco fotografías, dos citas y el nombre
+  m5: 4.4, // antes 2.4 · seis salas, la octava y la cita
+};
+
 export const MODELS = {
   desktop: '/models/chr_mariaclara_hero_desktop.glb',
   mobile: '/models/chr_mariaclara_hero_mobile.glb',

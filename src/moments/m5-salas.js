@@ -1,3 +1,4 @@
+import { SCROLL_SCREENS } from '../config.js';
 import { track } from '../lib/track.js';
 import { createTyper, span } from '../ui/type.js';
 import { sharpHTML } from '../ui/sharp.js';
@@ -155,7 +156,7 @@ export function createM5({ profile, sfx }) {
 
   return {
     id: 'm5',
-    track: track(section, 2.4),
+    track: track(section, SCROLL_SCREENS.m5),
     dom(e, q, { active, time }) {
       const idx = q < 0.04 ? -1 : Math.min(SALAS.length - 1, Math.floor(span(q, 0.04, 0.78) * SALAS.length));
       const oct = q > 0.84;
