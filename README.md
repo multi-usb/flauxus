@@ -43,10 +43,12 @@ Los alias de URL (`?room=do`, `?room=do4`, `?room=re`…) se derivan automática
 | `flow.js` | Arranque, entrada/salida de salas, ficha, final y vuelta al atrio. |
 | `NavMesh.js` | Rasterizado de colisiones, alturas, A* y rutas. La calibración por sala llega por `navInit()`. |
 | `core/` | `util.js` (primitivas), `config.js` (entrada, baraja, calidad, preludio), `state.js` (`S`, salas, generaciones), `time.js` (`T`), `voiceState.js` (`VO`) e `inputState.js` (puntero y teclas). |
-| `engine/` | `renderer.js`, `materials.js`, `fx.js` (canvas 2D), `avatar.js`, `lighting.js` y `ground.js`. |
+| `engine/` | `renderer.js`, `materials.js`, `fx.js` (canvas 2D), `avatar.js`, `lighting.js`, `ground.js`, `trail.js` (estela de FA♯) y `hologram.js` (holograma de SOL♯). |
 | `atrium/` | `atrium.js`: escaleras, portales, bloques orbitales, huella y `HUELLA_CONFIG`. |
-| `ui/` | `hud.js`, `voice.js`, `prelude.js`, `epilogue.js`, `debug.js` y `toast.js`. |
-| `rooms/` | Las seis salas, `context.js` y `motif.js`. |
+| `ui/` | `hud.js`, `voice.js`, `prelude.js`, `epilogue.js`, `debug.js`, `toast.js` y `loader.js` (preloader: etapas reales y bytes; aviso de error). |
+| `rooms/` | Las seis salas, `context.js` y `motif.js`. Una sala puede exponer `ambient(dt, T)`: se llama en cada cuadro (preludio y juego) para animaciones de fondo. |
+
+Parámetros útiles: `?room=1…6` entra directo a un Momento (lo usan las notas de la landing) · `?entry=fanzine|poster|cards` cambia la entrada (la cyborg tiñe el menú) · `?dev` muestra «Simular entrada» · `?perf` muestra el contador de rendimiento.
 
 ### Añadir o mover una sala
 1. Crear `rooms/<ID>.js` con `export const meta = {…}` y `export const <ID> = (() => { … })()`.
