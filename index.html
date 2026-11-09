@@ -254,7 +254,8 @@
       <div class="sala-detail" aria-live="polite">
         <p class="sala-note split"></p>
         <h3 class="sala-title"></h3>
-        <p class="prompt-tag sala-prompt"></p>
+        <!-- Entrar a la sala: tecla E en escritorio; en pantallas táctiles, tocar este botón -->
+        <button class="prompt-tag sala-prompt" type="button" data-cursor></button>
       </div>
       <blockquote class="m5-quote">
         <p class="type" data-text="«la octava en realidad no termina donde empieza, termina al doble de frecuencia.»">
@@ -272,29 +273,56 @@
         </h2>
         <p class="m6-prog r"><span>Maestría en Comunicación y Creación Interactiva</span><span>Pontificia Universidad
             Javeriana Cali</span></p>
-        <dl class="m6-credits">
-          <div class="r">
-            <dt>Dirección Transmedia &amp; Curaduría</dt>
-            <dd>Ana María Ocampo Coutin</dd>
-          </div>
-          <div class="r">
-            <dt>Dirección UX &amp; WebGL</dt>
-            <dd>Santiago Labrador Navarro</dd>
-          </div>
-          <div class="r">
-            <dt>Dirección de Arte 3D &amp; UI</dt>
-            <dd>Jaime Andrés Messa Enríquez</dd>
-          </div>
-          <div class="r">
-            <dt>Directora de proyecto</dt>
-            <dd>Juliana</dd>
-          </div>
-          <div class="r m6-artist">
-            <dt>Artista colaboradora</dt>
-            <dd>María Clara Lozada Ocampo</dd>
-          </div>
-        </dl>
-        <button class="prompt-btn rewind-btn r" type="button" data-cursor data-scramble>∿∿ Tomar aire de nuevo</button>
+        <!-- Créditos académicos. Cada nombre enlaza a su perfil público (pestaña nueva). Los cargos son los de
+             los créditos originales del proyecto; no se añaden títulos ni trayectorias. -->
+        <footer class="m6-credits" aria-label="Créditos del proyecto">
+          <section class="m6-group m6-team" aria-labelledby="m6-team-k">
+            <h3 class="m6-k r" id="m6-team-k">Integrantes</h3>
+            <dl>
+              <div class="r">
+                <dt>Dirección Transmedia &amp; Curaduría</dt>
+                <dd><a class="m6-person" href="https://www.linkedin.com/in/annaoc/" target="_blank"
+                    rel="noopener noreferrer" data-cursor>Ana María Ocampo Coutin<span class="sr-only"> · perfil de LinkedIn, se abre en una pestaña nueva</span></a></dd>
+              </div>
+              <div class="r">
+                <dt>Dirección UX &amp; WebGL</dt>
+                <dd><a class="m6-person" href="https://www.linkedin.com/in/santiago-labrador/" target="_blank"
+                    rel="noopener noreferrer" data-cursor>Santiago David Labrador Navarro<span class="sr-only"> · perfil de LinkedIn, se abre en una pestaña nueva</span></a></dd>
+              </div>
+              <div class="r">
+                <dt>Dirección de Arte 3D &amp; UI</dt>
+                <dd><a class="m6-person"
+                    href="https://www.linkedin.com/in/jaime-andr%C3%A9s-messa-enr%C3%ADquez-230a12174/" target="_blank"
+                    rel="noopener noreferrer" data-cursor>Jaime Andrés Messa Enríquez<span class="sr-only"> · perfil de LinkedIn, se abre en una pestaña nueva</span></a></dd>
+              </div>
+            </dl>
+          </section>
+          <section class="m6-group m6-academic" aria-labelledby="m6-academic-k">
+            <h3 class="m6-k r" id="m6-academic-k">Dirección académica</h3>
+            <dl>
+              <div class="r">
+                <dt>Directora de proyecto</dt>
+                <dd><a class="m6-person" href="https://www.javerianacali.edu.co/profesores/juliana-pino-mesa"
+                    target="_blank" rel="noopener noreferrer" data-cursor>Juliana Pino Mesa<span class="sr-only"> · perfil académico en la Pontificia Universidad Javeriana Cali, se abre
+                      en una pestaña nueva</span></a>
+                  <span class="m6-inst" aria-hidden="true">Perfil académico · Javeriana Cali</span>
+                </dd>
+              </div>
+              <div class="r m6-artist">
+                <dt>Artista colaboradora</dt>
+                <dd>María Clara Lozada Ocampo</dd>
+              </div>
+            </dl>
+          </section>
+        </footer>
+        <!-- «Tomar aire de nuevo» rebobina al inicio. El ícono de Instagram queda listo para enlazar la cuenta
+             del proyecto: cuando exista, basta con dar el destino aquí (data-instagram) y decidir su uso. -->
+        <button class="prompt-btn rewind-btn r" type="button" data-cursor data-scramble data-instagram=""><svg
+            class="ig-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="3" y="3" width="18" height="18" rx="5.2" />
+            <circle cx="12" cy="12" r="4.1" />
+            <circle class="ig-dot" cx="17.3" cy="6.7" r="1.1" />
+          </svg><span class="rewind-label">∿∿ Tomar aire de nuevo</span></button>
       </div>
     </section>
   </main>

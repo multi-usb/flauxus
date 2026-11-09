@@ -32,10 +32,22 @@ export function createM2({ profile, backend, channels, player, game, sfx, audioR
   });
   screen.addEventListener('click', () => { channels.next(); sfx('glitch'); });
   cta.addEventListener('click', enter);
+  // El portal anuncia [E]: con el portal encendido, la tecla E entra igual que [ JUEGA YA ].
+  addEventListener('keydown', (e) => {
+    if (e.code !== 'KeyE' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!visible || !ctaOn || game.isOpen || entering) return;
+    if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    e.preventDefault();
+    enter();
+  });
 
   // Entrar: el portal se traga la pantalla (máscara que se expande desde su rectángulo) y abre el juego
   // (o, mientras GAME_URL esté vacía, el concept art a pantalla completa).
+  let entering = false;
   function enter() {
+    if (entering || game.isOpen) return;
+    entering = true;
+    setTimeout(() => { entering = false; }, 1200);
     sfx('enter');
     backend.glitch(1);
     const r = backend.osdRect();

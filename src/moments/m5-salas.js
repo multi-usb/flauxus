@@ -1,4 +1,4 @@
-import { SCROLL_SCREENS } from '../config.js';
+import { SCROLL_SCREENS, GAME_URL } from '../config.js';
 import { track } from '../lib/track.js';
 import { createTyper, span } from '../ui/type.js';
 import { sharpHTML } from '../ui/sharp.js';
@@ -20,8 +20,11 @@ const SALAS = [
   { note: 'LA♯4', hz: 466.16, title: 'MataЯ al padre', prompt: '[E] INTERVENIR LA PARTITURA' },
 ];
 const fmt = (hz) => `${hz.toFixed(2).replace('.', ',')} Hz`;
+// Cada nota abre su sala en el juego: el orden de SALAS es el de las salas 1–6 del juego (DO … LA♯),
+// que acepta ?room=1…6 y entra directo al Momento bajo su propio preloader (juego/flow.js · directRoom).
+const roomUrl = (i) => `${GAME_URL}?room=${i + 1}`;
 
-export function createM5({ profile, sfx }) {
+export function createM5({ profile, sfx, game }) {
   const section = document.getElementById('m5');
   const canvas = section.querySelector('.osc');
   const ctx = canvas.getContext('2d');
@@ -42,6 +45,31 @@ export function createM5({ profile, sfx }) {
   let octave = false;
   let size = 0;
   let dpr = 1;
+  let isActive = false;
+  let opening = false;
+
+  // Entrar a la sala elegida. Un solo juego a la vez (game.open ignora repeticiones) y un candado breve
+  // para que una E mantenida o dos toques seguidos no disparen dos aperturas.
+  function enterSala(i) {
+    if (i < 0 || opening || game?.isOpen) return;
+    opening = true;
+    setTimeout(() => { opening = false; }, 1200);
+    sfx('enter');
+    game?.open(roomUrl(i));
+  }
+  const shownSala = () => (octave ? -1 : (manual >= 0 ? manual : scrolled));
+
+  addEventListener('keydown', (e) => {
+    if (e.code !== 'KeyE' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!isActive || game?.isOpen) return;
+    if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+    const i = shownSala();
+    if (i < 0) return;
+    e.preventDefault();
+    enterSala(i);
+  });
+  promptEl.addEventListener('click', () => enterSala(shownSala()));
+  const touchUI = matchMedia('(hover: none)').matches;
 
   const buttons = SALAS.map((s, i) => {
     const li = document.createElement('li');
@@ -88,7 +116,9 @@ export function createM5({ profile, sfx }) {
     const s = SALAS[show];
     noteEl.textContent = s.note;
     setTitle(titleEl, s.title);
-    promptEl.textContent = s.prompt;
+    // En táctil no hay tecla E: el mismo aviso se lee como botón «Entrar».
+    promptEl.textContent = touchUI ? `▶ ENTRAR · ${s.prompt.replace('[E] ', '')}` : s.prompt;
+    promptEl.setAttribute('aria-label', `Entrar a la sala ${s.note}, ${s.title}`);
     detail.classList.remove('step');
     void detail.offsetWidth;
     detail.classList.add('step');
@@ -158,6 +188,7 @@ export function createM5({ profile, sfx }) {
     id: 'm5',
     track: track(section, SCROLL_SCREENS.m5),
     dom(e, q, { active, time }) {
+      isActive = active;
       const idx = q < 0.04 ? -1 : Math.min(SALAS.length - 1, Math.floor(span(q, 0.04, 0.78) * SALAS.length));
       const oct = q > 0.84;
       if (idx !== scrolled || oct !== octave) {

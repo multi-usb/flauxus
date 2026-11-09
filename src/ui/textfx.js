@@ -47,9 +47,11 @@ export function createTextFx({ reducedMotion }) {
   });
 
   // ---------- scramble ----------
-  document.querySelectorAll('[data-scramble]').forEach((el) => {
+  // Si el botón lleva un ícono, solo se revuelve su etiqueta (.rewind-label / [data-scramble-text]): el SVG queda intacto.
+  document.querySelectorAll('[data-scramble]').forEach((host) => {
+    const el = host.querySelector('[data-scramble-text], .rewind-label') || host;
     const original = el.textContent;
-    el.setAttribute('aria-label', original);
+    host.setAttribute('aria-label', original);
     let raf = 0;
     const run = () => {
       if (reducedMotion) return;
@@ -70,8 +72,8 @@ export function createTextFx({ reducedMotion }) {
       };
       raf = requestAnimationFrame(step);
     };
-    el.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') run(); });
-    el.addEventListener('focus', run);
+    host.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') run(); });
+    host.addEventListener('focus', run);
   });
 
   return { split };

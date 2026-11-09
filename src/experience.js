@@ -27,7 +27,7 @@ ScrollTrigger.config({ ignoreMobileResize: true });
 // Director de la landing. Lee el scroll (suavizado ~120 ms, sin inercia), decide qué momento manda,
 // le pasa su progreso al backend visual (WebGL o respaldo) y al HTML de cada momento.
 export async function createExperience({ canvas, glbBuffer, profile, glModule }) {
-  const channels = createChannels({ autoplay: !profile.reducedMotion });
+  const channels = createChannels({ autoplay: !profile.reducedMotion, mobile: !!profile.mobile });
   const backend = glModule
     ? await glModule.createGlBackend({ canvas, glbBuffer, profile, channels })
     : createFlatBackend({ profile, channels });

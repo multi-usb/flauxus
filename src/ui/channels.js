@@ -1,11 +1,20 @@
-// Los dos videos de concept art como "canales" del monitor de JUEGA YA.
-// Nada se descarga hasta que el Momento 3 está cerca (prepare); el segundo canal, solo si se pide.
-const CHANNELS = [
+// "Canales" del monitor de JUEGA YA. El primero es el juego de verdad: una toma general del Atrio con María Clara
+// vestida de «Matar al padre», renderizada desde el propio juego (7 s en bucle sin corte, 24 fps, ~0,3–0,45 MB).
+// Hay dos encuadres: 16:9 para el portal panorámico de escritorio y 9:16 para el portal vertical del celular.
+// Los concept art siguen como canales 2 y 3 (tocar la pantalla del portal cambia de canal).
+// Nada se descarga hasta que el Momento 3 está cerca (prepare); los demás canales, solo si se piden.
+// Sin autoplay (movimiento reducido) o si el navegador no reproduce el video, se ve el póster fijo de cada canal.
+const CONCEPT = [
   { video: '/video/concept-art_antimuseum.mp4', poster: '/video/concept-art_antimuseum_poster.jpg' },
   { video: '/video/concept-art_glitches.mp4', poster: '/video/concept-art_glitches_poster.jpg' },
 ];
+const ATRIO = {
+  desktop: { video: '/video/atrio-preview_16x9.mp4', poster: '/video/atrio-preview_16x9_poster.jpg' },
+  mobile: { video: '/video/atrio-preview_9x16.mp4', poster: '/video/atrio-preview_9x16_poster.jpg' },
+};
 
-export function createChannels({ autoplay = true } = {}) {
+export function createChannels({ autoplay = true, mobile = false } = {}) {
+  const CHANNELS = [mobile ? ATRIO.mobile : ATRIO.desktop, ...CONCEPT];
   const videos = CHANNELS.map(() => null);
   let index = 0;
   let wantPlay = false;
