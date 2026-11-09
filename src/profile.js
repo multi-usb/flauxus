@@ -4,7 +4,9 @@ export function detectProfile() {
   const forceTouch = new URLSearchParams(location.search).get('input') === 'touch';
   const coarse = forceTouch || matchMedia('(pointer: coarse)').matches;
   const touch = coarse || (navigator.maxTouchPoints > 0 && innerWidth < 1024);
-  const small = innerWidth < 768;
+  // Ventana vertical (tableta en retrato o ventana estrecha): usa la composición vertical, con el portal 9:16.
+  const portrait = innerHeight > innerWidth * 1.15 && innerWidth < 1100;
+  const small = innerWidth < 768 || portrait;
   const weak = (navigator.hardwareConcurrency || 8) <= 4;
   const mobile = touch || small;
   return {

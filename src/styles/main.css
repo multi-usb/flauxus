@@ -975,11 +975,13 @@ html.started #sound {
 
 /* ---------- 6 · Cierre ---------- */
 /* ---------- 6 · Cierre editorial sobre negro puro ---------- */
+/* Al menos una pantalla; si los créditos no caben (celulares, ventanas bajas) la sección crece y se recorre con
+   el scroll en vez de recortar el título o el botón final. */
 #m6 {
-  height: 100svh;
-  max-height: 100svh;
-  min-height: unset;
-  overflow: hidden;
+  height: auto;
+  min-height: 100svh;
+  max-height: none;
+  overflow-x: clip;
   background: #000;
 }
 
@@ -990,8 +992,8 @@ html.started #sound {
   grid-template-columns: repeat(12, 1fr);
   column-gap: clamp(8px, 1.4vw, 24px);
   align-content: center;
-  height: 100%;
-  max-height: 100svh;
+  height: auto;
+  min-height: 100svh;
   padding: clamp(56px, 7svh, 96px) var(--rw-pad) clamp(56px, 7svh, 96px);
   visibility: hidden;
 }
