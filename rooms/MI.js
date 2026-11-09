@@ -4,6 +4,7 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
+import { GX } from '../GameContext.js';
 import { recOk, pad, tone, playClip, stopClips, A, regionFor, splitRegion, recPeaks, ensureAudio } from '../AudioSystem.js';
 import { S, roomGroup, avatarObj, bloom, glowSprite, animAvatar, ctx, W, H, burst, LIME, LIMEH, PAPER, SERIF, FONT, CARDS, OPLIST, HAND, clamp, lerp, damp, hint, toast, finish, roomGen, $ } from './context.js';
 
@@ -42,7 +43,7 @@ export const meta = {
 
 export const MI = (() => {
   let vals, touched, playing, listened, ops = [null, null, null, null], hand = [], selCard = -1, handles = [], drag, bounds = [], wf = [], evs = [], lvl = 0, halo, arcs = [], ph0 = 0, seq = [], real = false, fbPad = null, origT = 0;
-  const trackLen = () => clamp(H * .2, 90, 160), yBase = () => H * .74, yPh = () => H * .34;
+  const trackLen = () => clamp(H * .2, 90, 160), yBase = () => H * .74, yPh = () => Math.max(H * .34, (GX.uiTop || 0) + 56); // las frases empiezan bajo la franja del HUD
   function layout() { const pw = W * .13, gb = W * .02, gv = W * .045; const total = 4 * pw + gb * 4 + gv * vals.reduce((a, b) => a + b, 0); let x = (W - total) / 2; const L = []; for (let i = 0; i < 4; i++) { const p = { x0: x, x1: x + pw }; x += pw; const g = { x0: x, x1: x + gb + gv * vals[i] }; x = g.x1; L.push({ p, g }) } return L }
   const readout = i => `Frase ${i + 1} · respiración de ${Math.round(vals[i] * 900)} ms`;
   function updBtns() { const n = touched.size; $('miListen').disabled = n < 4 || playing || !real; $('miListen').textContent = n < 4 ? `Mueve los 4 puntos (${n}/4)` : '▶ Mi fraseo'; $('miOrig').disabled = playing || !real; $('miConfirm').style.display = (listened && !playing) || (!real && n === 4) ? 'block' : 'none' }

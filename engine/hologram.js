@@ -1,7 +1,7 @@
 /* ======================================================================
    FLAUXUS — engine/hologram.js
    Holograma monumental de SOL♯: María Clara con la skin cyborg, de unos
-   105 m de alto, tocando la flauta detrás del escenario.
+   130 m de alto, tocando la flauta detrás del escenario.
 
    No es un personaje: no camina por el escenario, no colisiona, no recibe
    ni proyecta sombras y no interviene en el minijuego.
@@ -31,6 +31,7 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { avatar, animAvatar } from './avatar.js';
+import { REDUCE } from '../core/util.js';
 
 const CYAN = new THREE.Color(0x19c6d9), PINK = new THREE.Color(0xff4fb8);
 
@@ -60,12 +61,14 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
   /* ---------- plano monumental ---------- */
   const uni = {
     uMap: { value: rt.texture }, uTime: { value: 0 }, uA: { value: CYAN.clone() }, uB: { value: PINK.clone() },
-    uGain: { value: 0 }, uMusic: { value: 0 }, uTexel: { value: new THREE.Vector2(1 / RW, 1 / RH) }
+    uGain: { value: 0 }, uMusic: { value: 0 }, uTexel: { value: new THREE.Vector2(1 / RW, 1 / RH) },
+    uCalm: { value: REDUCE ? 1 : 0 } // movimiento reducido: sin interferencias ni parpadeo
   };
   const mat = new THREE.ShaderMaterial({
     uniforms: uni, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide,
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: /* glsl */`
+      uniform float uCalm;
       uniform sampler2D uMap; uniform float uTime; uniform vec3 uA; uniform vec3 uB; uniform float uGain; uniform float uMusic; uniform vec2 uTexel;
       varying vec2 vUv;
       float h1(float x) { return fract(sin(x * 127.1) * 43758.5453); }
@@ -74,7 +77,7 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
         // interferencia: franjas horizontales que se desplazan un instante
         float band = floor(uv.y * 46.0), t = floor(uTime * 7.0);
         float glitch = step(0.965, h1(band * 0.37 + t)) * (h1(band + t * 1.3) - 0.5) * 0.045;
-        uv.x += glitch;
+        uv.x += glitch * (1.0 - uCalm);
         // aberración: el rosado y el cian se separan (más con la música)
         float split = (0.006 + uMusic * 0.01) * (0.6 + 0.4 * sin(uTime * 1.7));
         vec4 c0 = texture2D(uMap, uv), cL = texture2D(uMap, uv - vec2(split, 0.0)), cR = texture2D(uMap, uv + vec2(split, 0.0));
@@ -95,7 +98,7 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
         col += tint * sweep * c0.a * 0.8;
         // nace de la bruma: se disuelve hacia abajo
         float fade = smoothstep(0.16, 0.44, uv.y) * smoothstep(1.0, 0.96, uv.y);
-        float flick = 0.93 + 0.07 * sin(uTime * 23.0) * sin(uTime * 3.1);
+        float flick = 0.93 + 0.07 * sin(uTime * 23.0) * sin(uTime * 3.1) * (1.0 - uCalm);
         col *= fade * flick * uGain * (1.0 + uMusic * 0.5);
         gl_FragColor = vec4(col, 1.0);
       }`
@@ -123,7 +126,7 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
 
   function renderFigure(dt, t, music) {
     /* coreografía */
-    const steps = Math.floor(t / 4.5) % 2 === 1;
+    const steps = !REDUCE && Math.floor(t / 4.5) % 2 === 1;
     animAvatar(root, steps ? 1.6 : 0, t, true, music);
     if (u.actions?.walk) u.actions.walk.timeScale = .5;                 // pasos lentos, de danza
     root.rotation.y = Math.sin(t * .31) * .55 + (steps ? Math.sin(t * .9) * .22 : 0);
@@ -159,7 +162,9 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
       if (cool <= 0) { if (avg > 40 && level < 3) { level = 3; cool = 6; } else if (avg > 26 && level < 2) { level = 2; cool = 4; } else if (avg < 15 && level > (low ? 1 : 0)) { level--; cool = 6; } }
       frame++;
       if (level >= 3) return;                                   // congelado: queda la última imagen
-      const every = level === 2 ? 4 : level === 1 ? 2 : 2;      // 30 Hz por defecto; 15 Hz si el equipo va justo
+      /* 30 Hz cuando el holograma es protagonista (preludio); 20 Hz durante el minijuego, donde cede el foco y
+         la CPU se necesita para los sensores; 15 Hz si el equipo va justo. */
+      const every = level === 2 ? 4 : target < .7 ? 3 : 2;
       if (frame % every) return;
       renderFigure(dt * every, t, music);
     },

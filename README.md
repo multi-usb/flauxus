@@ -43,12 +43,16 @@ Los alias de URL (`?room=do`, `?room=do4`, `?room=re`…) se derivan automática
 | `flow.js` | Arranque, entrada/salida de salas, ficha, final y vuelta al atrio. |
 | `NavMesh.js` | Rasterizado de colisiones, alturas, A* y rutas. La calibración por sala llega por `navInit()`. |
 | `core/` | `util.js` (primitivas), `config.js` (entrada, baraja, calidad, preludio), `state.js` (`S`, salas, generaciones), `time.js` (`T`), `voiceState.js` (`VO`) e `inputState.js` (puntero y teclas). |
-| `engine/` | `renderer.js`, `materials.js`, `fx.js` (canvas 2D), `avatar.js`, `lighting.js`, `ground.js`, `trail.js` (estela de FA♯) y `hologram.js` (holograma de SOL♯). |
-| `atrium/` | `atrium.js`: escaleras, portales, bloques orbitales, huella y `HUELLA_CONFIG`. |
+| `engine/` | `renderer.js`, `materials.js`, `fx.js` (canvas 2D), `avatar.js`, `lighting.js`, `ground.js`, `trail.js` (estela de partículas y cinta de recorrido de FA♯), `hologram.js` (holograma monumental de SOL♯, por impostor) y `sky.js` (galaxia horneada y luciérnagas). |
+| `atrium/` | `atrium.js`: escaleras, portales, bloques orbitales, huella y `HUELLA_CONFIG`. `memory.js`: la memoria del atrio (una huella por sala completada). |
 | `ui/` | `hud.js`, `voice.js`, `prelude.js`, `epilogue.js`, `debug.js`, `toast.js` y `loader.js` (preloader: etapas reales y bytes; aviso de error). |
 | `rooms/` | Las seis salas, `context.js` y `motif.js`. Una sala puede exponer `ambient(dt, T)`: se llama en cada cuadro (preludio y juego) para animaciones de fondo. |
 
-Parámetros útiles: `?room=1…6` entra directo a un Momento (lo usan las notas de la landing) · `?entry=fanzine|poster|cards` cambia la entrada (la cyborg tiñe el menú) · `?dev` muestra «Simular entrada» · `?perf` muestra el contador de rendimiento.
+**Interfaz.** El HUD es una rejilla por regiones (`style.css` · «HUD POR REGIONES»): cada pieza vive en una región y se apila con sus vecinas; no hay coordenadas sueltas. Para añadir un control, colócalo dentro de la región que le corresponde en `index.html` (`.hud-left`, `.hud-center`, `.hud-right` o sus grupos) en vez de darle `position:absolute`.
+
+**Progreso.** Las salas completadas y sus métricas se guardan en `localStorage` (`flauxus.progress.v1`, ver `core/state.js`). Se borran con «Reiniciar recorrido» (ayuda) o «Rebobinar y empezar de nuevo» (epílogo).
+
+Parámetros útiles: `?raf=timer` mueve el bucle con un temporizador (pruebas automatizadas con la página oculta) · `?input=touch` fuerza la interfaz táctil · `?room=1…6` entra directo a un Momento (lo usan las notas de la landing) · `?entry=fanzine|poster|cards` cambia la entrada (la cyborg tiñe el menú) · `?dev` muestra «Simular entrada» · `?perf` muestra el contador de rendimiento.
 
 ### Añadir o mover una sala
 1. Crear `rooms/<ID>.js` con `export const meta = {…}` y `export const <ID> = (() => { … })()`.

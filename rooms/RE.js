@@ -4,6 +4,7 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
+import { GX } from '../GameContext.js';
 import { tone } from '../AudioSystem.js';
 import { S, roomGroup, avatarObj, bloom, mat, animAvatar, rimSet, ctx, W, H, burst, ringFx, ftext, shake, glowCircle, LIME, LIMEH, PAPER, SERIF, TOUCH, hint, finish, roomGen, groundController } from './context.js';
 
@@ -45,7 +46,9 @@ export const meta = {
 
 export const RE = (() => {
   const BPM = 96, B = 60 / BPM, NEED = 12; let t = 0, notes = [], nt = 0, k = 0, nextClick = 0, hits = 0, perfect = 0, miss = 0, combo = 0, bestCombo = 0, devs = [], pulse = 0, red = 0, pillars = [], floorL;
-  const sc = [293.66, 329.63, 392, 440, 523.25, 587.33, 659.25], hx = () => W * (TOUCH ? .2 : .26), ly = () => H * .5, spd = () => W * .34;
+  const sc = [293.66, 329.63, 392, 440, 523.25, 587.33, 659.25], hx = () => W * (TOUCH ? .2 : .26),
+    /* el carril baja lo necesario para no quedar bajo la franja superior del HUD (medida en vivo: GX.uiTop) */
+    ly = () => Math.max(H * .5, (GX.uiTop || 0) + 118), spd = () => W * .34;
   function gen() { while (nt < t + 9) { let T0; if (k === 0) T0 = B * 4; else if (k < 8) T0 = nt + B; else T0 = nt + ((k % 2) ? B * .75 : B * 1.25); nt = T0; notes.push({ t: T0, done: false, off: Math.abs(T0 / B - Math.round(T0 / B)) > .1 }); k++ } }
   function press() {
     if (S.phase !== 'play' || t < B * 3.5) return; let best = null, bd = 1; for (const n of notes) { if (n.done) continue; const d = Math.abs(n.t - t); if (d < bd) { bd = d; best = n } }

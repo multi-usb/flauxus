@@ -349,7 +349,13 @@ function clearVisual(u) {
   if (u.flute) { u.visual.remove(u.flute); disposeGroup(u.flute); u.flute = null; }
   if (u.cyber) { u.cyber.parent?.remove(u.cyber); disposeGroup(u.cyber, u.glowMat); u.cyber = null; }
   if (u.placeholder) { u.visual.remove(u.placeholder); disposeGroup(u.placeholder, u.glowMat); u.placeholder = null; }
-  if (u.rig) { u.visual.remove(u.rig); u.rig = null; }
+  if (u.rig) {
+    /* Cada instancia del rig tiene su propio Skeleton, y cada Skeleton su textura de huesos en la GPU. Al cambiar
+       de traje (salas FA♯, SOL♯ y LA♯) esa textura quedaba huérfana: +2 texturas por visita. Se libera aquí;
+       geometría, materiales y mapas son los del rig en caché y se conservan. */
+    u.rig.traverse(o => { if (o.isSkinnedMesh) o.skeleton?.dispose?.(); });
+    u.visual.remove(u.rig); u.rig = null;
+  }
   u.mesh = null; u.bones = null; u.template = null; u.skeleton = null;
 }
 

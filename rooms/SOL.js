@@ -68,8 +68,10 @@ export const SOL = (() => {
   let holo = null, sky = null;
   const keepAll = g => g.traverse(o => { if (o.geometry) o.geometry.userData.keep = true; if (o.material) o.material.userData.keep = true });
   const names = ['Muñeca I', 'Muñeca II', 'Cabeza'], HR = 1.0; let orbs = [], cap = [], hold = [0, 0, 0], core, rings = [], order = [], anch = [], pending = false;
-  const v3 = new THREE.Vector3(); const proj = o => { o.getWorldPosition(v3); const p = v3.clone().project(camera); return { x: (p.x * .5 + .5) * W, y: (-p.y * .5 + .5) * H } };
-  const anchors = () => { avatarObj.updateMatrixWorld(true); camera.updateMatrixWorld(); const j = avatarObj.userData.joints; return [proj(j.wl), proj(j.wr), proj(j.head)] };
+  const v3 = new THREE.Vector3(); const proj = o => { o.getWorldPosition(v3).project(camera); return { x: (v3.x * .5 + .5) * W, y: (-v3.y * .5 + .5) * H } }; // sin clonar vectores por cuadro
+  /* getWorldPosition ya actualiza la cadena de padres de cada articulación: no hace falta recalcular las 66
+     matrices del esqueleto por segunda vez en el cuadro (lo hacía animAvatar un instante antes). */
+  const anchors = () => { camera.updateMatrixWorld(); const j = avatarObj.userData.joints; return [proj(j.wl), proj(j.wr), proj(j.head)] };
   /* Apoyo fino de las botas. El clip idle sube y baja los tobillos unos
      4 cm; si la raíz se deja fija, en unas fases las botas flotan y en
      otras se hunden en la terraza. Se mide la punta del pie más baja y se
@@ -117,7 +119,7 @@ export const SOL = (() => {
       /* Galaxia procedural (engine/sky.js): nebulosa horneada + dos capas de estrellas + polvo orbitando el holograma. */
       if (!sky) { sky = createGalaxy(GX.renderer, { low: TOUCH, orbitCenter: new THREE.Vector3(0, fy + 16, -110), orbitRadius: 52 }); keepAll(sky.group) }
       roomGroup.add(sky.group);
-      /* Holograma monumental (engine/hologram.js): la cyborg de ~105 m tocando la flauta detrás del escenario;
+      /* Holograma monumental (engine/hologram.js): la cyborg de ~130 m tocando la flauta detrás del escenario;
          la cintura queda a la altura del horizonte: el torso y la flauta se alzan sobre la plataforma.
          Es un impostor (se dibuja pequeña a una textura y se proyecta en un plano): domina el cielo sin el coste
          de una malla gigante. No colisiona ni participa del minijuego. */

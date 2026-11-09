@@ -18,7 +18,10 @@ export function setRoomInfo(k, t, d) {
   reshowRoomInfo();
 }
 export function reshowRoomInfo() { const el = $('roomInfo'); el.classList.add('fresh'); clearTimeout(infoTimer); infoTimer = setTimeout(() => el.classList.remove('fresh'), 9000) }
-export function hint(t) { $('roomHint').textContent = t || '' }
+/* Varias salas llaman a hint() en cada cuadro con el mismo texto: solo se toca el DOM cuando cambia (escribir
+   textContent invalida estilo y maquetación aunque el texto sea igual). */
+let lastHint = null;
+export function hint(t) { t = t || ''; if (t === lastHint) return; lastHint = t; $('roomHint').textContent = t }
 export function renderProgress() {
   const t = nextRoomId();
   $('progress').innerHTML = rooms.map(r => `<div class="pip${S.completed.has(r.id) ? ' done' : ''}${r.id === t && S.phase === 'atrium' ? ' next' : ''}${S.room === r.id ? ' cur' : ''}" data-room="${r.id}" title="${r.title}"><b>${S.completed.has(r.id) ? '✓' : r.short}</b></div>`).join('');

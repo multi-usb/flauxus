@@ -4,6 +4,7 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
+import { GX } from '../GameContext.js';
 import { recOk, Voice, pad, A } from '../AudioSystem.js';
 import { roomGroup, avatarObj, bloom, makeDust, animAvatar, rimSet, ctx, W, H, burst, ringFx, glowCircle, LIME, LIMEH, PAPER, SERIF, clamp, lerp, damp, rand, TOUCH, ptr, keys, ptrActive, hint, finish, roomGen, T } from './context.js';
 
@@ -59,7 +60,8 @@ export const DO = (() => {
       hint(TOUCH ? 'Pon el dedo sobre la luz y síguela' : 'Mueve el cursor sobre la luz · mantén clic o Espacio para soplar')
     },
     update(dt) {
-      const hold = ptr.down || keys.has('Space'); ang += dt * (.5 + stable / NEED * .3); tgt.x = W / 2 + Math.cos(ang) * W * .2; tgt.y = H * .44 + Math.sin(ang * 1.31) * H * .15; R = clamp(Math.min(W, H) * .09, 52, 90);
+      const hold = ptr.down || keys.has('Space'); ang += dt * (.5 + stable / NEED * .3); tgt.x = W / 2 + Math.cos(ang) * W * .2; tgt.y = H * .44 + Math.sin(ang * 1.31) * H * .15;
+      tgt.y = Math.max(tgt.y, (GX.uiTop || 0) + clamp(Math.min(W, H) * .09, 52, 90) + 30); // la luz no sube bajo la franja del HUD R = clamp(Math.min(W, H) * .09, 52, 90);
       const d = Math.hypot(ptr.x - tgt.x, ptr.y - tgt.y); inside = d < R && ptrActive(); air = damp(air, hold ? 1 : 0, hold ? 9 : 6, dt);
       purity = damp(purity, hold ? (inside ? 1 : clamp(1 - (d - R) / (R * 2.4), 0, .6)) : 0, 8, dt);
       const clar = air * purity;

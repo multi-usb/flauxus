@@ -2861,7 +2861,13 @@
     .sats a.on { border-color: var(--rw-verde); background: var(--rw-verde); color: var(--rw-negro) }
     .sats a.on small { color: rgba(0, 0, 0, .7) }
     body[data-skin="cyborg"] .sats a.on { border-color: var(--skin-a); background: linear-gradient(100deg, var(--skin-a), var(--skin-b)) }
-    @media (max-height: 560px) and (orientation: landscape) { .sats { display: none } }
+    /* horizontal bajo: los satélites siguen disponibles, en una fila compacta (sin la línea de habilidad) */
+    @media (max-height: 560px) and (orientation: landscape) {
+      .sats { margin-top: 10px; padding-top: 8px; grid-template-columns: auto repeat(4, minmax(0, 1fr)); align-items: center }
+      .sats .sats-k { grid-column: auto; max-width: 110px }
+      .sats a { min-height: 40px; padding: 6px 8px }
+      .sats a small { display: none }
+    }
 
     /* --- «Salir» (embebido): fijo en la esquina, por encima de todo; el HUD y las pantallas le dejan su hueco --- */
     :root { --exit-w: 92px; --exit-h: 44px; --edge: clamp(12px, 1.6vw, 22px) }
@@ -3017,4 +3023,21 @@
       #laUI .lcard img { height: 20px }
       #laUI .lcard .tiny { display: none }
       #laUI .btns { min-height: 40px; padding: 6px 10px; font-size: 11px }
+    }
+
+    /* tercera pasada: en ≤ 380 px la tarjeta empieza bajo las filas de «Volver» y «Saltar» */
+    @media (max-width: 380px) { #hud .card { grid-row: 5 / -1 } }
+    /* ayuda en pantallas bajas: la caja nunca supera el alto disponible */
+    #help .box { max-height: 100%; overflow: auto }
+    #help { box-sizing: border-box }
+
+    /* LA♯ en celulares compactos (≤ 620 px de alto): fragmentos y pentagrama más bajos para que quepan los botones */
+    @media (max-height: 620px) and (max-width: 520px) {
+      #laUI[style*="block"] { gap: 6px }
+      #laUI .frame { padding: 18px 8px 8px }
+      #laUI .slot, #laUI .lcard { height: 46px }
+      #laUI .lcard img { height: 16px }
+      #laUI .lcard strong { font-size: 10px }
+      #laUI #laStatus { font-size: 12px; padding: 2px 8px }
+      #laUI .btns { min-height: 40px; padding: 6px 10px }
     }

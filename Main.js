@@ -128,7 +128,7 @@ function frame() {
      empiezan debajo de ella (--ui-top en style.css). Se mide, no se supone: vale para cualquier tamaño. */
   if ((frame.n = (frame.n || 0) + 1) % 10 === 0 && S.room) {
     let top = 0; for (const id of ['progress', 'btnBack', 'btnSkip', 'btnVoSkip', 'roomHint']) { const el = $(id); if (el.offsetParent) top = Math.max(top, el.getBoundingClientRect().bottom) }
-    top = Math.round(top + 10); if (top !== frame.uiTop) { frame.uiTop = top; document.documentElement.style.setProperty('--ui-top', top + 'px') }
+    top = Math.round(top + 10); if (top !== frame.uiTop) { frame.uiTop = top; GX.uiTop = top; document.documentElement.style.setProperty('--ui-top', top + 'px') }
   }
   if (cardOpen !== frame.cardOpen) { frame.cardOpen = cardOpen; document.body.classList.toggle('card-open', cardOpen); setResCap(cardOpen ? .55 : 1) }
   if (document.body.dataset.phase !== S.phase) { if (S.phase === 'atrium' || S.phase === 'prelude') reshowRoomInfo(); document.body.dataset.phase = S.phase } // jerarquía de la interfaz (style.css)
