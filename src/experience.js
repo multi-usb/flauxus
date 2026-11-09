@@ -4,6 +4,7 @@ import { FPS_FLOOR, FPS_FALL_SECONDS } from './config.js';
 import { createFlatBackend } from './scenes/flat.js';
 import { createChannels } from './ui/channels.js';
 import { createPlayer } from './ui/player.js';
+import { createGame } from './ui/game.js';
 import { createCursor } from './ui/cursor.js';
 import { createSoundViz } from './ui/soundviz.js';
 import { createNoteTrigger } from './ui/notes.js';
@@ -51,6 +52,9 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   soundBtn.addEventListener('click', () => audio.toggle());
   createTextFx(profile);
   const player = createPlayer({ channels, profile });
+  // Mientras se juega, la landing se congela debajo (sin render ni música) y conserva su punto del scroll.
+  let gameOpen = false;
+  const game = createGame({ onChange: (on) => { gameOpen = on; last = performance.now(); } });
 
   let forcedRewind = 0; // segundos de rebobinado forzado (frase del M3, botón del cierre)
   let rewinding = false;
@@ -59,6 +63,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
     backend,
     channels,
     player,
+    game,
     pulseRewind: (s) => { forcedRewind = Math.max(forcedRewind, s); audio.sfx('glitch'); },
     sfx: (kind, opts) => audio.sfx(kind, opts),
     audioRunning: () => audio.running,
@@ -110,6 +115,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   function frame(now) {
     if (!running) return;
     requestAnimationFrame(frame);
+    if (gameOpen) { last = now; audio.frame({ hidden: true }); return; }
     const dt = Math.min(0.1, Math.max(0, (now - last) / 1000)); // el primer cuadro puede llegar con marca anterior
     last = now;
     fps.tick(dt);

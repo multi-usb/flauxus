@@ -1,7 +1,8 @@
 // Configuración editable de la landing. Un solo lugar para lo que todavía no está decidido.
 
-// URL del juego. Vacía = el CTA [ JUEGA YA ] reproduce el concept art a pantalla completa (fuente de verdad §19).
-export const GAME_URL = '';
+// URL del juego. [ JUEGA YA ] lo abre a pantalla completa dentro de la landing (ui/game.js); vite.config.js lo
+// sirve en /juego/ desde ../juego. Vacía = el CTA reproduce el concept art a pantalla completa (fuente de verdad §19).
+export const GAME_URL = '/juego/';
 
 // Recorrido de scroll de cada momento fijado, en pantallas (1 = la altura de la ventana).
 // Las animaciones de cada momento están escritas en proporciones de este recorrido, así que alargarlo

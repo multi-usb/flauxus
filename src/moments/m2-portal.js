@@ -13,7 +13,7 @@ const PROMPTS = [
   '[E] INTERVENIR LA PARTITURA',
 ];
 
-export function createM2({ profile, backend, channels, player, sfx, audioRunning = () => false }) {
+export function createM2({ profile, backend, channels, player, game, sfx, audioRunning = () => false }) {
   const section = document.getElementById('m2');
   const osd = document.getElementById('osd');
   const prompt = osd.querySelector('.osd-prompt');
@@ -48,7 +48,7 @@ export function createM2({ profile, backend, channels, player, sfx, audioRunning
     void mask.offsetWidth;
     if (!profile.reducedMotion) mask.classList.add('enter');
     setTimeout(() => {
-      if (GAME_URL) location.href = GAME_URL;
+      if (GAME_URL) game.open(GAME_URL);
       else player.open();
       mask.classList.remove('enter');
     }, profile.reducedMotion ? 0 : 520);
