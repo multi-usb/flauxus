@@ -4,8 +4,16 @@
    ====================================================================== */
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GX } from './GameContext.js';
+import { qs } from './core/util.js';
+
+/* Escenarios optimizados para la web (tools/optimizar-escenarios.mjs): mismos triángulos, geometría meshopt,
+   texturas WebP; ~5× menos peso. Los .fbx de la raíz son los másters; ?fbx los carga para comparar. */
+const USE_FBX = qs.has('fbx');
+const scene = name => (USE_FBX ? `${name}.fbx` : `modelos/${name}.glb`);
 
 const V3 = THREE.Vector3;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -13,17 +21,18 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export class AssetManager {
   constructor() {
     this.loader = new FBXLoader();
+    this.gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     this.cache = new Map();
     this.pending = new Map();
     this.matCache = new Map();
     this.files = {
-      atrium: 'Atrio_nivel_completo_version_detallada.fbx',
-      1: 'Nivel1_DO_El_sonido_bello_nivel_completo.fbx',
-      2: 'Nivel2_RE_El_pulso_nivel_completo.fbx',
-      3: 'Nivel3_MI_El_fraseo_nivel_completo.fbx',
-      4: 'Nivel4_FAsostenido_El_cuerpo_nivel_completo.fbx',
-      5: 'Nivel5_SOL_A_Terrazas.fbx',
-      6: 'Nivel6_LAsostenido_Matar_al_padre_nivel_completo.fbx'
+      atrium: scene('Atrio_nivel_completo_version_detallada'),
+      1: scene('Nivel1_DO_El_sonido_bello_nivel_completo'),
+      2: scene('Nivel2_RE_El_pulso_nivel_completo'),
+      3: scene('Nivel3_MI_El_fraseo_nivel_completo'),
+      4: scene('Nivel4_FAsostenido_El_cuerpo_nivel_completo'),
+      5: scene('Nivel5_SOL_A_Terrazas'),
+      6: scene('Nivel6_LAsostenido_Matar_al_padre_nivel_completo')
     };
   }
   /* carga única por archivo; devuelve un clon que comparte geometría y materiales */
@@ -32,10 +41,12 @@ export class AssetManager {
     if (this.pending.has(key)) return this.pending.get(key);
     const file = this.files[key];
     if (!file) return Promise.resolve(null);
+    const glb = file.endsWith('.glb');
     const p = new Promise(res => {
-      this.loader.load(
+      (glb ? this.gltf : this.loader).load(
         new URL(file, document.baseURI).href,
-        obj => {
+        loaded => {
+          const obj = glb ? loaded.scene : loaded;
           try { this.optimize(obj); } catch (e) { console.warn('optimize', key, e); }
           this.cache.set(key, obj);
           this.pending.delete(key);
@@ -43,7 +54,7 @@ export class AssetManager {
         },
         undefined,
         err => {
-          console.warn('FBX load error for', key, err);
+          console.warn('Scene load error for', key, file, err);
           this.pending.delete(key);
           res(null);
         }
@@ -205,7 +216,8 @@ export class AssetManager {
           transparent: !!(m.transparent && m.opacity < .98),
           opacity: m.opacity ?? 1
         });
-        if (m.normalMap) s.normalScale.set(1.2, 1.2);
+        // Conserva el signo de origen: glTF trae normalScale.y = -1 (convención de UV), FBX trae +1.
+        if (m.normalMap) s.normalScale.set(1.2 * Math.sign(m.normalScale?.x || 1), 1.2 * Math.sign(m.normalScale?.y || 1));
         if (m.emissive) {
           const e = m.emissive,
             eLum = lum(e),

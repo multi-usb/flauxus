@@ -1,0 +1,24 @@
+# Archivos del juego que NO se publican (los lee el plugin flauxus-game de ../landing/vite.config.js al compilar).
+# Siguen en el repo como másters o herramientas; en desarrollo se pueden pedir igual (p. ej. ?fbx).
+# Formato: una ruta por línea. "carpeta/" = toda la carpeta · "*.ext" = esa extensión en la raíz del juego ·
+# "**/x" = cualquier ruta que termine en x.
+
+# Másters de los escenarios → se publican optimizados en modelos/ (tools/optimizar-escenarios.mjs)
+*.fbx
+Atrio_nivel_completo_version_detallada.fbm/
+
+# Másters de audio → se publican comprimidos en audio/
+*.wav
+
+# Personajes sin rig: el juego solo carga los *_rig_Run.fbx (engine/avatar.js)
+personaje/MC_original/MC_Original.fbx
+personaje/MC_cyborg/MC_Cyborg.fbx
+personaje/MC_mtp/MC_MatarAlPadre.fbx
+# Color y normales ya van incrustados en cada *_rig_Run.fbx; avatar.js solo carga roughness y metallic
+**/_basecolor.png
+**/_normal.png
+
+# Herramientas y documentación del repo
+tools/
+README.md
+.webignore

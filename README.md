@@ -55,3 +55,16 @@ Los alias de URL (`?room=do`, `?room=do4`, `?room=re`…) se derivan automática
 
 ## Ejecución
 El proyecto no tiene paso de compilación. Sirve la carpeta por HTTP (por ejemplo, `python -m http.server`) y abre `index.html`; abrirlo con `file://` limita la carga de audio y módulos.
+
+## Recursos para la web (optimizados)
+Los `.fbx` y `.wav` de la raíz son los **másters**: se conservan en el repo, pero no se publican (ver `.webignore`).
+El juego carga versiones optimizadas:
+
+| Carpeta | Contenido | Cómo se genera |
+| --- | --- | --- |
+| `modelos/` | Atrio y seis salas en GLB: mismos triángulos, geometría meshopt, texturas WebP (243 MB → 44 MB) | `node tools/optimizar-escenarios.mjs` (requiere Blender 4.5+ y `npm install` en `../landing`) |
+| `audio/` | Grabaciones en Ogg Vorbis (Chrome/Firefox) y AAC `.m4a` (Safari/iOS), ~192 kbps (270 MB → ~33 MB por navegador) | `ffmpeg -i X.wav -c:a libvorbis -q:a 6 audio/X.ogg` y `ffmpeg -i X.wav -c:a aac -b:a 192k -movflags +faststart audio/X.m4a` (mono: `-q:a 4` / `96k`) |
+
+Si se edita un escenario o una grabación, se vuelve a generar su versión optimizada. `?fbx` carga los FBX
+originales para comparar. Los personajes (`personaje/*_rig_Run.fbx`) siguen en FBX: su animación depende de
+los nombres y poses de los huesos.

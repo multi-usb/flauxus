@@ -21,7 +21,12 @@ export const trackFiles = new Map([
   [6, 'CPE Bach Intervención.wav']
 ]);
 
-export const recUrl = id => new URL(trackFiles.get(id), document.baseURI).href;
+/* Las grabaciones se publican comprimidas en audio/ (los .wav de la raíz quedan como másters, fuera de la build):
+   Ogg Vorbis donde se puede (Chrome, Firefox, Edge) y AAC .m4a en Safari/iOS. Misma duración que el máster. */
+const AUDIO_EXT = (() => {
+  try { return new Audio().canPlayType('audio/ogg; codecs="vorbis"') ? '.ogg' : '.m4a'; } catch { return '.m4a'; }
+})();
+export const recUrl = id => new URL('audio/' + trackFiles.get(id).replace(/\.wav$/i, AUDIO_EXT), document.baseURI).href;
 export const Rec = { buf: new Map(), el: new Map(), rev: new Map(), fb: new Set(), bad: new Set(), loading: new Map() };
 
 export function ensureAudio() {
