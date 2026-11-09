@@ -21,9 +21,19 @@ export function createGame({ onChange = () => {} } = {}) {
     frame.addEventListener('load', () => frame?.focus(), { once: true });
     holder.replaceChildren(frame);
     root.hidden = false;
+    root.classList.remove('game-ready');
     document.documentElement.classList.add('game-open');
     onChange(true);
   }
+
+  // El juego trae su propio botón «Salir» dentro de su barra superior (misma rejilla que «Volver al atrio»):
+  // así los dos botones nunca compiten por la esquina. Cuando el juego avisa que está listo, se oculta el ◀◀
+  // de la landing (queda solo como respaldo mientras el juego carga o si no llegara a arrancar).
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !frame || e.source !== frame.contentWindow) return;
+    if (e.data?.type === 'flauxus:ready') root.classList.add('game-ready');
+    else if (e.data?.type === 'flauxus:exit') hide();
+  });
 
   function hide() {
     if (!frame) return;
@@ -31,6 +41,7 @@ export function createGame({ onChange = () => {} } = {}) {
     holder.replaceChildren();
     frame = null;
     root.hidden = true;
+    root.classList.remove('game-ready');
     document.documentElement.classList.remove('game-open');
     onChange(false);
     returnFocus?.focus?.({ preventScroll: true });

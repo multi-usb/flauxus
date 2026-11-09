@@ -973,6 +973,23 @@ html.started #sound {
   visibility: hidden;
 }
 
+/* Composición de M4 sin cruces (nov 2026). Antes los anchos de las fotos dependían solo del ancho de la ventana
+   (vw) y sus posiciones del alto (vh): al cambiar la proporción —portátil, 1440, ultrapanorámico— una foto
+   crecía hasta meterse en una cita. Ahora cada foto está acotada por las dos dimensiones (min(vw, vh)) y vive
+   en su carril: columna central (a), derecha (b, c) e izquierda (d, e); los textos ocupan los carriles libres.
+   Va después de las reglas base y antes de las de tableta y celular, que conservan su propia composición. */
+@media (min-width: 1025px) {
+  .ph-a { left: 33vw; width: min(27vw, 60vh); }
+  .ph-b { width: min(44vw, 78vh); }
+  .ph-c { top: 142vh; width: min(25vw, 46vh); }
+  .ph-d { width: min(50vw, 90vh); }
+  .ph-e { top: 156vh; width: min(27vw, 42vh); }
+  .m4-facts { width: min(24vw, 380px); }
+  .m4-quote.q1 { width: min(32vw, 540px); }
+  .m4-quote.q2 { top: 240vh; }
+  .m4-stage { height: 296vh; }
+}
+
 /* ---------- 6 · Cierre ---------- */
 /* ---------- 6 · Cierre editorial sobre negro puro ---------- */
 /* Al menos una pantalla; si los créditos no caben (celulares, ventanas bajas) la sección crece y se recorre con
@@ -1025,6 +1042,43 @@ html.started #sound {
   width: 84%;
   margin-top: clamp(10px, 2vh, 22px);
   color: var(--rw-verde);
+}
+
+/* Bloque institucional: logotipo de la universidad + programa. El logotipo conserva su proporción (155:165) y
+   un área de respeto igual a un cuarto de su alto; nunca se deforma, recorta ni recolorea. */
+.m6-inst-block {
+  grid-column: 1 / span 5;
+  grid-row: 2;
+  margin: clamp(16px, 3svh, 48px) 0 0;
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2.2vw, 36px);
+  min-width: 0;
+}
+
+.m6-uni {
+  flex: none;
+  display: block;
+  padding: clamp(4px, .6vw, 10px);
+  outline-offset: 4px;
+}
+
+.m6-uni img {
+  display: block;
+  height: clamp(84px, 13svh, 148px);
+  width: auto;
+  aspect-ratio: 155.193 / 165.39;
+}
+
+.m6-uni:focus-visible {
+  outline: 1px solid var(--rw-blanco);
+}
+
+.m6-inst-block .m6-prog {
+  grid-column: auto;
+  grid-row: auto;
+  margin: 0;
+  min-width: 0;
 }
 
 .m6-prog {
@@ -1328,6 +1382,11 @@ html.game-open body {
 }
 
 #game[hidden] {
+  display: none;
+}
+
+/* Con el juego listo, «Salir» lo dibuja el propio juego dentro de su barra (ui/game.js). */
+#game.game-ready .game-close {
   display: none;
 }
 
@@ -1741,6 +1800,7 @@ html.flat-rewind #osd {
   }
 
   .m6-prog,
+  .m6-inst-block,
   .m6-credits,
   .m6-inner .rewind-btn {
     grid-column: 1 / -1;

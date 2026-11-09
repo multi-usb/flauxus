@@ -9,12 +9,16 @@ export const GAME_URL = '/juego/';
 // no cambia la coreografía: solo le da a cada cuadro más espacio. Antes M3/M4/M5 apretaban 3–4 cuadros
 // por pantalla (M5: una sala cada ~0,3 pantallas) y el scroll se sentía hipersensible después del portal.
 // Ritmo objetivo: ~0,6–0,7 pantallas por cuadro, parecido al de M1 y M2.
+// Tercera pasada (nov 2026): el recorrido seguía sintiéndose rápido para LEER. El scroll es el nativo del navegador
+// (no hay multiplicadores ni librería de inercia: solo un suavizado de lectura de 120 ms), así que la velocidad
+// percibida depende de cuánta rueda/dedo hace falta por cuadro de contenido. Se sube a ~1 pantalla por cuadro:
+// una frase, una fotografía con su texto o una sala por cada «pantalla» de desplazamiento.
 export const SCROLL_SCREENS = {
-  m1: 1.2,
-  m2: 1.2,
-  m3: 3.2, // antes 1.6 · A, B (+ rebobinado), C y la escala de notas
-  m4: 3.2, // antes 2.4 · cinco fotografías, dos citas y el nombre
-  m5: 4.4, // antes 2.4 · seis salas, la octava y la cita
+  m1: 1.6, // 1.2 → 1.6
+  m2: 1.8, // 1.2 → 1.8 · el portal se enciende y deja leer el aviso antes de pasar
+  m3: 5.0, // 1.6 → 3.2 → 5.0 · A, B (+ rebobinado), C y la escala de notas
+  m4: 5.0, // 2.4 → 3.2 → 5.0 · cinco fotografías, dos citas y el nombre
+  m5: 6.6, // 2.4 → 4.4 → 6.6 · seis salas (~0,8 pantallas cada una), la octava y la cita
 };
 
 export const MODELS = {
