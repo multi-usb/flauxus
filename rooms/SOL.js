@@ -8,7 +8,7 @@ import { createHologram } from '../engine/hologram.js';
 import { createGalaxy } from '../engine/sky.js';
 import { GX } from '../GameContext.js';
 import { pad, tone, pluck, hiss, A } from '../AudioSystem.js';
-import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, TOUCH, ptr, ptrActive, hint, toast, finish, T, roomGen } from './context.js';
+import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, clamp, TOUCH, ptr, ptrActive, hint, toast, finish, T, roomGen, groundController } from './context.js';
 
 /* Medidas tomadas del FBX de SOL tras el fit:
    - la plataforma principal queda a y≈0.234;
@@ -21,11 +21,20 @@ export const meta = {
   id: 5, note: 'SOL♯4', short: 'SOL♯', title: 'El unicornio cyborg', desc: 'Cuerpo, sensor y máquina: captura los tres puntos y haz reaccionar el espacio.', source: 'sonido procedural · sin grabación', audio: 'none', color: 0xc2fe0b, hex: '#c2fe0b', avatar: 'cyborg',
   /* El suelo central del FBX queda a y≈0.23 tras el fit; el avatar y la
      cámara se elevan con él. SOL tiene terrazas a distintas alturas, así
-     que el suelo se muestrea del propio escenario (`floorRay`) en vez de
-     usar una única tarima: al subir la espiral las botas acompañan el
-     desnivel y no quedan flotando ni hundidas. */
+     que el suelo sale del propio escenario en vez de una única tarima: al
+     subir la espiral las botas acompañan el desnivel y no quedan flotando
+     ni hundidas.
+     Antes se hacía con `floorRay`: un rayo contra la malla del escenario
+     cada 25 cm de paseo. Esa malla tiene 318.604 triángulos sin estructura
+     de aceleración: cada rayo costaba ~32 ms en escritorio (medido) y, al
+     caminar, caía uno cada dos o tres cuadros: de ahí los tirones del
+     preludio. Ahora las caras pisables se rasterizan UNA vez, bajo el
+     preloader, en un mapa de alturas (`floorMap`, el mismo mecanismo de
+     RE): cada consulta lee cuatro celdas. El rango vertical (−0,3…1,25 m)
+     cubre la tarima, todas las terrazas (0,20–0,74 m) y los bancos
+     (1,05 m), a los que el rayo ya dejaba subir desde la terraza vecina. */
   floorY: 0.23,
-  floorRay: true,
+  floorMap: { cell: .1, radius: 13, baseY: .3, below: .6, above: .95 },
   start: { x: 0, y: SOL_FLOOR, z: 4.2, yaw: Math.PI },
   /* Antes 6.8: el paseo quedaba encerrado en el centro. 12.0 aprovecha las
      terrazas intermedias (radio visible ≈14.5) sin llegar al borde. */
@@ -67,11 +76,66 @@ export const SOL = (() => {
      sus geometrías y materiales llevan la marca `keep` para que clearGroup() no los libere al salir. */
   let holo = null, sky = null;
   const keepAll = g => g.traverse(o => { if (o.geometry) o.geometry.userData.keep = true; if (o.material) o.material.userData.keep = true });
-  const names = ['Muñeca I', 'Muñeca II', 'Cabeza'], HR = 1.0; let orbs = [], cap = [], hold = [0, 0, 0], core, rings = [], order = [], anch = [], pending = false;
-  const v3 = new THREE.Vector3(); const proj = o => { o.getWorldPosition(v3).project(camera); return { x: (v3.x * .5 + .5) * W, y: (-v3.y * .5 + .5) * H } }; // sin clonar vectores por cuadro
-  /* getWorldPosition ya actualiza la cadena de padres de cada articulación: no hace falta recalcular las 66
+  const names = ['Muñeca I', 'Muñeca II', 'Cabeza'], HR = 1.0; let orbs = [], cap = [], hold = [0, 0, 0], capT = [0, 0, 0], core, rings = [], order = [], pending = false;
+  /* Identidad: verde (acción, conectado), cian (llamada «tócame») y rosado (carga en curso). */
+  const CYAN = '#19c6d9', PINK = '#ff4fb8', INK = 'rgba(13,14,9,';
+  /* Radio de captura en píxeles CSS: 64 en táctil (área de 128 px, muy por encima de los 48 px mínimos) y 50 con
+     ratón. El dibujo del sensor mide 30 px de radio: el área táctil es mayor que lo que se ve. */
+  const hitR = () => TOUCH ? 64 : 50;
+  /* El puntero nace en el centro de la pantalla con tipo «mouse» (core/inputState.js). Hasta que el usuario no
+     lo mueve o toca de verdad no cuenta: si no, el sensor que pasa por el centro se conectaba solo al empezar. */
+  let armed = false, px0 = 0, py0 = 0;
+  const pointing = () => armed && ptrActive();
+  const v3 = new THREE.Vector3(), anch = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+  const proj = (o, out) => { o.getWorldPosition(v3).project(camera); out.x = (v3.x * .5 + .5) * W; out.y = (-v3.y * .5 + .5) * H; return out }; // sin vectores ni objetos nuevos por cuadro
+  /* getWorldPosition ya actualiza la cadena de padres de cada articulación: no hace falta recalcular las
      matrices del esqueleto por segunda vez en el cuadro (lo hacía animAvatar un instante antes). */
-  const anchors = () => { camera.updateMatrixWorld(); const j = avatarObj.userData.joints; return [proj(j.wl), proj(j.wr), proj(j.head)] };
+  const anchors = () => { camera.updateMatrixWorld(); const j = avatarObj.userData.joints; proj(j.wl, anch[0]); proj(j.wr, anch[1]); proj(j.head, anch[2]); return anch };
+  /* Los sensores no salen del cuadro ni se meten bajo la franja del HUD (medida en vivo: GX.uiTop). */
+  const keepX = x => clamp(x, 48, W - 48), keepY = y => clamp(y, (GX.uiTop || 0) + 50, H - 96);
+  /* Separación lateral de los sensores de muñeca: 16 % del ancho, con un mínimo de 92 px para que en pantallas
+     estrechas (360 px) las áreas táctiles de dos sensores no se monten una sobre otra. */
+  const sideX = () => Math.max(W * .16, 92);
+
+  /* ---- Rayos contra el escenario (tocar el suelo para caminar) ----
+     player.js lanza un rayo contra toda la sala en cada toque del preludio. Contra los 318.604 triángulos del
+     escenario eran ~32 ms por toque en escritorio. El escenario es un relieve (una sola cota pisable por punto),
+     así que el rayo se resuelve marchando sobre el mapa de alturas: mismo punto de impacto, coste despreciable. */
+  const _hp = new THREE.Vector3();
+  function stageRaycast(rc, hits) {
+    const g = groundController, m = g.roomMap; if (!m) return;
+    const o = rc.ray.origin, d = rc.ray.direction; if (d.y >= -1e-4) return;
+    const far = Math.min(rc.far, 90), step = .15; let t0 = rc.near || 0, h = g.roomMapHeight(o.x + d.x * t0, o.z + d.z * t0);
+    if (h !== null && o.y + d.y * t0 <= h) return;              // el rayo nace bajo el suelo: no hay cara que mirar
+    for (let t = t0 + step; t <= far; t += step) {
+      h = g.roomMapHeight(o.x + d.x * t, o.z + d.z * t);
+      if (h !== null && o.y + d.y * t <= h) {
+        let a = t0, b = t; for (let i = 0; i < 7; i++) { const c = (a + b) * .5, hc = g.roomMapHeight(o.x + d.x * c, o.z + d.z * c); if (hc !== null && o.y + d.y * c <= hc) b = c; else a = c }
+        _hp.copy(d).multiplyScalar(b).add(o);
+        hits.push({ distance: b, point: _hp.clone(), object: this, face: null }); return;
+      }
+      t0 = t;
+    }
+  }
+
+  /* ---- Encuadre del holograma ----
+     Piezas de interfaz de la mitad alta de la pantalla (pestañas, «Volver», «Saltar», pista, título de sala,
+     marca y botones de esquina), medidas en vivo unas seis veces por segundo. engine/hologram.js escala la
+     figura para que quepa bajo las que tiene encima: no hay valores por resolución, y al girar el teléfono o
+     al aparecer y desaparecer un botón el encuadre se recalcula solo. */
+  const HUD_SEL = ['#progress', '#objective', '#btnBack', '#btnSkip', '#btnVoSkip', '#roomHint', '#roomInfo', '#hud .brandwrap', '#hud .rightTop'];
+  const hud = []; let hudEls = null, hudN = 0, hudTick = 0;
+  function measureHud() {
+    hudEls ||= HUD_SEL.map(q => document.querySelector(q)).filter(Boolean);
+    hudN = 0;
+    for (const el of hudEls) {
+      if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') continue;
+      if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2 || r.bottom <= 0 || r.top > H * .5) continue;
+      const o = hud[hudN] || (hud[hudN] = { x0: 0, x1: 0, b: 0 }); hudN++;
+      o.x0 = (r.left - 8) / W * 2 - 1; o.x1 = (r.right + 8) / W * 2 - 1; o.b = (r.bottom + 8) / H;
+    }
+  }
   /* Apoyo fino de las botas. El clip idle sube y baja los tobillos unos
      4 cm; si la raíz se deja fija, en unas fases las botas flotan y en
      otras se hunden en la terraza. Se mide la punta del pie más baja y se
@@ -105,7 +169,17 @@ export const SOL = (() => {
     cam() {
       const a = camera.aspect || 1.6, k = a < .8 ? 1.45 : a < 1.1 ? 1.18 : 1;
       /* la mirada sube (2.45 → 3.7): el horizonte baja y el cielo —galaxia y holograma— ocupa más cuadro */
-      _camPos.set(0, 3.2 + (k - 1) * 1.2, 1.5 + 9.1 * k); _camLook.set(0, 3.7, 0);
+      const y0 = 3.2 + (k - 1) * 1.2, z0 = 1.5 + 9.1 * k; let ly = 3.7;
+      /* Pantallas verticales: la franja del HUD ocupa mucha altura y entre ella y el horizonte no cabía el
+         holograma a un tamaño legible (128 px de alto en 360×640). La mirada sube lo justo para que el horizonte
+         baje hasta dejar sitio a la figura al ancho de la pantalla: franja del HUD + alto de la figura
+         (0,64 × ancho), con el horizonte como mucho al 62 % del alto para que la avatar y sus botas sigan en
+         cuadro. Sale del aspecto y del HUD medido, y se funde con el encuadre horizontal entre aspecto 0,8 y 1. */
+      if (a < 1) {
+        const hud = clamp((GX.uiTop || 0) / Math.max(1, H), 0, .4), h = clamp(hud + .64 * a + .02, .5, .62), w = clamp((1 - a) / .2, 0, 1);
+        ly = Math.max(ly, ly + (y0 + z0 * (2 * h - 1) * Math.tan(camera.fov * Math.PI / 360) - ly) * w);
+      }
+      _camPos.set(0, y0, z0); _camLook.set(0, ly, 0);
       return { pos: _camPos, look: _camLook };
     },
     build() {
@@ -117,30 +191,35 @@ export const SOL = (() => {
       core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 20), mat(0x15170f, { emissive: 0x4a5200, emissiveIntensity: .8, metalness: .4, roughness: .25 })); core.position.set(0, fy + 3.2, -3); roomGroup.add(core);
       rings = []; for (let i = 0; i < 9; i++) { const g = new THREE.Mesh(new THREE.TorusGeometry(2.1 + i * .4, .02, 6, 60), new THREE.MeshBasicMaterial({ color: i % 2 ? 0xefeadb : LIME, transparent: true, opacity: .25 })); g.rotation.x = Math.random() * Math.PI; g.rotation.y = Math.random() * Math.PI; g.position.copy(core.position); roomGroup.add(g); rings.push(g) }
       /* Galaxia procedural (engine/sky.js): nebulosa horneada + dos capas de estrellas + polvo orbitando el holograma. */
-      if (!sky) { sky = createGalaxy(GX.renderer, { low: TOUCH, orbitCenter: new THREE.Vector3(0, fy + 16, -110), orbitRadius: 52 }); keepAll(sky.group) }
+      if (!sky) { sky = createGalaxy(GX.renderer, { low: TOUCH, orbitCenter: new THREE.Vector3(0, fy + 16, -110), orbitRadius: 52, pivotY: fy }); keepAll(sky.group) }
       roomGroup.add(sky.group);
       /* Holograma monumental (engine/hologram.js): la cyborg de ~130 m tocando la flauta detrás del escenario;
          la cintura queda a la altura del horizonte: el torso y la flauta se alzan sobre la plataforma.
          Es un impostor (se dibuja pequeña a una textura y se proyecta en un plano): domina el cielo sin el coste
          de una malla gigante. No colisiona ni participa del minijuego. */
       if (!holo) holo = createHologram(GX.renderer, { low: TOUCH, height: 172 });
-      holo.place(0, fy - 80, -110); holo.setPresence(.95); roomGroup.add(holo.group);
-      /* Escenario real de SOL: plataforma circular de terrazas. */
-      return placeFBX(5, roomGroup, 16, { roughness: .9, metalness: .05 }, () => roomGen);
+      /* El cuarto argumento es la línea del horizonte: al encuadrarse, la figura se escala desde su cintura. */
+      holo.place(0, fy - 80, -110, fy); holo.setPresence(.95); holo.refit(); hudTick = 0; roomGroup.add(holo.group);
+      /* Escenario real de SOL: plataforma circular de terrazas. Al terminar de colocarlo se rasteriza su piso en
+         el mapa de alturas (todavía bajo el preloader) y sus mallas pasan a resolver los rayos sobre ese mapa. */
+      return placeFBX(5, roomGroup, 16, { roughness: .9, metalness: .05 }, () => roomGen)
+        .then(obj => { if (obj && groundController.buildRoomMap(obj, meta.floorMap)) obj.traverse(o => { if (o.isMesh) o.raycast = stageRaycast }); return obj });
     },
     start() {
       holo?.setPresence(.6); // durante el minijuego el holograma cede protagonismo a los sensores
-      cap = [false, false, false]; hold = [0, 0, 0]; order = []; pending = false; orbs = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]; const p = pad([55, 110, 165], .09, 'sawtooth'); p.set(.5);
+      cap = [false, false, false]; hold = [0, 0, 0]; capT = [0, 0, 0]; order = []; pending = false; orbs = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]; const p = pad([55, 110, 165], .09, 'sawtooth'); p.set(.5);
+      armed = false; px0 = ptr.x; py0 = ptr.y;
       hint(TOUCH ? 'Mantén el dedo sobre cada sensor hasta que el anillo se llene' : 'Mantén el cursor sobre cada sensor hasta que el anillo se llene');
-      const a = anchors(); orbs.forEach((o, i) => { o.x = a[i].x + (i === 0 ? -W * .16 : i === 1 ? W * .16 : 0); o.y = a[i].y + (i === 2 ? -H * .15 : -H * .03) })
+      const a = anchors(); orbs.forEach((o, i) => { o.x = keepX(a[i].x + (i === 0 ? -sideX() : i === 1 ? sideX() : 0)); o.y = keepY(a[i].y + (i === 2 ? -H * .15 : -H * .03)) })
     },
     update(dt) {
-      const a = anchors(); anch = a; let n = 0;
+      const a = anchors(); let n = 0;
+      if (!armed && (ptr.down || ptr.x !== px0 || ptr.y !== py0)) armed = true;
       orbs.forEach((o, i) => {
-        const side = i === 0 ? -1 : i === 1 ? 1 : 0, bx = a[i].x + side * W * .16 + Math.sin(T * .9 + i * 2) * W * .025, by = a[i].y + (i === 2 ? -H * .17 : -H * .03) + Math.cos(T * .7 + i * 1.7) * H * .03;
-        if (cap[i]) { o.x = damp(o.x, a[i].x, 5, dt); o.y = damp(o.y, a[i].y, 5, dt); n++ }
+        const side = i === 0 ? -1 : i === 1 ? 1 : 0, bx = keepX(a[i].x + side * sideX() + Math.sin(T * .9 + i * 2) * W * .025), by = keepY(a[i].y + (i === 2 ? -H * .17 : -H * .03) + Math.cos(T * .7 + i * 1.7) * H * .03);
+        if (cap[i]) { o.x = damp(o.x, a[i].x, 5, dt); o.y = damp(o.y, a[i].y, 5, dt); capT[i] += dt; n++ }
         else {
-          o.x = damp(o.x, bx, 4, dt); o.y = damp(o.y, by, 4, dt); const inside = ptrActive() && Math.hypot(ptr.x - o.x, ptr.y - o.y) < (TOUCH ? 64 : 50);
+          o.x = damp(o.x, bx, 4, dt); o.y = damp(o.y, by, 4, dt); const inside = pointing() && Math.hypot(ptr.x - o.x, ptr.y - o.y) < hitR();
           if (inside) { hold[i] += dt; if (Math.floor(hold[i] * 5) !== Math.floor((hold[i] - dt) * 5)) tone(300 + hold[i] * 400 + i * 80, .05, 'sine', .03) } else hold[i] = Math.max(0, hold[i] - dt * .8);
           if (hold[i] >= HR) { cap[i] = true; order.push(i); burst(o.x, o.y, LIMEH, 50, 420, 1, 4); ringFx(o.x, o.y, '#fff', 20, 200, .8, 3); shake(7); pluck([220, 330, 523][i], 0, .9, .1, A.master); hiss(.25, .06, 6000, 0, A.master); toast(names[i] + ' conectada') }
         }
@@ -149,18 +228,56 @@ export const SOL = (() => {
       if (n === 3 && !pending) { pending = true; setTimeout(() => finish({ order: [...order] }, [['Sensores', '3 de 3'], ['Orden de conexión', order.map(i => names[i]).join(' → ')]]), 900) }
     },
     /* Se llama en cada cuadro de la sala (preludio y juego): el holograma baila desde que se entra. */
-    ambient(dt, t3) { sky?.update(dt, t3); holo?.update(dt, t3, A.lvl || 0, camera) },
-    update3d(dt, t3) { const n = cap.filter(Boolean).length; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
+    ambient(dt, t3) {
+      /* El holograma se encuadra con la cámara real (preludio y juego) y con la franja del HUD: se ve completo
+         en vertical, en horizontal y al girar el teléfono. El polvo que lo orbita acompaña su tamaño. */
+      if (holo) { if (hudTick-- <= 0) { hudTick = 9; measureHud() } holo.fit(camera, hud, hudN, dt); sky?.setOrbitScale(holo.scale) }
+      sky?.update(dt, t3); holo?.update(dt, t3, A.lvl || 0, camera)
+    },
+    /* Solo para pruebas (?debug expone la sala activa): estado del holograma y posición de los sensores. */
+    dbg() { return { holo: holo?.debug ?? null, box: holo?.debug.box(camera) ?? null, hud: hud.slice(0, hudN).map(r => ({ x0: +r.x0.toFixed(3), x1: +r.x1.toFixed(3), b: +r.b.toFixed(3) })), orbs: orbs.map((o, i) => ({ x: Math.round(o.x), y: Math.round(o.y), cap: !!cap[i], hold: +hold[i].toFixed(2) })), hitR: hitR(), armed, map: !!groundController.roomMap } },
+    update3d(dt, t3) { let n = 0; for (let i = 0; i < 3; i++) if (cap[i]) n++; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
     draw() {
-      orbs.forEach((o, i) => {
-        if (!anch[i]) return; if (cap[i]) { bolt(o.x, o.y, anch[i].x, anch[i].y, LIMEH, 10, 16); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(anch[i].x, anch[i].y, 50, 'rgba(194,254,11,.5)', 'rgba(194,254,11,0)'); ctx.restore(); return }
-        const p = hold[i] / HR, inside = ptrActive() && Math.hypot(ptr.x - o.x, ptr.y - o.y) < (TOUCH ? 64 : 50); ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(o.x, o.y, 70, `rgba(194,254,11,${.12 + p * .4})`, 'rgba(194,254,11,0)'); ctx.restore();
-        ctx.strokeStyle = inside ? LIMEH : '#a6a392'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, 30 + Math.sin(T * 3 + i) * 2 + (inside ? 4 : 0), 0, 6.283); ctx.stroke(); ctx.fillStyle = `rgba(194,254,11,${.15 + p * .6})`; ctx.beginPath(); ctx.arc(o.x, o.y, 14, 0, 6.283); ctx.fill();
-        if (p > 0) { ctx.strokeStyle = PAPER; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(o.x, o.y, 42, -Math.PI / 2, -Math.PI / 2 + 6.283 * p); ctx.stroke(); ctx.lineCap = 'butt' }
-        ctx.fillStyle = 'rgba(239,234,219,.7)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText(names[i], o.x, o.y + 64);
-        if (ptrActive() && !inside && hold[i] === 0) { ctx.strokeStyle = 'rgba(194,254,11,.25)'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.setLineDash([]) }
-      });
-      if (ptrActive()) { ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 5, 0, 6.283); ctx.fill(); ctx.strokeStyle = 'rgba(239,234,219,.5)'; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 12, 0, 6.283); ctx.stroke() }
+      const R = 30, hr = hitR(), on = pointing();
+      for (let i = 0; i < 3; i++) {
+        const o = orbs[i]; if (!o) continue;
+        if (cap[i]) {
+          /* CONECTADO: disco verde macizo con marca de verificación, aro cian y rayo hacia la articulación. */
+          const k = Math.min(1, capT[i] * 4), r = 15 + (1 - k) * 10;
+          bolt(o.x, o.y, anch[i].x, anch[i].y, LIMEH, 10, 16);
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(anch[i].x, anch[i].y, 50, 'rgba(194,254,11,.5)', 'rgba(194,254,11,0)'); ctx.restore();
+          ctx.fillStyle = LIMEH; ctx.beginPath(); ctx.arc(o.x, o.y, r, 0, 6.283); ctx.fill();
+          ctx.strokeStyle = CYAN; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(o.x, o.y, r + 6, 0, 6.283); ctx.stroke();
+          ctx.strokeStyle = '#0d0e09'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(o.x - 7, o.y + .5); ctx.lineTo(o.x - 2, o.y + 5.5); ctx.lineTo(o.x + 7.5, o.y - 5); ctx.stroke(); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+          continue;
+        }
+        const p = hold[i] / HR, inside = on && Math.hypot(ptr.x - o.x, ptr.y - o.y) < hr, ph = T * 1.15 + i * .9, beat = .5 + .5 * Math.sin(T * 3 + i * 2.1);
+        /* 1 · fondo oscuro: separa el sensor de la galaxia y del holograma (cian/rosado) sea cual sea lo que haya detrás */
+        ctx.fillStyle = INK + (p > 0 ? .8 : .66) + ')'; ctx.beginPath(); ctx.arc(o.x, o.y, p > 0 ? 50 : R + 9, 0, 6.283); ctx.fill();
+        /* 2 · halo verde que respira */
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; glowCircle(o.x, o.y, 66, `rgba(194,254,11,${(.2 + beat * .1 + p * .35).toFixed(3)})`, 'rgba(194,254,11,0)'); ctx.restore();
+        /* 3 · llamada «tócame»: un aro cian que se abre y se apaga (se detiene al cargar) */
+        if (p === 0) { const w = ph % 1; ctx.globalAlpha = (1 - w) * .85; ctx.strokeStyle = CYAN; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, R + 4 + w * 24, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1 }
+        /* 4 · aro principal verde + cuatro muescas de mira que giran despacio */
+        ctx.strokeStyle = LIMEH; ctx.lineWidth = inside ? 4 : 3; ctx.beginPath(); ctx.arc(o.x, o.y, R + beat * 1.5 + (inside ? 3 : 0), 0, 6.283); ctx.stroke();
+        ctx.strokeStyle = PAPER; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k < 4; k++) { const a = T * .5 + i + k * 1.5708, c = Math.cos(a), sn = Math.sin(a); ctx.moveTo(o.x + c * (R - 9), o.y + sn * (R - 9)); ctx.lineTo(o.x + c * (R - 3), o.y + sn * (R - 3)) } ctx.stroke();
+        /* 5 · núcleo: verde con centro blanco; crece con la carga */
+        ctx.fillStyle = LIMEH; ctx.beginPath(); ctx.arc(o.x, o.y, 8 + p * 10 + beat, 0, 6.283); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(o.x, o.y, 3, 0, 6.283); ctx.fill();
+        /* 6 · CARGANDO: pista tenue + arco rosado grueso con cabeza blanca */
+        if (p > 0) {
+          const a1 = -Math.PI / 2 + 6.283 * p;
+          ctx.strokeStyle = 'rgba(239,234,219,.22)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(o.x, o.y, 42, 0, 6.283); ctx.stroke();
+          ctx.strokeStyle = PINK; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(o.x, o.y, 42, -Math.PI / 2, a1); ctx.stroke(); ctx.lineCap = 'butt';
+          ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(o.x + Math.cos(a1) * 42, o.y + Math.sin(a1) * 42, 4, 0, 6.283); ctx.fill();
+        }
+        /* 7 · rótulo sobre pastilla oscura */
+        ctx.font = `600 13px ${SERIF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const tw = ctx.measureText(names[i]).width + 16, ly = o.y + (p > 0 ? 68 : 58);
+        ctx.fillStyle = INK + '.78)'; ctx.fillRect(o.x - tw / 2, ly - 10, tw, 20); ctx.fillStyle = inside ? LIMEH : PAPER; ctx.fillText(names[i], o.x, ly + .5); ctx.textBaseline = 'alphabetic';
+        if (on && !inside && hold[i] === 0) { ctx.strokeStyle = 'rgba(194,254,11,.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.setLineDash([]) }
+      }
+      if (on) { ctx.lineWidth = 1; ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 5, 0, 6.283); ctx.fill(); ctx.strokeStyle = 'rgba(239,234,219,.5)'; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 12, 0, 6.283); ctx.stroke() }
     },
     stop() { }
   }

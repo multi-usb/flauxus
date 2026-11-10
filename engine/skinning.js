@@ -292,7 +292,9 @@ const _shoulder = new V3(), _target = new V3(), _targetLocal = new V3(), _axis =
   _qDelta = new Q(), _qRest = new Q(), _qParent = new Q(), _qDesired = new Q(),
   _qLocal = new Q(), _qCurl = new Q(), _scale = new V3(), _qVisual = new Q(),
   _palm = new V3(), _xW = new V3(), _zW = new V3(), _fingerAxis = new V3(1, 0, 0),
-  _basis = new THREE.Matrix4();
+  _basis = new THREE.Matrix4(),
+  /* Auxiliares del IK: se llama en cada cuadro (dos veces en SOL: avatar y holograma), así que no crea objetos. */
+  _pole = new V3(), _qTmp = new Q(), _qHand = new Q(), _qRoll = new Q(), _yAxis = new V3(0, 1, 0);
 
 /* Curl extra de los dedos para el rig original (el único con falanges).
    Se suma a la pose del mixer en el espacio local de cada falange: +X
@@ -357,8 +359,8 @@ export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls,
     visual.localToWorld(_target);
 
     const p = poles && poles[side] ? poles[side] : [side === 'Left' ? 1 : -1, -0.4, -0.2];
-    const pole = new V3(p[0], p[1], p[2]).applyQuaternion(_qVisual);
-    solveArm(_shoulder, _target, L1, L2, pole, _elbow);
+    _pole.set(p[0], p[1], p[2]).applyQuaternion(_qVisual);
+    solveArm(_shoulder, _target, L1, L2, _pole, _elbow);
 
     /* Brazo superior: rotar la dirección de reposo hacia hombro→codo. */
     _rest.fromArray(template.restDirs['mixamorig' + side + 'Arm']).applyQuaternion(_qVisual);
@@ -377,7 +379,7 @@ export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls,
     _qDelta.setFromUnitVectors(_rest, _dir);
     _qRest.fromArray(template.restWorldQuats['mixamorig' + side + 'ForeArm']).premultiply(_qVisual);
     _qDesired.copy(_qDelta).multiply(_qRest);
-    _qParent.copy(arm.quaternion).premultiply(arm.parent.getWorldQuaternion(new Q()));
+    _qParent.copy(arm.quaternion).premultiply(arm.parent.getWorldQuaternion(_qTmp));
     _qLocal.copy(_qParent).invert().multiply(_qDesired);
     fore.quaternion.slerp(_qLocal, blend);
     fore.updateWorldMatrix(false, false);
@@ -411,10 +413,9 @@ export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls,
       _xW.crossVectors(_dir, _palm).normalize();
       _zW.crossVectors(_xW, _dir).normalize();
       _basis.makeBasis(_xW, _dir, _zW);
-      const qHand = new Q().setFromRotationMatrix(_basis);
-      if (handRolls && handRolls[side]) qHand.multiply(new Q().setFromAxisAngle(new V3(0, 1, 0), handRolls[side]));
-      const foreWorld = fore.getWorldQuaternion(new Q());
-      _qLocal.copy(foreWorld).invert().multiply(qHand);
+      _qHand.setFromRotationMatrix(_basis);
+      if (handRolls && handRolls[side]) _qHand.multiply(_qRoll.setFromAxisAngle(_yAxis, handRolls[side]));
+      _qLocal.copy(fore.getWorldQuaternion(_qTmp)).invert().multiply(_qHand);
       hand.quaternion.slerp(_qLocal, blend);
       hand.updateWorldMatrix(false, false);
     }

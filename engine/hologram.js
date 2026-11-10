@@ -28,6 +28,14 @@
    Rendimiento adaptativo: si el tiempo por cuadro sube, la textura se
    actualiza cada 4 cuadros y, si sigue alto, se congela (queda la última
    imagen: el holograma no desaparece, solo deja de moverse).
+
+   Encuadre: `fit()` escala la proyección desde la línea del horizonte
+   (la cintura de la figura) para que la cabeza, la flauta y los codos
+   quepan en el cuadro de la cámara y por debajo de las piezas de interfaz
+   que tenga encima. La escala sale del campo de visión, del aspecto y de
+   la inclinación reales de la cámara y de los rectángulos del HUD medidos
+   en vivo: vale igual en vertical, en horizontal y al girar el teléfono,
+   sin valores fijos por resolución.
    ====================================================================== */
 import * as THREE from 'three';
 import { avatar, animAvatar } from './avatar.js';
@@ -55,6 +63,10 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
   Promise.resolve(u.loading).then(() => {
     if (!u.loaded) return;
     root.traverse(o => { if (o.isMesh) { if (o.geometry) o.geometry.userData.keep = true; o.castShadow = false; o.receiveShadow = false; } });
+    /* Material propio para la figura del holograma (las texturas se comparten). El rig en caché presta el MISMO
+       material a la avatar del escenario; al dibujarse en dos escenas con luces distintas, three volvía a calcular
+       los parámetros y la clave del programa en cada cambio de escena (dos veces por refresco del holograma). */
+    if (u.mesh) u.mesh.material = Array.isArray(u.mesh.material) ? u.mesh.material.map(m => m.clone()) : u.mesh.material.clone();
     ready = true;
   });
 
@@ -124,6 +136,37 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
   let avg = 16, level = low ? 1 : 0, frame = 0, cool = 4, gain = 0, target = .9;
   const clear = new THREE.Color();
 
+  /* ---------- encuadre ----------
+     Extensión de la figura dentro de su escena (metros, escala 1), con la coreografía incluida. Medido leyendo
+     el alfa de la textura durante 45 s (359 muestras): la flauta llega a −0,99 m del eje, el codo opuesto a
+     +0,82 m y la coronilla a 2,60 m. Se toma el lado mayor para los dos bordes y unos centímetros de margen. */
+  const FIG_HALF_W = 1.03, FIG_TOP = 2.66, MIN_SCALE = .16, SIDE = .05;
+  const pose = { x: 0, y: 0, z: 0, pivot: 0 };
+  let scale = 1, wantScale = 1, snap = true;
+  const _f = new THREE.Vector3(), _c = new THREE.Vector3(), sol = { s: 1, half: 0 };
+  /* Mayor escala con la que la coronilla queda bajo la fracción `top` de la pantalla (0 = borde superior) y la
+     flauta y los codos dentro de los bordes laterales. Devuelve también el semiancho de la figura en NDC. */
+  function solve(camera, top) {
+    const tanV = Math.tan(camera.fov * Math.PI / 360), tanH = tanV * camera.aspect;
+    camera.getWorldDirection(_f);
+    const pitch = Math.asin(Math.max(-1, Math.min(1, _f.y))), sp = Math.sin(pitch), cp = Math.cos(pitch);
+    const dist = Math.max(1, Math.hypot(camera.position.x - pose.x, camera.position.z - pose.z)), eye = camera.position.y;
+    const k = (1 - 2 * top - .03) * tanV, den = cp - k * sp;
+    const topY = den > .05 ? eye + dist * (sp + k * cp) / den : Infinity;        // cota más alta visible a esa distancia
+    const figTop = pose.y + (FIG_TOP + .2) / VH * height - pose.pivot;           // coronilla sobre el horizonte, a escala 1
+    let s = Math.min(1, (topY - pose.pivot) / figTop);
+    /* ancho: la profundidad se toma a la altura de los hombros, que es donde están la flauta y los codos */
+    const halfW = FIG_HALF_W / VH * height, shoulder = pose.y + 2.4 / VH * height - pose.pivot;
+    let zc = 1;
+    for (let i = 0; i < 2; i++) { zc = Math.max(1, dist * cp + (pose.pivot + shoulder * s - eye) * sp); s = Math.min(s, zc * tanH * (1 - SIDE) / halfW); }
+    sol.s = Math.max(MIN_SCALE, s); sol.half = sol.s * halfW / (zc * tanH);
+    return sol;
+  }
+  function applyScale() {
+    group.scale.setScalar(scale);
+    group.position.set(pose.x, pose.pivot + (pose.y + height / 2 - pose.pivot) * scale, pose.z);
+  }
+
   function renderFigure(dt, t, music) {
     /* coreografía */
     const steps = !REDUCE && Math.floor(t / 4.5) % 2 === 1;
@@ -146,7 +189,51 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
 
   return {
     group,
-    place(x, y, z) { group.position.set(x, y + height / 2, z); },
+    /** Coloca la base del plano en (x, y, z). `pivotY` es la cota desde la que se escala al encuadrar (el horizonte). */
+    place(x, y, z, pivotY = y) { pose.x = x; pose.y = y; pose.z = z; pose.pivot = pivotY; applyScale(); },
+    /** El próximo `fit()` aplica la escala de golpe (al entrar a la sala), sin transición. */
+    refit() { snap = true; },
+    /** Escala la proyección para que la figura completa quepa en el cuadro de `camera`.
+        `hud` = piezas de interfaz de la parte alta de la pantalla: lista de { x0, x1 (NDC, −1…1), b (borde
+        inferior como fracción del alto, 0…1) }. Solo cuentan las que caen sobre la columna de la figura: los
+        botones de las esquinas no la encogen. `n` = cuántas entradas de la lista son válidas. */
+    fit(camera, hud = null, n = hud ? hud.length : 0, dt = .016) {
+      /* columna que ocupa la figura: centro del plano proyectado ± su semiancho */
+      _c.set(pose.x, pose.pivot, pose.z).project(camera);
+      const cx = _c.z < 1 ? _c.x : 0;
+      /* Se prueba primero sin franja (la mayor escala) y luego con el borde inferior de cada pieza, de arriba
+         abajo: gana la primera escala cuya columna no toca ninguna pieza que baje más que su franja. */
+      let top = 0;
+      for (let guard = 0; guard <= n; guard++) {
+        solve(camera, top);
+        let next = Infinity;
+        for (let i = 0; i < n; i++) { const r = hud[i]; if (r.b > top + 1e-4 && r.x1 > cx - sol.half && r.x0 < cx + sol.half && r.b < next) next = r.b; }
+        if (next === Infinity) break;
+        top = Math.min(next, .6);
+      }
+      wantScale = sol.s;
+      if (snap || Math.abs(wantScale - scale) < 1e-4) { scale = wantScale; snap = false; } else scale += (wantScale - scale) * Math.min(1, dt * 3.5);
+      applyScale();
+    },
+    get scale() { return scale; },
+    /** Solo para pruebas: nivel adaptativo, escala y, si se pide, la caja de la figura medida en la textura. */
+    get debug() {
+      return {
+        level, scale: +scale.toFixed(3), want: +wantScale.toFixed(3), rt: RW + 'x' + RH, ready,
+        /* caja de la figura en pantalla (NDC) con la escala actual: flauta, codo opuesto y coronilla */
+        box(camera) {
+          group.updateMatrixWorld(true);
+          const P = (fx, fy) => _c.set(fx / VW * (height * VW / VH), (fy + .2) / VH * height - height / 2, 0).applyMatrix4(group.matrixWorld).project(camera);
+          const l = P(-FIG_HALF_W, 2.4).x, r = P(FIG_HALF_W, 2.4).x, t = P(0, FIG_TOP).y, w = P(0, 1.3).y;
+          return { left: +Math.min(l, r).toFixed(3), right: +Math.max(l, r).toFixed(3), top: +t.toFixed(3), waist: +w.toFixed(3) };
+        },
+        bounds() {
+          const buf = new Uint8Array(RW * RH * 4); renderer.readRenderTargetPixels(rt, 0, 0, RW, RH, buf);
+          let x0 = RW, x1 = -1, y1 = -1; for (let y = 0; y < RH; y++) for (let x = 0; x < RW; x++) if (buf[(y * RW + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y > y1) y1 = y; }
+          return { left: +((x0 / RW - .5) * VW).toFixed(3), right: +(((x1 + 1) / RW - .5) * VW).toFixed(3), top: +((y1 + 1) / RH * VH - .2).toFixed(3) };
+        }
+      };
+    },
     /** Intensidad objetivo (0–1): más presente en el preludio, más tenue durante el minijuego. */
     setPresence(v) { target = v; },
     update(dt, t, music = 0, camera) {

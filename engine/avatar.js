@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 import { LIME, clamp, damp } from '../core/util.js';
+import { QUALITY } from '../core/config.js';
 import { mat } from './materials.js';
 import { scene } from './renderer.js';
 import { A } from '../AudioSystem.js';
@@ -30,6 +31,11 @@ import { loadMixamo, prepareRig, bakeClips, applyFluteIK } from './skinning.js';
 const V3 = THREE.Vector3;
 const loader = new FBXLoader();
 const texLoader = new THREE.TextureLoader();
+/* Presupuesto de texturas de la avatar (core/config.js): 2048 px y anisotropía 8 en escritorio; 1024 px y
+   anisotropía 2 en táctil. Cada rig trae cuatro mapas de 2048² (color, normal, rugosidad, metal): ~89 MB de
+   memoria de GPU con mipmaps por traje. En un teléfono la avatar ocupa menos de 800 px de alto, así que a 1024²
+   (~22 MB por traje) se ve igual y deja de presionar la memoria del navegador. */
+const TEX_MAX = QUALITY.tex || 2048, ANISO = QUALITY.aniso || 8;
 
 /* ======================================================================
    CATÁLOGO — rig profesional y mapas PBR
@@ -163,16 +169,17 @@ function loadRigFBX(version) {
           maps.roughness = await loadTexture(spec.tex.roughness);
           maps.roughness.colorSpace = THREE.NoColorSpace;
           maps.roughness.wrapS = maps.roughness.wrapT = THREE.RepeatWrapping;
-          maps.roughness.anisotropy = 8;
+          maps.roughness.anisotropy = ANISO;
         }
         if (spec.tex.metalness) {
           maps.metalness = await loadTexture(spec.tex.metalness);
           maps.metalness.colorSpace = THREE.NoColorSpace;
           maps.metalness.wrapS = maps.metalness.wrapT = THREE.RepeatWrapping;
-          maps.metalness.anisotropy = 8;
+          maps.metalness.anisotropy = ANISO;
         }
         convertMaterials(root, version, maps);
         await waitTextures(root);
+        fitTextures(root);
         rig.maps = maps;
         resolve(rig);
       } catch (e) { reject(e); }
@@ -208,8 +215,8 @@ function convertMaterials(root, version, maps) {
         envMapIntensity: cfg.envMapIntensity,
         side: THREE.FrontSide
       });
-      if (m.map) { m.map.colorSpace = THREE.SRGBColorSpace; m.map.anisotropy = 8; }
-      if (m.normalMap) { m.normalMap.colorSpace = THREE.NoColorSpace; m.normalMap.anisotropy = 8; }
+      if (m.map) { m.map.colorSpace = THREE.SRGBColorSpace; m.map.anisotropy = ANISO; }
+      if (m.normalMap) { m.normalMap.colorSpace = THREE.NoColorSpace; m.normalMap.anisotropy = ANISO; }
       if (m.roughnessMap) m.roughnessMap.colorSpace = THREE.NoColorSpace;
       if (m.metalnessMap) m.metalnessMap.colorSpace = THREE.NoColorSpace;
       m.needsUpdate = true;
@@ -245,6 +252,27 @@ async function waitTextures(root, timeout = 4000) {
        la carga no se queda esperando; la textura termina de decodificarse al dibujarse. */
     if (t.image?.decode) await Promise.race([t.image.decode().catch(() => { }), new Promise(r => setTimeout(r, 1200))]);
   }
+}
+
+/* Reduce en la carga los mapas que superan el presupuesto del nivel de calidad (`TEX_MAX`). Se hace antes del
+   primer dibujo: la GPU solo recibe la versión reducida. Si una imagen aún no terminó de decodificarse se deja
+   como está (se verá a su tamaño original). */
+function fitTextures(root) {
+  const seen = new Set();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) {
+      const t = m?.[key], img = t?.image;
+      if (!t || seen.has(t)) continue; seen.add(t);
+      const w = img?.naturalWidth || img?.width || 0, h = img?.naturalHeight || img?.height || 0;
+      if (!w || !h || Math.max(w, h) <= TEX_MAX || (img.complete === false)) continue;
+      const k = TEX_MAX / Math.max(w, h), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+      const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, c.width, c.height);
+      t.image = c; t.needsUpdate = true;
+    }
+  });
 }
 
 /* Clona el rig para cada avatar: geometría, materiales y texturas se

@@ -112,7 +112,7 @@ function starLayer(n, rMin, rMax, sizeMin, sizeMax, time, px) {
   return p;
 }
 
-export function createGalaxy(renderer, { low = false, orbitCenter = new THREE.Vector3(0, 14, -58), orbitRadius = 30 } = {}) {
+export function createGalaxy(renderer, { low = false, orbitCenter = new THREE.Vector3(0, 14, -58), orbitRadius = 30, pivotY = orbitCenter.y } = {}) {
   /* (las estrellas se dibujan como discos suaves de 1–4 px: finas, sin bloques) */
   const group = new THREE.Group();
   const time = { value: 0 }, px = { value: 1 };
@@ -155,8 +155,14 @@ export function createGalaxy(renderer, { low = false, orbitCenter = new THREE.Ve
   dust.position.copy(orbitCenter); dust.rotation.set(.38, 0, -.22);
   group.add(dust);
 
+  let orbitScale = 1;
   return {
     group,
+    /** El disco de polvo acompaña al holograma cuando este se escala para caber en el cuadro (desde `pivotY`). */
+    setOrbitScale(s) {
+      if (s === orbitScale) return; orbitScale = s;
+      dust.scale.setScalar(s); dust.position.y = pivotY + (orbitCenter.y - pivotY) * s;
+    },
     update(dt, t) {
       time.value = t;
       px.value = Math.max(1, renderer.domElement.height / 720);
