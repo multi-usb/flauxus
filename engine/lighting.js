@@ -21,10 +21,10 @@ export const LIGHT_PRESETS = {
   },
   ...Object.fromEntries(ROOMS.map(r => [r.id, r.light]))
 };
-const _gp = new V3(), _c0 = new V3(0, 3, 0);
+const _gp = new V3(), _c0 = new V3(0, 3, 0), _fp = new V3();
 export class LightingManager {
   constructor() {
-    this.id = 'atrium'; this.P = LIGHT_PRESETS.atrium; this.keyOff = new V3(12, 24, 8); this.rimK = 8; this.onApply = null;
+    this.id = 'atrium'; this.P = LIGHT_PRESETS.atrium; this.keyOff = new V3(12, 24, 8); this.rimK = 8; this.onApply = null; this.follow = null;
     /* Luz de relleno del avatar. Vive por delante y por encima para que el
        PBR de la ropa no genere un punto especular blanco en el pecho: a
        0,35 m el brillo saturaba el bloom y tapaba al personaje. */
@@ -46,7 +46,16 @@ export class LightingManager {
     hemi.color.setHex(P.hemi[0]); hemi.groundColor.setHex(P.hemi[1]); hemi.intensity = P.hemi[2];
     key.color.setHex(P.key.c); key.intensity = P.key.i; this.keyOff.set(P.key.p[0], P.key.p[1], P.key.p[2]);
     rimL.color.setHex(P.rim.c); this.rimK = P.rim.k; rimL.intensity = P.rim.base * P.rim.k;
-    this.pts.forEach((l, i) => { const c = P.pts[i]; if (!c) { l.intensity = 0; return } l.color.setHex(c.c); l.position.set(c.p[0], c.p[1], c.p[2]); l.intensity = c.e * c.r * c.r });
+    /* Si el preset trae más puntuales que el pool (táctil: una sola), entran primero las marcadas como narrativas
+       (`m: 1`). Antes se tomaban por orden y en LA♯ el móvil se quedaba con la roja y perdía la morada. */
+    const src = P.pts.length > this.pts.length ? P.pts.slice().sort((a, b) => (b.m || 0) - (a.m || 0)) : P.pts;
+    this.follow = null;
+    this.pts.forEach((l, i) => {
+      const c = src[i]; if (!c) { l.intensity = 0; return } l.color.setHex(c.c); l.position.set(c.p[0], c.p[1], c.p[2]); l.intensity = c.e * c.r * c.r;
+      /* Calidad baja: sin foco ni segunda puntual, la luz narrativa acompaña a la avatar (desfase `follow`) para
+         que la bañe en toda la sala y no solo junto a su posición fija. Sigue siendo una sola luz sin sombra. */
+      if (c.follow && QUALITY.tier === 'low') this.follow = { l, o: c.follow, snap: true }
+    });
     if (this.spot) { const s = P.spot; this.spot.color.setHex(s.c); this.spot.intensity = s.e * s.r * s.r; this.spot.angle = s.ang; this.spot.penumbra = s.pen; this.spot.position.set(s.p[0], s.p[1], s.p[2]); this.spot.target.position.set(s.t[0], s.t[1], s.t[2]) }
   }
   update(pos, dt, isAtrium) {
@@ -55,6 +64,7 @@ export class LightingManager {
       const ts = SHADOW_R * 2 / QUALITY.shadowMap, sx = Math.round(pos.x / ts) * ts, sz = Math.round(pos.z / ts) * ts;
       key.target.position.set(sx, pos.y, sz); key.position.set(sx + this.keyOff.x, pos.y + this.keyOff.y, sz + this.keyOff.z);
     } else key.position.copy(this.keyOff);
+    if (this.follow) { const f = this.follow; _fp.set(pos.x + f.o[0], pos.y + f.o[1], pos.z + f.o[2]); if (f.snap) { f.l.position.copy(_fp); f.snap = false } else f.l.position.lerp(_fp, 1 - Math.exp(-6 * dt)) }
     if (this.blob) this.blob.position.set(pos.x, pos.y + .04, pos.z);
     if (bloom) bloom.threshold = this.P.bloomT;
   }

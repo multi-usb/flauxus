@@ -7,7 +7,7 @@ import { placeFBX } from '../AssetManager.js';
 import { createFireflies } from '../engine/sky.js';
 import { GX } from '../GameContext.js';
 import { recOk, pad, tone, hiss, playClip, stopClips, A, regionFor, splitRegion, recPeaks, wfImg, ensureAudio, fmt } from '../AudioSystem.js';
-import { S, roomGroup, avatarObj, bloom, animAvatar, burst, ringFx, ftext, shake, LIMEH, PAPER, hint, toast, finish, roomGen, mat, T, $ } from './context.js';
+import { S, roomGroup, avatarObj, camera, clamp, bloom, animAvatar, burst, ringFx, ftext, shake, LIMEH, PAPER, hint, toast, finish, roomGen, mat, T, $ } from './context.js';
 
 export const meta = {
   key: 'la',
@@ -28,7 +28,9 @@ export const meta = {
   light: {
     /* Fondo del nivel: #221e1d (ya no negro), compartido por las seis salas. */
     bg: 0x221e1d, fog: .024, exp: .95, env: .25, hemi: [0xf0e0d8, 0x241818, .3], key: { c: 0xffe4d4, i: .9, p: [8, 18, 10] }, rim: { c: 0xc2fe0b, base: 2, k: 8 }, bloomT: .82,
-    pts: [{ c: 0xff4422, e: 1.3, r: 6, p: [6, 5, -4] }, { c: 0x8844ff, e: 1.0, r: 6, p: [0, 3, -6] }], spot: { c: 0xffeedd, e: 1.3, r: 16, p: [0, 16, 0], t: [0, 0, -2], ang: .8, pen: .4 }
+    /* La morada es la luz narrativa de la sala (`m: 1`): en táctil solo hay una puntual y debe ser esta. Allí
+       acompaña a María Clara (`follow`: desfase en metros, por detrás y por encima) para bañarla en todo el recorrido. */
+    pts: [{ c: 0xff4422, e: 1.3, r: 6, p: [6, 5, -4] }, { c: 0x8844ff, e: 1.0, r: 6, p: [0, 3, -6], m: 1, follow: [.9, 2.1, -2.3] }], spot: { c: 0xffeedd, e: 1.3, r: 16, p: [0, 16, 0], t: [0, 0, -2], ang: .8, pen: .4 }
   },
   /* Huella de LA: los cuatro espacios compuestos y el tajo del cincel. */
   motif(x, m, cx, cy, s) { (m.slots || []).forEach((sl, i) => { x.globalAlpha = .45 + sl * .1; x.fillRect(cx - s * .8 + i * s * .45, cy - s * .4 - sl * s * .06, s * .3, s * .8 + sl * s * .06) }); x.globalAlpha = 1; if (m.cuts) { x.strokeStyle = PAPER; x.beginPath(); x.moveTo(cx - s, cy + s * .6); x.lineTo(cx + s, cy - s * .6); x.stroke() } },
@@ -152,6 +154,7 @@ export const LA = (() => {
   const _pf = new THREE.Object3D(), _v = new THREE.Vector3(), _q = new THREE.Quaternion();
   let form = 0, forming = false, flies = null;
   const TOUCH_LOW = matchMedia('(pointer:coarse)').matches;
+  const _camPos = new THREE.Vector3(), _camLook = new THREE.Vector3();
 
   return {
     noParallax: true,
@@ -164,10 +167,13 @@ export const LA = (() => {
       const r = 9.0 + Math.sin(T * 0.2) * 1.4; // El radio oscila suavemente entre 6.6m y 9.4m
       const y = fy + 3.2 + Math.cos(T * 0.2) * 1.0; // La altura sube y baja entre fy+2.2m y fy+4.2m
 
-      return {
-        pos: new THREE.Vector3(Math.sin(ang) * r, y, Math.cos(ang) * r),
-        look: new THREE.Vector3(0, fy + 1.4, 0) // Enfoca continuamente a la mesa central y al avatar
-      };
+      /* Pantallas verticales: el campo horizontal es estrecho y María Clara, a 2,1 m del eje de giro, barría la
+         pantalla de borde a borde (y se salía a medias). La mirada se desplaza de la mesa hacia ella en proporción
+         a lo vertical que sea la pantalla: en horizontal y escritorio sigue centrada en la mesa. */
+      const w = clamp((1.1 - (camera.aspect || 1.6)) / .5, 0, 1) * .62, gz = (meta.gameAvatarPos?.z ?? -2.1) * w;
+      _camPos.set(Math.sin(ang) * r, y, Math.cos(ang) * r + gz);
+      _camLook.set(0, fy + 1.4, gz); // Enfoca continuamente a la mesa central y al avatar
+      return { pos: _camPos, look: _camLook };
     },
     build() {
       const fy = getFloorY();

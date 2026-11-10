@@ -179,12 +179,93 @@ let camK = 1, camDt = .016, pendEnter = null, guideHidden = false, gpn = 0;
 const GPMAX = 512, gpx = new Float32Array(GPMAX), gpy = new Float32Array(GPMAX), gpz = new Float32Array(GPMAX), gcum = new Float32Array(GPMAX);
 let viewY = 0, camY = 0; // alturas SUAVIZADAS (avatar / cámara): subir escalones se ve como rampa, no como golpes
 export function setCamDt(dt) { camDt = dt }
-/* Escala del encuadre: la cámara se aleja en proporción al tamaño de la avatar (en SOL mide 1,5×, en LA 1,1×)
-   y un poco más en pantallas verticales, donde el campo horizontal es estrecho. Así ninguna sala obliga a
-   alejar la cámara a mano. En el atrio (escala 1, pantalla horizontal) el encuadre no cambia. */
-export function camFrameScale() { const s = clamp(avatarObj.scale.x || 1, 1, 2); return s * (camera.aspect < .8 ? 1.18 : camera.aspect < 1.1 ? 1.08 : 1) }
+/* ======================================================================
+   ENCUADRE ADAPTATIVO (celular primero)
+   Todo sale del aspecto real de la cámara y del HUD medido en pantalla: no hay valores por resolución y se
+   recalcula solo al girar el teléfono (Main.js actualiza camera.aspect en «resize»).
+   · viewFov — el campo vertical era fijo (62°): en vertical el horizontal caía a 30–37° y la sala se veía como
+     un recorte del escritorio. Ahora se garantiza un campo horizontal mínimo (HFOV_MIN) abriendo el vertical
+     hasta FOV_MAX. En horizontal y en escritorio sigue en 62°.
+   · fovK — cuánto se acerca la cámara para que la avatar conserve su tamaño al abrir el campo.
+   · camFrameScale — el brazo crece con la avatar (SOL 1,5×, LA 1,1×) y, de forma continua, al estrecharse la
+     pantalla (antes: dos escalones en aspecto 0,8 y 1,1).
+   · composeFrame — sube o baja la mirada lo justo para que María Clara quede en la franja libre entre el HUD de
+     arriba y las piezas de abajo (locución, avisos, círculo), medidas en vivo en su columna.
+   · mapa de obstáculos — en el preludio la cámara acorta el brazo antes de meterse en un muro del escenario.
+   ====================================================================== */
+const FOV_BASE = 62, FOV_MAX = 74, HFOV_MIN = 40, D2R = Math.PI / 180;
+export function viewFov() { const a = camera.aspect || 1.6; return clamp(2 * Math.atan(Math.tan(HFOV_MIN * D2R / 2) / a) / D2R, FOV_BASE, FOV_MAX) }
+export function fovK() { return Math.tan(FOV_BASE * D2R / 2) / Math.tan(camera.fov * D2R / 2) }
+function stepFov(dt, extra = 0) { const f = viewFov() + extra; if (Math.abs(camera.fov - f) > .01) { camera.fov = dt > 0 ? damp(camera.fov, f, 6, dt) : f; camera.updateProjectionMatrix() } }
+export function camFrameScale() { return clamp(avatarObj.scale.x || 1, 1, 2) * (1 + .18 * clamp((1.1 - (camera.aspect || 1.6)) / .3, 0, 1)) }
+
+/* Franja libre de la pantalla en la columna de la avatar: debajo de lo que el HUD ocupa arriba y encima de lo
+   que ocupa abajo. Se mide ~7 veces por segundo (lecturas de caja, sin escribir estilos). */
+const BAND_IDS = ['progress', 'btnBack', 'btnVoSkip', 'btnSkip', 'roomInfo', 'roomHint', 'unlock', 'vo', 'coach', 'prompt', 'joy', 'btnWalk', 'btnLook', 'laFrame', 'tray', 'laStatus', 'laBtns', 'miBtns', 'handWrap'];
+const BAND_LOW = new Set(['laFrame', 'tray', 'laStatus', 'laBtns', 'miBtns', 'handWrap', 'joy', 'vo']); // piezas que siempre son «lo de abajo»
+let bandEls = null; const FR = { top: 0, bot: 0, n: 0, s: 0, fit: 0, kz: 1 };
+function measureBand() {
+  if (!bandEls) bandEls = BAND_IDS.map($).filter(Boolean);
+  const x0 = W * .36, x1 = W * .64; let top = 0, bot = H;
+  for (const el of bandEls) {
+    if (!el.offsetParent) continue; const r = el.getBoundingClientRect(); if (r.width < 3 || r.height < 3 || r.right < x0 || r.left > x1) continue;
+    if (!BAND_LOW.has(el.id) && r.top + r.bottom < H) top = Math.max(top, r.bottom); else bot = Math.min(bot, r.top)
+  }
+  FR.top = top; FR.bot = bot
+}
+const _fa = new V3(), _fb = new V3();
+function composeFrame(dt) {
+  if ((FR.n++ & 7) === 0) measureBand();
+  camera.updateMatrixWorld();
+  const p = avatarObj.position, hh = 1.78 * (avatarObj.scale.y || 1); let want = 0;
+  _fa.set(p.x, p.y, p.z).project(camera); _fb.set(p.x, p.y + hh, p.z).project(camera);
+  if (_fa.z < 1 && _fb.z < 1) {
+    const feet = (-_fa.y * .5 + .5) * H, head = (-_fb.y * .5 + .5) * H, m = 12, lo = feet - (FR.bot - m), hi = head - (FR.top + m);
+    want = clamp(lo <= hi ? clamp(0, lo, hi) : (lo + hi) / 2, -.2 * H, .2 * H); // si no cabe, se centra en la franja
+    FR.fit = (feet - head) / Math.max(40, FR.bot - FR.top - 2 * m) // > 1: la avatar es más alta que la franja libre
+  } else FR.fit = 0;
+  FR.s = dt > 0 ? damp(FR.s, want, 4, dt) : want;
+  if (Math.abs(FR.s) > .5) { camera.rotateX(-Math.atan(2 * FR.s / H * Math.tan(camera.fov * D2R / 2))); camera.updateMatrixWorld() }
+}
+export function frameDebug() { return { top: FR.top, bot: FR.bot, shift: +FR.s.toFixed(1), fov: +camera.fov.toFixed(2), fovK: +fovK().toFixed(3), camK: +camK.toFixed(3), map: !!CM.obj, mapMs: +CM.ms.toFixed(1), kz: +FR.kz.toFixed(3) } }
+
+/* Mapa de obstáculos de la sala para la cámara: la cota más alta del escenario (hasta 6 m sobre el suelo de
+   inicio) en celdas de 0,5 m. Se rasteriza una vez por sala, al primer cuadro del preludio y bajo el preloader;
+   después cada consulta es una lectura. Mismo criterio que el brazo del atrio con el NavMesh, sin lanzar rayos. */
+const CM = { obj: null, N: 0, R: 24, cell: .5, top: null, ms: 0 };
+function buildCamMap(obj, base) {
+  const t0 = performance.now(), R = CM.R, cell = CM.cell, N = Math.ceil(2 * R / cell); if (!CM.top || CM.N !== N) CM.top = new Float32Array(N * N);
+  CM.N = N; CM.obj = obj; const top = CM.top; top.fill(-1e9); const yMin = base + .8, yMax = base + 6;
+  const put = (x, y, z) => { if (y < yMin || y > yMax) return; const i = Math.floor((x + R) / cell), j = Math.floor((z + R) / cell); if (i < 0 || j < 0 || i >= N || j >= N) return; const k = j * N + i; if (y > top[k]) top[k] = y };
+  obj.updateMatrixWorld(true);
+  obj.traverse(o => {
+    if (!o.isMesh || !o.geometry || !o.visible) return; const pos = o.geometry.attributes.position; if (!pos) return;
+    /* Los escenarios tienen entre 0,3 y 0,9 millones de triángulos: cada vértice se transforma una sola vez y
+       solo los triángulos más grandes que una celda se muestrean por dentro (los demás ya quedan cubiertos por
+       sus vértices). Se lee el búfer directamente, sin crear vectores. Los modelos vienen comprimidos: posiciones
+       intercaladas (paso `st`, desfase `of`) y cuantizadas a enteros normalizados (factor `q`). */
+    const il = pos.isInterleavedBufferAttribute, a = il ? pos.data.array : pos.array, st = il ? pos.data.stride : pos.itemSize, of = il ? pos.offset : 0;
+    if (!a || pos.itemSize < 3) return;
+    const q = !pos.normalized ? 1 : a instanceof Int16Array ? 1 / 32767 : a instanceof Uint16Array ? 1 / 65535 : a instanceof Int8Array ? 1 / 127 : a instanceof Uint8Array ? 1 / 255 : 1;
+    const idx = o.geometry.index, count = idx ? idx.count : pos.count, m = o.matrixWorld.elements, nv = pos.count;
+    const e = [m[0] * q, m[1] * q, m[2] * q, 0, m[4] * q, m[5] * q, m[6] * q, 0, m[8] * q, m[9] * q, m[10] * q, 0, m[12], m[13], m[14]]; // la cuantización se pliega en la matriz
+    for (let i = 0, p = of; i < nv; i++, p += st) { const x = a[p], y = a[p + 1], z = a[p + 2]; put(e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]) }
+    const sc = (o.matrixWorld.getMaxScaleOnAxis() || 1) * q, lim = .45 / sc, ia = idx ? idx.array : null;
+    for (let t = 0; t + 2 < count; t += 3) {
+      const A = (ia ? ia[t] : t) * st + of, B = (ia ? ia[t + 1] : t + 1) * st + of, C = (ia ? ia[t + 2] : t + 2) * st + of;
+      const ax = a[A], ay = a[A + 1], az = a[A + 2], bx = a[B], by = a[B + 1], bz = a[B + 2], cx = a[C], cy = a[C + 1], cz = a[C + 2];
+      const ext = Math.max(Math.abs(ax - bx), Math.abs(ay - by), Math.abs(az - bz), Math.abs(ax - cx), Math.abs(ay - cy), Math.abs(az - cz), Math.abs(bx - cx), Math.abs(by - cy), Math.abs(bz - cz));
+      if (ext <= lim) continue;
+      const n = Math.min(48, Math.ceil(ext / lim)); // muestras a menos de una celda entre sí
+      for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) { const u = i / n, v = j / n, w = 1 - u - v, x = ax * u + bx * v + cx * w, y = ay * u + by * v + cy * w, z = az * u + bz * v + cz * w; put(e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]) }
+    }
+  });
+  CM.ms = performance.now() - t0
+}
+function camBlocked(x, z, y) { const N = CM.N, i = Math.floor((x + CM.R) / CM.cell), j = Math.floor((z + CM.R) / CM.cell); return i >= 0 && j >= 0 && i < N && j < N && CM.top[j * N + i] > y - .2 }
+
 export function updateCam() {
-  const ks = camFrameScale(), dist = rig.dist * ks, up = 1.2 * ks;
+  const ks = camFrameScale(), dist = rig.dist * ks * fovK(), up = 1.2 * ks;
   fwd.set(Math.sin(rig.yaw), 0, Math.cos(rig.yaw)); const tg = new V3(player.x, camY + up, player.z); const look = new V3(tg.x + fwd.x * rig.look * ks, tg.y + Math.sin(rig.pitch) * 3.1 * ks, tg.z + fwd.z * rig.look * ks);
   /* la cámara no atraviesa arcos ni escaleras: se acorta el brazo según la ocupación del NavMesh (8 muestras) */
   const cy = camY + (rig.height + rig.pitch * 1.4) * ks, ty = camY + up; let k = 1;
@@ -193,9 +274,14 @@ export function updateCam() {
       const f = s / 8, yy = lerp(ty, cy, f), c = navIdx(player.x - fwd.x * dist * f, player.z - fwd.z * dist * f);
       if (c >= 0 && !navFree(NAV.occ, c, yy - .15, yy + .15)) { k = Math.max(.3, (s - 1) / 8); break }
     }
+    if (CM.obj) CM.obj = null // de vuelta en el atrio: se suelta el escenario de la sala anterior
+  } else if (S.phase === 'prelude' && S.room) {
+    const ro = groundController.roomObj;
+    if (ro && CM.obj !== ro) { const r = rooms[S.room - 1]; buildCamMap(ro, r?.start?.y ?? r?.floorY ?? player.y) }
+    if (ro) { const n = Math.max(8, Math.ceil(dist / .4)); for (let s = 1; s <= n; s++) { const f = s / n; if (camBlocked(player.x - fwd.x * dist * f, player.z - fwd.z * dist * f, lerp(ty, cy, f))) { k = Math.max(.3, (s - 1) / n); break } } }
   }
   camK = damp(camK, k, k < camK ? 14 : 2.5, camDt);
-  camera.position.set(player.x - fwd.x * dist * camK, lerp(ty, cy, camK), player.z - fwd.z * dist * camK); camera.lookAt(look)
+  camera.position.set(player.x - fwd.x * dist * camK, lerp(ty, cy, camK), player.z - fwd.z * dist * camK); camera.lookAt(look); composeFrame(camDt)
 }
 
 let guideT = 0, guideFor = 0, guideLen = 0, guideRoute = null; const guideFrom = { x: 1e9, z: 1e9 };
@@ -384,10 +470,10 @@ export function updateAtrium(dt) {
     if (rig.hold <= 0) rig.pitch = damp(rig.pitch, -.12, 3, dt);
     stepPh += speed * dt * .28; if (Math.floor(stepPh * 2) !== Math.floor((stepPh - speed * dt * .28) * 2) && speed > 1.5 && A.ctx) tone(70 + Math.random() * 20, .06, 'triangle', .04, 0, A.master);
     avatarObj.position.set(player.x, viewY, player.z); animAvatar(avatarObj, speed, T);
-    camera.fov = damp(camera.fov, 62 + (sprint && speed > 6 ? 7 : 0), 6, dt); camera.updateProjectionMatrix(); updateCam();
+    stepFov(dt, sprint && speed > 6 ? 7 : 0); updateCam();
     S.nearby = on ? nearestPortal() : 0;
     if (pendEnter) { pendEnter.t -= dt; if (mag > .3 || auto || !on) pendEnter = null; else if (pendEnter.t <= 0) { const id = pendEnter.id; pendEnter = null; if (S.nearby === id) _enterRoom(id) } }
-  } else if (S.phase === 'intro') { rig.yaw += dt * .12; viewY = camY = player.y; updateCam(); avatarObj.position.copy(player); animAvatar(avatarObj, 0, T); lightingManager.update(player, dt, false); }
+  } else if (S.phase === 'intro') { rig.yaw += dt * .12; viewY = camY = player.y; stepFov(0); updateCam(); avatarObj.position.copy(player); animAvatar(avatarObj, 0, T); lightingManager.update(player, dt, false); }
   const tid = nextRoomId(), comp = $('compass');
   if (on && tid && !S.nearby && stairGroups.length) {
     const g = stairGroups[tid - 1];
@@ -408,8 +494,11 @@ export function updateAtrium(dt) {
       dummy.position.set(px, py, pz); dummy.scale.setScalar(s); dummy.updateMatrix(); guide.setMatrixAt(i, dummy.matrix)
     } guide.instanceMatrix.needsUpdate = true;
     const q = gateWorld(g), v = q.clone().project(camera), behind = v.z > 1; let sx = v.x, sy = v.y; if (behind) { sx = -sx; sy = -sy }
-    const onScr = !behind && Math.abs(sx) < .84 && Math.abs(sy) < .74; if (!onScr) { const m = Math.max(Math.abs(sx) / .84, Math.abs(sy) / .74) || 1; sx /= m; sy /= m }
-    const px = (sx * .5 + .5) * W, py = (-sy * .5 + .5) * H; comp.style.display = 'block'; comp.style.transform = `translate(${px}px,${py}px)`;
+    const onScr0 = !behind && Math.abs(sx) < .84 && Math.abs(sy) < .74; if (!onScr0) { const m = Math.max(Math.abs(sx) / .84, Math.abs(sy) / .74) || 1; sx /= m; sy /= m }
+    /* La baliza no se mete bajo el HUD de arriba (medido en vivo: FR.top). En vertical el portal cercano se proyecta a la
+       altura de la ficha «El museo imposible» y el rótulo «DO4 · 10 m» la pisaba: ahí la baliza se queda al borde de la
+       franja libre y pasa a flecha, igual que cuando el portal sale de cuadro. */
+    const px = (sx * .5 + .5) * W, yTop = FR.top + 58, py0 = (-sy * .5 + .5) * H, py = Math.max(py0, yTop), onScr = onScr0 && py0 >= yTop; comp.style.display = 'block'; comp.style.transform = `translate(${px}px,${py}px)`;
     DOM.arrow.style.display = onScr ? 'none' : 'block'; DOM.arrow.style.transform = `rotate(${Math.atan2(py - H / 2, px - W / 2) + Math.PI / 2}rad) translateY(-38px)`;
     setTxt(DOM.lbl, `${rooms[tid - 1].note} · ${Math.round(Math.hypot(q.x - player.x, q.z - player.z))} m`); DOM.mk.style.display = onScr ? 'block' : 'none'
   }
@@ -485,12 +574,20 @@ export function hoverTick(act, dt) { // anillo guía bajo el mouse (solo escrito
 
 /* ---------------- cámara de sala ---------------- */
 export const camCur = new V3(0, 2.3, 8.6), camLook = new V3(0, 1.7, 0);
+const _rp0 = new V3(0, 2.3, 8.6), _rl0 = new V3(0, 1.7, 0);
 export function roomCamera(dt, cur) {
-  let tp = cur.camPos || new V3(0, 2.3, 8.6), tl = cur.camLook || new V3(0, 1.7, 0);
+  let tp = cur.camPos || _rp0, tl = cur.camLook || _rl0;
+  stepFov(dt);
   if (cur.cam) { const c = cur.cam(); tp = c.pos; tl = c.look }
+  /* Al abrir el campo en vertical la cámara se acerca sobre su propia línea de mirada (fovK): la avatar y el
+     área de juego conservan su tamaño en pantalla y se gana escenario a los lados. En horizontal fovK = 1. */
+  /* Si la interfaz del minijuego deja una franja más baja que la avatar (LA♯ en pantallas compactas), la cámara
+     se aleja lo justo (hasta 1,4×) para que quepa entera en lugar de quedar detrás del pentagrama. */
+  FR.kz = damp(FR.kz, S.phase === 'play' ? clamp(FR.fit * FR.kz, 1, 1.4) : 1, 3, dt);
+  const kd = fovK() * FR.kz, tx = tl.x + (tp.x - tl.x) * kd, ty = tl.y + (tp.y - tl.y) * kd, tz = tl.z + (tp.z - tl.z) * kd;
   const px = (ptr.x / W - .5), py = (ptr.y / H - .5), par = cur.noParallax || TOUCH ? 0 : 1;
-  camCur.x = damp(camCur.x, tp.x + px * .6 * par, cur.cam ? 5 : 3, dt); camCur.y = damp(camCur.y, tp.y - py * .3 * par, cur.cam ? 5 : 3, dt); camCur.z = damp(camCur.z, tp.z, cur.cam ? 5 : 3, dt); camLook.lerp(tl, 1 - Math.exp(-6 * dt));
-  camera.position.copy(camCur); const sh = getShake(); if (sh > .05) { camera.position.x += (Math.random() - .5) * sh * .03; camera.position.y += (Math.random() - .5) * sh * .03 } camera.lookAt(camLook); camera.updateMatrixWorld()
+  camCur.x = damp(camCur.x, tx + px * .6 * par, cur.cam ? 5 : 3, dt); camCur.y = damp(camCur.y, ty - py * .3 * par, cur.cam ? 5 : 3, dt); camCur.z = damp(camCur.z, tz, cur.cam ? 5 : 3, dt); camLook.lerp(tl, 1 - Math.exp(-6 * dt));
+  camera.position.copy(camCur); const sh = getShake(); if (sh > .05) { camera.position.x += (Math.random() - .5) * sh * .03; camera.position.y += (Math.random() - .5) * sh * .03 } camera.lookAt(camLook); composeFrame(dt); camera.updateMatrixWorld()
 }
 
 /* ---------------- colocación del jugador ---------------- */

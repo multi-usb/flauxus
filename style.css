@@ -2897,8 +2897,10 @@
       #hud #btnBack, #hud #btnVoSkip, #hud #btnSkip { font-size: 11px; padding: 8px 10px; min-height: 44px }
     }
 
-    /* muy estrecho: «Volver» y «Saltar» en filas propias (no caben lado a lado) */
-    @media (max-width: 380px) {
+    /* muy estrecho: «Volver» y «Saltar» en filas propias (no caben lado a lado).
+       Iteración 4: el corte baja de 380 a 339 px. A 360 px sí caben lado a lado y la fila extra le quitaba
+       ~52 px de alto a la escena justo donde menos sobra. */
+    @media (max-width: 339px) {
       #hud {
         grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr) auto auto;
         grid-template-areas:
@@ -2934,7 +2936,7 @@
        ===================================================================== */
     :root { --ui-top: 118px }
     @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) { :root { --ui-top: 196px } }
-    @media (max-width: 380px) { :root { --ui-top: 248px } }
+    @media (max-width: 339px) { :root { --ui-top: 248px } }
     @media (max-height: 500px) and (min-aspect-ratio: 4/5) { :root { --ui-top: 96px } }
 
     #laUI[style*="block"] {
@@ -3024,7 +3026,7 @@
     }
 
     /* tercera pasada: en ≤ 380 px la tarjeta empieza bajo las filas de «Volver» y «Saltar» */
-    @media (max-width: 380px) { #hud .card { grid-row: 5 / -1 } }
+    @media (max-width: 339px) { #hud .card { grid-row: 5 / -1 } }
     /* ayuda en pantallas bajas: la caja nunca supera el alto disponible */
     #help .box { max-height: 100%; overflow: auto }
     #help { box-sizing: border-box }
@@ -3038,4 +3040,33 @@
       #laUI .lcard strong { font-size: 10px }
       #laUI #laStatus { font-size: 12px; padding: 2px 8px }
       #laUI .btns { min-height: 40px; padding: 6px 10px }
+    }
+
+    /* =====================================================================
+       ITERACIÓN 4 · CELULAR PRIMERO: objetivos táctiles y sitio para María Clara
+       La cámara (player.js · composeFrame) mide la franja libre entre el HUD de arriba y las piezas de abajo
+       y encuadra ahí a la avatar. Estas reglas le dejan esa franja en pantallas verticales.
+       ===================================================================== */
+    /* ♪ y ? medían 38 px (33 px en horizontal, encogidos por la fila): objetivo táctil mínimo de 44 px */
+    body.touch .icon { width: 44px; height: 44px; flex: none }
+    body.touch #laUI .btns, body.touch #miUI .btns { min-height: 44px }
+
+    @media (max-aspect-ratio: 4/5) {
+      /* La locución tapaba entre el 38 % y el 98 % de la avatar: en vertical ocupaba hasta el 34 % del alto, justo
+         en el centro. Ahora es una caja baja (el texto ya avanza solo con la lectura: ui/voice.js) pegada al
+         círculo, y la ficha de la sala se aparta mientras ella habla (el Momento sigue marcado en las pestañas). */
+      #hud #vo { max-height: clamp(112px, 18dvh, 160px) }
+      body:has(#vo.show) #hud #roomInfo { display: none }
+      /* LA♯: la columna de juego (pentagrama → bandeja → botones) descansa abajo, al alcance del pulgar, y deja
+         libre la franja superior para ver a María Clara y la mesa. Antes iba centrada y la cubría entera. */
+      #laUI[style*="block"] { justify-content: safe flex-end }
+    }
+    /* LA♯ en celulares de hasta 700 px de alto: fragmentos y espacios más bajos (siguen ≥ 48 px) para que quede
+       franja libre sobre el pentagrama; a 640 px la columna llenaba la pantalla y tapaba a la avatar. */
+    @media (max-height: 700px) and (min-height: 621px) and (max-width: 520px) {
+      #laUI[style*="block"] { gap: 6px }
+      #laUI .frame { padding: 18px 8px 8px }
+      #laUI .slot, #laUI .lcard { height: 50px }
+      #laUI .lcard img { height: 18px }
+      #laUI #laStatus { font-size: 12px; padding: 2px 8px }
     }

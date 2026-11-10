@@ -54,14 +54,17 @@ export const FA = (() => {
   let pos = new THREE.Vector3(0, 0, 3.2), target = null, prog = [0, 0, 0], on = [false, false, false], pads = null, zObj = [], trail, tPos, tCol, tN = 0, discs = [], discI = 0, lastDrop = new THREE.Vector3(), path = [], dist = 0, doneT = 0, moving = false, startedMove = false, base = null, layers = [], real = false, magic = null, ribbon = null;
   const rc = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const getFloorY = () => meta.floorY ?? 1.80;
+  const _camPos = new THREE.Vector3(), _camLook = new THREE.Vector3();
   return {
     noParallax: true,
     cam() {
       const fy = getFloorY();
-      return {
-        pos: new THREE.Vector3(pos.x * .8, fy + 7.4, pos.z + 9.4),
-        look: new THREE.Vector3(pos.x * .9, fy + 0.8, pos.z * .9)
-      };
+      /* Celular en horizontal: con ~390 px de alto la avatar medía 50 px. La cámara se acerca sobre su línea de
+         mirada en proporción al alto disponible (táctil, hasta un 22 %); en vertical y escritorio no cambia. */
+      const k = TOUCH ? clamp(H / 560, .78, 1) : 1, lx = pos.x * .9, ly = fy + 0.8, lz = pos.z * .9;
+      _camPos.set(lx + (pos.x * .8 - lx) * k, ly + (fy + 7.4 - ly) * k, lz + (pos.z + 9.4 - lz) * k);
+      _camLook.set(lx, ly, lz);
+      return { pos: _camPos, look: _camLook };
     },
     build() {
       const fy = getFloorY();
