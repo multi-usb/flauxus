@@ -14,8 +14,6 @@ import { clearGroup, mat, glowSprite, makeTextSprite, makeDust, GLOW } from '../
 import { onAtriumLoaded } from '../NavMesh.js';
 import { placeFBX } from '../AssetManager.js';
 import { drawMotif } from '../rooms/motif.js';
-import { buildAtriumMemory, refreshAtriumMemory, updateAtriumMemory } from './memory.js';
-export { refreshAtriumMemory, updateAtriumMemory };
 
 /* Calibración de la huella del atrio (antes vivía en NavMesh.js). */
 export const HUELLA_CONFIG = {
@@ -277,10 +275,6 @@ export function makeAtrium() {
     });
   const stars = makeDust(400, 95, 60, 0xc9d6a0, .45); stars.position.y = -5; stars.frustumCulled = false; world.add(stars);
   initFloatingBlocks(world);
-  /* Memoria del atrio (atrium/memory.js): huellas de los Momentos completados. Se colocan cuando el modelo ya
-     calibró escaleras y portales, y se encienden según el progreso guardado. */
-  buildAtriumMemory(world);
-  atriumReady.then(() => refreshAtriumMemory(S.completed, stairGroups, true));
   paintHuella();
   return atriumReady;
 }

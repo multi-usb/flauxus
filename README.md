@@ -44,13 +44,13 @@ Los alias de URL (`?room=do`, `?room=do4`, `?room=re`…) se derivan automática
 | `NavMesh.js` | Rasterizado de colisiones, alturas, A* y rutas. La calibración por sala llega por `navInit()`. |
 | `core/` | `util.js` (primitivas), `config.js` (entrada, baraja, calidad, preludio), `state.js` (`S`, salas, generaciones), `time.js` (`T`), `voiceState.js` (`VO`) e `inputState.js` (puntero y teclas). |
 | `engine/` | `renderer.js`, `materials.js`, `fx.js` (canvas 2D), `avatar.js`, `lighting.js`, `ground.js`, `trail.js` (estela de partículas y cinta de recorrido de FA♯), `hologram.js` (holograma monumental de SOL♯, por impostor) y `sky.js` (galaxia horneada y luciérnagas). |
-| `atrium/` | `atrium.js`: escaleras, portales, bloques orbitales, huella y `HUELLA_CONFIG`. `memory.js`: la memoria del atrio (una huella por sala completada). |
+| `atrium/` | `atrium.js`: escaleras, portales, bloques orbitales, huella y `HUELLA_CONFIG`. |
 | `ui/` | `hud.js`, `voice.js`, `prelude.js`, `epilogue.js`, `debug.js`, `toast.js` y `loader.js` (preloader: etapas reales y bytes; aviso de error). |
 | `rooms/` | Las seis salas, `context.js` y `motif.js`. Una sala puede exponer `ambient(dt, T)`: se llama en cada cuadro (preludio y juego) para animaciones de fondo. |
 
 **Interfaz.** El HUD es una rejilla por regiones (`style.css` · «HUD POR REGIONES»): cada pieza vive en una región y se apila con sus vecinas; no hay coordenadas sueltas. Para añadir un control, colócalo dentro de la región que le corresponde en `index.html` (`.hud-left`, `.hud-center`, `.hud-right` o sus grupos) en vez de darle `position:absolute`.
 
-**Progreso.** Las salas completadas y sus métricas se guardan en `localStorage` (`flauxus.progress.v1`, ver `core/state.js`). Se borran con «Reiniciar recorrido» (ayuda) o «Rebobinar y empezar de nuevo» (epílogo).
+**Progreso.** Solo en memoria: cada carga de la página empieza desde cero en el primer Momento (recargar, o salir a la landing y volver, no hereda nada). No se guarda en `localStorage`; la clave antigua `flauxus.progress.v1` se borra al cargar (`core/state.js`). Al salir (`pagehide` o el botón «Salir» embebido) `Main.js` detiene audio, locución y bucle de render y suelta el contexto WebGL; si la página vuelve desde bfcache, se recarga.
 
 Parámetros útiles: `?raf=timer` mueve el bucle con un temporizador (pruebas automatizadas con la página oculta) · `?input=touch` fuerza la interfaz táctil · `?room=1…6` entra directo a un Momento (lo usan las notas de la landing) · `?entry=fanzine|poster|cards` cambia la entrada (la cyborg tiñe el menú) · `?dev` muestra «Simular entrada» · `?perf` muestra el contador de rendimiento.
 

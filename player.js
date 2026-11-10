@@ -21,8 +21,7 @@ import { W, H, getShake } from './engine/fx.js';
 import { lightingManager } from './engine/lighting.js';
 import { avatarObj, animAvatar } from './engine/avatar.js';
 import { groundController, getAtriumFBXObj } from './engine/ground.js';
-import { stairGroups, portalObjects, atriumFloor, floatingBlocks, updateFloatingBlocks, updateAtriumMemory } from './atrium/atrium.js';
-import { renderer } from './engine/renderer.js';
+import { stairGroups, portalObjects, atriumFloor, floatingBlocks, updateFloatingBlocks } from './atrium/atrium.js';
 import { toast } from './ui/toast.js';
 
 /* Callbacks inyectados por Main.js para evitar player ↔ flow. */
@@ -226,7 +225,6 @@ export function updateAtrium(dt) {
   // Animar el giro y la flotación continua de los bloques
   if (world.visible && floatingBlocks.length) {
     updateFloatingBlocks(T);
-    updateAtriumMemory(dt, T, renderer);
   }
 
   stairGroups.forEach(g => {

@@ -4,7 +4,7 @@
    todos los módulos ven los mismos cambios sin setters.
    ====================================================================== */
 import { ROOMS } from '../Rooms.js';
-import { entry, LS } from './config.js';
+import { entry } from './config.js';
 
 export const rooms = ROOMS;
 export const S = { phase: 'intro', room: 0, completed: new Set(), metrics: {}, mod: new Set(), sessionStart: 0, playStart: 0, moved: 0, nearby: 0, busy: false, coach: 0, ready: true, rfNote: false };
@@ -13,21 +13,12 @@ if (entry === 'poster') S.mod.add('chisel');
 if (entry === 'cards') S.mod.add('intention');
 S.heard = new Set();
 
-/* ---------------- progreso guardado ----------------
-   Las salas completadas y sus métricas (la huella de cada una) se guardan en el navegador con el mismo ayudante
-   `LS` que ya guardaba las entradas descubiertas. Así el recorrido —y con él la memoria del atrio— sobrevive a
-   recargar la página o a salir a la landing y volver. «Rebobinar y empezar de nuevo» (epílogo) y «Reiniciar
-   recorrido» (ayuda) lo borran. */
-const SAVE_KEY = 'flauxus.progress.v1';
-try {
-  const saved = LS.get(SAVE_KEY, null);
-  if (saved && Array.isArray(saved.completed)) {
-    for (const id of saved.completed) if (id >= 1 && id <= 6) S.completed.add(id);
-    if (saved.metrics && typeof saved.metrics === 'object') for (const k of Object.keys(saved.metrics)) if (S.completed.has(+k)) S.metrics[k] = saved.metrics[k];
-  }
-} catch { }
-export function saveProgress() { LS.set(SAVE_KEY, { completed: [...S.completed], metrics: S.metrics }) }
-export function resetProgress() { try { localStorage.removeItem(SAVE_KEY) } catch { } S.completed.clear(); S.metrics = {} }
+/* ---------------- progreso: solo en memoria ----------------
+   Cada carga de la página empieza desde cero en el primer Momento: recargar, o salir a la landing y volver,
+   nunca hereda una partida. `S.completed` y `S.metrics` viven únicamente mientras dura la sesión; no se
+   guardan ni se restauran. La clave que usaba la iteración anterior se borra al cargar, para que tampoco
+   quede una partida vieja en el navegador de quien ya jugó. */
+try { localStorage.removeItem('flauxus.progress.v1') } catch { }
 
 /* Cada Momento tiene su propia versión de personaje: MC_original en el
    atrio y las salas 1–3, MC_mtp (Matar al padre) en FA y LA, y MC_cyborg

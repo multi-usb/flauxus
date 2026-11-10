@@ -2925,8 +2925,6 @@
       body:has(#vo.show) #hud #roomInfo { display: none }
     }
 
-    #help .box #btnReset { display: block; margin: 12px auto 0; min-height: 44px; padding: 0 16px }
-
     /* =====================================================================
        MINIJUEGOS CON INTERFAZ PROPIA (LA♯ y MI) · misma regla que el HUD
        Antes cada bloque tenía un «top» en porcentaje (21 %, 55 %, 78 %, 84 %): cuando la bandeja de fragmentos

@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { $, sleep, TOUCH, LIME, LIMEH, V3, qs } from './core/util.js';
 import { entry, ENTRIES, CARDS, HAND, LS, seen, PRELUDE } from './core/config.js';
-import { S, rooms, skinKind, bumpRoomGen, saveProgress } from './core/state.js';
+import { S, rooms, skinKind, bumpRoomGen } from './core/state.js';
 import { W, H, burst, ringFx, shake } from './engine/fx.js';
 import {
   A, ensureAudio, startAmbient, newBus, killBus, tone, sting,
@@ -18,7 +18,7 @@ import { lightingManager } from './engine/lighting.js';
 import { avatarObj, setAvatar } from './engine/avatar.js';
 import { groundController } from './engine/ground.js';
 import { mat, glowSprite, clearGroup } from './engine/materials.js';
-import { paintHuella, atriumReady, refreshAtriumMemory, stairGroups } from './atrium/atrium.js';
+import { paintHuella, atriumReady } from './atrium/atrium.js';
 import {
   camCur, camLook, stopAuto, placePlayerAtSpawn,
   placePlayerAtAtrium, setRoomFloor
@@ -286,7 +286,7 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
 export function startRoom() { if (S.phase !== 'brief' || !S.ready) return; document.activeElement?.blur?.(); ensureAudio(); newBus(); S.phase = 'play'; S.playStart = performance.now(); $('brief').classList.remove('show'); $('btnSkip').style.display = 'none'; cur.start(); tone(660, .12, 'sine', .04, 0, A.master) }
 
 export function finish(m, lines, skipped = false) {
-  if (S.phase !== 'play') return; S.phase = 'done'; S.completed.add(S.room); S.metrics[S.room] = { ...m, skipped, duration: (performance.now() - S.playStart) / 1000 }; saveProgress();
+  if (S.phase !== 'play') return; S.phase = 'done'; S.completed.add(S.room); S.metrics[S.room] = { ...m, skipped, duration: (performance.now() - S.playStart) / 1000 };
   cur.stop?.(); sting(); shake(14); paintHuella();
   const f = $('flash'); f.style.background = '#c2fe0b'; f.style.opacity = '.16'; f.classList.remove('on'); setTimeout(() => { f.style.opacity = ''; f.style.background = '' }, 260);
   burst(W / 2, H / 2, LIMEH, 60, 420, 1.1, 4); ringFx(W / 2, H / 2, '#fff', 20, 320, .9, 3); hint(''); hideRoomDom(); renderProgress();
@@ -313,8 +313,6 @@ export async function leaveRoom() {
     await Promise.all([setAvatar(skinKind(0)), atriumReady]);
     avatarObj.scale.setScalar(1);
     placePlayerAtAtrium();
-    /* El atrio recuerda: aparece (animada) la huella de la sala recién completada. */
-    refreshAtriumMemory(S.completed, stairGroups);
     setRoomInfo('Atrio central', 'El museo imposible', 'Seis escaleras flotan alrededor del centro. Haz clic en el suelo para caminar y sigue la que late: cada una lleva a un momento distinto.');
     A.ambient?.set(1, 1); renderProgress(); hint('');
     loaderStage(82, 'Acomodando la luz del atrio');

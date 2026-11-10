@@ -30,7 +30,8 @@ document.body.classList.toggle('embedded', EMBEDDED);
    dibujando controles en la misma esquina. */
 if (EMBEDDED) {
   const ex = document.getElementById('btnExit');
-  if (ex) { ex.hidden = false; ex.addEventListener('click', () => { try { parent.postMessage({ type: 'flauxus:exit' }, location.origin); } catch { } }); }
+  /* Antes de avisar a la landing se apaga el juego (audio, voz, bucle y WebGL): Main.js escucha «flauxus:teardown». */
+  if (ex) { ex.hidden = false; ex.addEventListener('click', () => { dispatchEvent(new Event('flauxus:teardown')); try { parent.postMessage({ type: 'flauxus:exit' }, location.origin); } catch { } }); }
   try { parent.postMessage({ type: 'flauxus:ready' }, location.origin); } catch { }
 }
 export const qs = new URLSearchParams(location.search);

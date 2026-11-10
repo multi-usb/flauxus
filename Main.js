@@ -7,9 +7,9 @@
 import { $, clamp, lerp, damp, rand, lerpAngle, TOUCH, qs, V3, LIME, LIMEH, PAPER, PALE, FONT, SERIF } from './core/util.js';
 import { T, tickTime } from './core/time.js';
 import { QUALITY, CARDS, OPLIST, HAND, EXPERIMENT } from './core/config.js';
-import { S, roomGen, resetProgress } from './core/state.js';
+import { S, roomGen } from './core/state.js';
 import { ptr, keys, ptrActive } from './core/inputState.js';
-import { A, ensureAudio, setMuted, audioLevel } from './AudioSystem.js';
+import { A, Rec, ensureAudio, setMuted, audioLevel, killBus } from './AudioSystem.js';
 import { navInit, navVizUpdate } from './NavMesh.js';
 import { ROOMS, roomsInit, roomsUpdate } from './Rooms.js';
 import { GX } from './GameContext.js';
@@ -22,6 +22,7 @@ import { groundController, setAtriumFBXObj } from './engine/ground.js';
 import { stairGroups, makeAtrium, paintHuella } from './atrium/atrium.js';
 import { hint, setRoomInfo, renderProgress, reshowRoomInfo } from './ui/hud.js';
 import { toast } from './ui/toast.js';
+import { voStop } from './ui/voice.js';
 import { updatePrelude, enterZone } from './ui/prelude.js';
 import {
   rig, player, vel, moveInput, updateCam, updateAtrium, roomCamera, walkNext, walkTo,
@@ -101,7 +102,6 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => keys.delete(e.code));
 function toggleHelp() { $('help').classList.toggle('show') }
-$('btnReset').onclick = () => { if (confirm('¿Borrar el progreso guardado y empezar de nuevo?')) { resetProgress(); location.reload() } };
 $('btnHelp').onclick = toggleHelp; $('helpClose').onclick = toggleHelp; $('btnSound').onclick = () => { ensureAudio(); setMuted(!A.muted) };
 $('btnWalk').innerHTML = `Ir a la siguiente sala${TOUCH ? '' : ' <kbd>C</kbd>'}`; $('btnWalk').onclick = () => { $('btnWalk').blur(); walkNext() };
 $('btnStart').onclick = startGame; $('prompt').onclick = () => S.phase === 'prelude' ? enterZone() : tryEnter(); $('btnBack').onclick = () => leaveRoom();
@@ -113,9 +113,10 @@ window.walkNext = walkNext; window.walkTo = walkTo; window.enterRoom = enterRoom
 /* ======================================================================
    LOOP
    ====================================================================== */
-let lastTime = performance.now();
+let lastTime = performance.now(), rafId = 0, stopped = false;
 function frame() {
-  requestAnimationFrame(frame); if (perfEl) renderer.info.reset();
+  if (stopped) return;
+  rafId = requestAnimationFrame(frame); if (perfEl) renderer.info.reset();
   roomsUpdate(); // refresca las referencias dinámicas de Rooms.js (W, H, S, ptr, etc.)
   GX.W = W; GX.H = H; GX.DPR = DPR; GX.T = T; GX.roomGen = roomGen; // actualiza GX cada frame
   const now = performance.now();
@@ -147,6 +148,29 @@ function frame() {
 
 setRoomInfo('Atrio central', 'El museo imposible', 'Seis escaleras flotan alrededor del centro. Haz clic en el suelo para caminar y sigue la que late: cada una lleva a un momento distinto.'); renderProgress(); updateCam();
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer?.setSize(innerWidth, innerHeight); resize2d() });
+
+/* ======================================================================
+   APAGADO · SALIR A LA LANDING, RECARGAR O NAVEGAR FUERA
+   El juego no guarda nada entre cargas (core/state.js). Al salir se detiene todo lo que sigue vivo por su cuenta
+   —minijuego, locución, grabaciones, sintetizador, bucle de render— y se suelta el contexto WebGL, para que el
+   iframe que la landing descarta no deje audio sonando ni memoria de GPU retenida. Si el navegador devolviera
+   esta misma página desde su caché de ida y vuelta (bfcache), se recarga: una página restaurada conservaría la
+   partida anterior y, además, ya está apagada.
+   ====================================================================== */
+function shutdown() {
+  if (stopped) return; stopped = true;
+  cancelAnimationFrame(rafId);
+  try { cur?.stop?.() } catch { }
+  try { voStop() } catch { }
+  try { killBus() } catch { }
+  for (const el of Rec.el.values()) { try { el.pause() } catch { } }
+  try { A.ambient = null; A.ctx?.close?.() } catch { }
+  try { composer?.dispose?.(); renderer.dispose(); renderer.forceContextLoss() } catch { }
+}
+addEventListener('flauxus:teardown', shutdown);
+addEventListener('pagehide', shutdown);
+addEventListener('pageshow', e => { if (e.persisted) location.reload() });
+window.__flauxusStopped = () => stopped;
 
 initDebug();
 frame();
