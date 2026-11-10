@@ -119,24 +119,66 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
     addEventListener('pointermove', (e) => { mouseTarget = (e.clientX / innerWidth) * 2 - 1; }, { passive: true });
   }
   // Texto y botón del héroe, en fracciones de pantalla: la lluvia de palabras del fondo se atenúa al pasar por
-  // detrás de ellos (scenes/hero.js). Se mide al arrancar y cuando cambia el tamaño, nunca por cuadro.
+  // detrás de ellos (scenes/hero.js). Una zona por bloque de texto, no por contenedor: la pista «Desliza para
+  // descubrir» cuelga por fuera de la caja de su contenedor en celular y tableta, y quedaba sin zona.
+  // Se mide al arrancar y cuando cambia el tamaño, nunca por cuadro, y solo con el Momento 1 en pantalla: si la
+  // ventana cambia en otro momento o con el juego abierto, la medida se aplaza hasta volver (heroDirty).
+  // Los bloques se desplazan y se funden al salir hacia el portal (moments/m1-impacto.js) y siguen al cursor:
+  // ese desplazamiento se resta para guardar siempre su posición de reposo.
+  const m1El = document.getElementById('m1');
+  const HERO_BLOCKS = '.hero-lockup img, .hero-artist, .hero-manifesto, .hero-scroll, .hero-copy > p:first-child, .hero-explore, .hero-cursor-hint, .hero-mini-avatar';
+  let heroDirty = false;
   function measureHero() {
+    heroDirty = false;
     const zones = [];
-    const base = document.getElementById('m1').getBoundingClientRect(); // fijada arriba mientras es el momento activo
-    for (const el of document.querySelectorAll('#m1 .hero-lockup, #m1 .hero-copy, #m1 .hero-mini-avatar')) {
+    const base = m1El.getBoundingClientRect(); // fijada arriba mientras es el momento activo
+    const shifts = new Map();
+    const m = 14; // aire alrededor del bloque (px)
+    for (const el of m1El.querySelectorAll(HERO_BLOCKS)) {
       const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) continue;
-      const m = 14; // aire alrededor del bloque (px)
-      zones.push([(r.left - base.left - m) / innerWidth, (r.top - base.top - m) / innerHeight,
-        (r.right - base.left + m) / innerWidth, (r.bottom - base.top + m) / innerHeight]);
+      if (r.width < 2 || r.height < 2 || getComputedStyle(el).visibility === 'hidden') continue;
+      const host = el.closest('.hero-lockup, .hero-copy, .hero-mini-avatar');
+      if (!shifts.has(host)) {
+        const t = getComputedStyle(host).transform;
+        const mt = t && t !== 'none' ? new DOMMatrixReadOnly(t) : null;
+        shifts.set(host, mt ? [mt.m41, mt.m42] : [0, 0]);
+      }
+      const [dx, dy] = shifts.get(host);
+      zones.push([(r.left - dx - base.left - m) / innerWidth, (r.top - dy - base.top - m) / innerHeight,
+        (r.right - dx - base.left + m) / innerWidth, (r.bottom - dy - base.top + m) / innerHeight]);
     }
     backend.setHeroAvoid?.(zones);
   }
+
+  // Punto de lectura: momento activo y fracción recorrida de su tramo. El recorrido se mide en pantallas, así
+  // que al girar el teléfono cambia de longitud (≈ 21 000 px en vertical, ≈ 10 000 px en horizontal) mientras el
+  // navegador conserva el scroll en píxeles: el portal quedaba convertido en el Momento 3, y lo mismo al girar
+  // con el juego abierto y salir. Cuando ScrollTrigger recalcula los tramos tras un cambio de tamaño, la página
+  // vuelve al mismo punto del mismo momento. Entre el cambio de tamaño y ese recálculo el ancla no se toca.
+  const anchor = { id: 'm1', f: 0 };
+  let anchorHold = 0;
   let heroTimer = 0;
   addEventListener('resize', () => {
     backend.resize();
     clearTimeout(heroTimer);
-    heroTimer = setTimeout(measureHero, 220);
+    heroTimer = setTimeout(() => { heroDirty = true; }, 220);
+    clearTimeout(anchorHold);
+    anchorHold = setTimeout(() => { anchorHold = 0; }, 1500); // sin recálculo (barra del navegador en celular): se suelta
+  });
+  ScrollTrigger.addEventListener('refresh', () => {
+    if (!started) return;
+    heroDirty = true;
+    if (!anchorHold) return; // recálculo que no viene de un cambio de tamaño: no hay nada que recolocar
+    clearTimeout(anchorHold);
+    anchorHold = 0;
+    const m = moments.find((x) => x.id === anchor.id);
+    if (!m) return;
+    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    const target = Math.min(max, Math.max(0, Math.round(m.track.start + anchor.f * (m.track.end - m.track.start))));
+    if (Math.abs(target - scrollY) > 2) scrollTo({ top: target, behavior: 'instant' });
+    // sin salto que suavizar: ni barrido, ni velocidad, ni rebobinado por «subir rápido»
+    sy = lastY = scrollY;
+    velocity = 0;
   });
 
   // El cursor personalizado se activa desde el primer momento, incluidos el preloader y la pantalla de inicio.
@@ -171,6 +213,13 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
       activeId = active.id;
       chapter.textContent = `${active.id.slice(1).padStart(2, '0')} / 06`;
       document.documentElement.dataset.moment = activeId;
+    }
+    if (heroDirty && activeId === 'm1') measureHero();
+    if (!anchorHold) {
+      let cur = moments[0];
+      for (const m of moments) if (m.track.start <= y + 0.5) cur = m;
+      anchor.id = cur.id;
+      anchor.f = (y - cur.track.start) / Math.max(1, cur.track.end - cur.track.start);
     }
     // El video de JUEGA YA empieza a cargar una pantalla antes.
     if (started) portal.prepare(); // el video del portal baja después de PRESS START
@@ -238,7 +287,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
     backend.powerOn();
     activation.start();
     measureHero();
-    setTimeout(measureHero, 1400); // otra vez cuando el texto del héroe terminó de entrar
+    setTimeout(() => { heroDirty = true; }, 1400); // otra vez cuando el texto del héroe terminó de entrar
     // Dentro del gesto de PRESS START (el navegador lo exige). Los stems (1,6 MB) bajan desde aquí,
     // fuera del presupuesto del héroe; la música entra con fundido cuando llegan.
     audio.start();
@@ -254,6 +303,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
       act: () => activation,
       audio: () => ({ t: +audio.time.toFixed(2), state: audio.state, notes: audio.notesState, exploring: audio.exploring, enabled: audio.enabled, level: +audio.level.toFixed(3), beat: +audio.beat.toFixed(2), section: audio.section, drop: document.documentElement.classList.contains('drop') }),
       marks: () => Object.fromEntries(moments.map((m) => [m.id, [Math.round(m.track.start), Math.round(m.track.end)]])),
+      anchor: () => ({ ...anchor, hold: !!anchorHold, heroDirty }),
       notes: () => ({ ...noteTrigger.stats, names: noteTrigger.stats.names.slice(-12) }),
       holdRewind: (on) => { forcedRewind = on ? 1e9 : 0; },
     };

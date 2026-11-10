@@ -37,9 +37,12 @@ export function createHud() {
       const s = scrollY > 40;
       if (s !== scrolled) root.classList.toggle('scrolled', (scrolled = s));
 
-      // La X se muestra fuera del hero para volver en cualquier momento sin superponerse con el logo del hero
+      // La X se muestra fuera del hero para volver en cualquier momento sin superponerse con el logo del hero.
+      // En los créditos (M6) se retira: allí el contenido se recorre en vertical y pasaba por debajo de ella
+      // (tapaba «INTEGRANTES», el logotipo de la universidad o «BY REWIND/»), y «Tomar aire de nuevo» ya
+      // devuelve al inicio.
       if (iso) {
-        const showIso = scrollY > 140;
+        const showIso = scrollY > 140 && moment !== 'm6';
         iso.classList.toggle('active-nav', showIso);
       }
     },

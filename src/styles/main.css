@@ -831,12 +831,18 @@ html.started #sound {
 }
 
 /* ---------- 5 · Las seis salas (osciloscopio) ---------- */
+/* Lado del osciloscopio. El tercer término lo acota en ventanas anchas y bajas para que, centrado en vertical,
+   su esquina no quede debajo de la X fija del HUD (alto − rótulo de frecuencia − 2 × borde inferior de la X). */
+#m5 {
+  --m5-osc-w: min(66vh, 44vw, calc(100vh - 202px - var(--rw-pad)));
+}
+
 .osc-wrap {
   position: absolute;
   left: var(--rw-pad);
   top: 50%;
   transform: translateY(-50%);
-  width: min(66vh, 44vw);
+  width: var(--m5-osc-w);
 }
 
 .osc {
@@ -857,7 +863,7 @@ html.started #sound {
 
 .notes {
   position: absolute;
-  left: calc(var(--rw-pad) + min(66vh, 44vw) + 5vw);
+  left: calc(var(--rw-pad) + var(--m5-osc-w) + 5vw);
   right: var(--rw-pad);
   bottom: 14vh;
   display: grid;
@@ -884,6 +890,7 @@ html.started #sound {
 
 .note .n {
   font-size: clamp(16px, 1.5vw, 24px);
+  white-space: nowrap; /* «SOL♯4» nunca parte en dos renglones */
 }
 
 .note .hz {
@@ -912,7 +919,7 @@ html.started #sound {
 
 .sala-detail {
   position: absolute;
-  left: calc(var(--rw-pad) + min(66vh, 44vw) + 5vw);
+  left: calc(var(--rw-pad) + var(--m5-osc-w) + 5vw);
   right: var(--rw-pad);
   top: 18vh;
   visibility: hidden;
@@ -963,7 +970,7 @@ html.started #sound {
 
 .m5-quote {
   position: absolute;
-  left: calc(var(--rw-pad) + min(66vh, 44vw) + 5vw);
+  left: calc(var(--rw-pad) + var(--m5-osc-w) + 5vw);
   right: var(--rw-pad);
   top: 22vh;
   visibility: hidden;
@@ -4030,13 +4037,17 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
    (89), el cursor (90), el atajo [ JUEGA YA ] (95) y el contador de pruebas (100): una lente encendida en el
    instante de entrar se quedaba pintada sobre el juego. Dos garantías, además del apagado en JS:
    1) #game es la capa más alta de la página; 2) con el juego abierto, el resto de la landing no se pinta.
+   «visibility» se hereda, pero un descendiente con «visibility: visible» propio la recupera (el botón del
+   portal, los textos que GSAP muestra con estilo en línea…): la regla alcanza también a los descendientes.
+   ui/game.js además marca esos mismos hermanos como «inert» (sin foco ni lectores de pantalla).
    ===================================================================== */
 #game {
   z-index: 2147483000;
   isolation: isolate;
 }
 
-html.game-open body > :not(#game) {
+html.game-open body > :not(#game),
+html.game-open body > :not(#game) * {
   visibility: hidden !important;
 }
 
@@ -4208,4 +4219,138 @@ html[data-input="touch"] .m6-person {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+}
+
+/* =====================================================================
+   ITERACIÓN 4 · REVISIÓN INDEPENDIENTE
+   Casos que encontraron los verificadores después de la auditoría. Cada bloque dice qué fallaba y por qué.
+   ===================================================================== */
+
+/* --- M5 en celular horizontal (alto ≤ 500 px: 568×320, 640×360, 667×375, 844×390) ---
+   La composición ancha medía el detalle de la sala en vw y lo anclaba en vh: por debajo de 667×375 el botón
+   «Entrar» caía sobre la fila de notas, LA♯4 se salía por la derecha y la cita final se escribía encima de las
+   notas. Aquí M5 tiene composición propia con suelos en píxeles:
+   · la fila de notas es una franja a todo el ancho, abajo, que termina antes del botón de sonido;
+   · el osciloscopio ocupa el alto que queda y empieza a la derecha de la X del HUD;
+   · el detalle de la sala (y la cita final) va arriba a la derecha, con cuerpos acotados por el alto. */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* la X del HUD, más contenida: en 320 px de alto ocupaba una quinta parte de la pantalla */
+  .hud-iso {
+    width: 44px;
+    height: 44px;
+    top: calc(8px + env(safe-area-inset-top));
+    left: calc(8px + env(safe-area-inset-left));
+  }
+  .hud-iso svg { width: 22px; }
+
+  #m5 {
+    --m5-left: max(var(--rw-pad), calc(60px + env(safe-area-inset-left)));
+    --m5-notes-h: 46px;
+    --m5-osc-w: min(36vw, calc(100svh - 68px - var(--m5-notes-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+    --m5-col: calc(var(--m5-left) + var(--m5-osc-w) + 3vw);
+  }
+
+  .osc-wrap {
+    left: var(--m5-left);
+    top: calc(10px + env(safe-area-inset-top));
+    transform: none;
+  }
+  .osc-freq { margin-top: 6px; }
+
+  .notes {
+    left: var(--m5-left);
+    right: calc(var(--rw-pad) * .5 + 8px + var(--rw-tactil-min) + 12px);
+    top: auto;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+  .note { min-height: var(--m5-notes-h); padding: 4px 2px; gap: 2px; }
+  .note .n { font-size: clamp(13px, 2.2vw, 18px); }
+  .note .hz { font-size: 9px; white-space: nowrap; }
+
+  .sala-detail,
+  .m5-quote {
+    left: var(--m5-col);
+    right: var(--rw-pad);
+    top: calc(max(12px, 7svh) + env(safe-area-inset-top));
+  }
+  .sala-note { font-size: clamp(38px, 17svh, 8.4vw); }
+  .sala-title { font-size: clamp(18px, 8svh, 4.6vw); margin: .2em 0 .5em; }
+  .m5-quote p { font-size: clamp(16px, 7svh, 3.4vw); }
+
+  /* M4: la columna izquierda (datos y cita final) deja libre el carril de la X, y la cita larga el del botón
+     de sonido: el contenido se desplaza por debajo de esos dos botones fijos y los cruzaba. */
+  .m4-facts,
+  .m4-quote.q2 { left: max(var(--rw-pad), calc(64px + env(safe-area-inset-left))); }
+
+  /* héroe: el párrafo de entrada no entra en la retícula ni en el brazo del modelo */
+  .hero-manifesto { max-width: min(330px, 30vw); }
+}
+
+@media (min-width: 768px) and (max-height: 560px), (max-height: 500px) and (orientation: landscape) {
+  .m4-quote.q1 { right: calc(var(--rw-pad) * .5 + 8px + var(--rw-tactil-min) + 12px); }
+}
+
+/* --- Tableta en vertical (768–1099 px de ancho) --- */
+@media (min-width: 768px) and (orientation: portrait) {
+  /* M5: la fila de notas compartía la columna derecha (≈ 315 px para seis pestañas) y «SOL♯4» partía en dos
+     renglones, con la mitad izquierda vacía bajo el gráfico. La fila usa todo el ancho. */
+  .notes { left: var(--rw-pad); }
+
+  /* Créditos: las dos columnas de nombres vivían en media pantalla (≈ 160 px cada una) y los nombres partían
+     en tres líneas, con la mitad inferior vacía. Bloque institucional, créditos a todo el ancho y botón. */
+  .m6-inst-block,
+  .m6-credits,
+  .m6-inner .rewind-btn {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .m6-credits { margin-top: clamp(28px, 4svh, 56px); gap: 0 clamp(24px, 5vw, 56px); }
+  .m6-credits dd { font-size: clamp(1.15rem, 2.5vw, 1.7rem); }
+  .m6-credits .m6-artist dd { font-size: clamp(1.25rem, 2.8vw, 2rem); }
+  .m6-inner .rewind-btn { margin-top: clamp(28px, 4svh, 56px); }
+
+  /* héroe: el párrafo de entrada se leía muy pequeño (12,5 px) */
+  .hero-manifesto { max-width: min(46vw, 430px); }
+  .hero-desc { font-size: clamp(15px, 2vw, 19px); }
+}
+
+/* Inicio en tableta vertical: el lema y el botón iban centrados a todo el ancho y la figura frontal, anclada
+   por la derecha y dimensionada por el alto, les tapaba el extremo («interactivo», el final del botón).
+   Ahora el cuerpo de la figura empieza siempre en el mismo punto del ancho (60 %; la imagen es cuadrada y trae
+   un 31 % de aire a cada lado) y la columna de texto ocupa lo que queda a su izquierda (7 %–59 %). El logotipo
+   sigue centrado arriba. Como en celular, el lema y el botón mandan sobre los cristales. */
+@media (min-width: 768px) and (max-width: 1099px) and (orientation: portrait) {
+  #boot.ready:not(.entering) .boot-home-right { left: calc(60vw - 76svh * .31); right: auto; }
+
+  #boot .home-tagline,
+  #boot.ready .press-start,
+  #boot .home-audio-caption { left: 33vw; z-index: 4; }
+
+  #boot .home-tagline { width: 52vw; text-wrap: balance; }
+  #boot.ready .press-start { width: 52vw; font-size: clamp(16px, 2.2vw, 22px); }
+  #boot .press-start .home-play { flex-basis: clamp(48px, 7vw, 72px); }
+}
+
+/* Inicio en celular: los cristales flotan DETRÁS de la figura (asoman a los lados del torso y el cuerpo los
+   oculta: ya no tapan las manos) y su recorrido se acorta para que ninguno salga cortado por el borde. */
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
+  #boot .boot-preload-right,
+  #boot .boot-home-right { z-index: 0; }
+  #boot .boot-glass { z-index: -1; --glass-range: .5; }
+  #boot .boot-glass-left,
+  #boot.ready .boot-glass-left { left: 9%; }
+  #boot .boot-glass-top,
+  #boot.ready .boot-glass-top { left: 75%; }
+}
+
+/* Héroe en celular y tableta vertical: la pista «Desliza para descubrir» flota sobre el 3D, justo donde llegan
+   los anillos de la retícula (del mismo verde que su texto). Una pastilla oscura detrás la separa del fondo. */
+@media (max-width: 767px), (min-width: 768px) and (orientation: portrait) {
+  .hero-lockup .hero-scroll { gap: 8px; }
+  .hero-lockup .hero-scroll small {
+    padding: 3px 9px;
+    border-radius: 9999px;
+    background: rgba(2, 5, 3, .74);
+  }
 }

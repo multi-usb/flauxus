@@ -22,6 +22,18 @@ export function createGame({ onChange = () => {} } = {}) {
 
   const inHistory = () => !!history.state?.[HISTORY_FLAG];
 
+  // Mientras se juega, el resto de la página queda inerte: ni el foco del teclado ni los lectores de pantalla
+  // llegan a lo que está detrás del juego (main.css, además, deja de pintarlo). Al cerrar se retira solo de los
+  // elementos donde se puso aquí.
+  let inerted = [];
+  function setLandingInert(on) {
+    for (const el of inerted) el.inert = false;
+    inerted = [];
+    if (!on) return;
+    inerted = [...document.body.children].filter((el) => el !== root && !el.inert && !/^(SCRIPT|NOSCRIPT)$/.test(el.tagName));
+    for (const el of inerted) el.inert = true;
+  }
+
   function open(url) {
     if (frame) return;
     try { localStorage.removeItem(LEGACY_PROGRESS); } catch { /* almacenamiento bloqueado: no hay nada que heredar */ }
@@ -36,6 +48,7 @@ export function createGame({ onChange = () => {} } = {}) {
     root.hidden = false;
     root.classList.remove('game-ready');
     document.documentElement.classList.add('game-open');
+    setLandingInert(true);
     // Entrada propia en el historial: el botón atrás (o el gesto de volver en el celular) cierra el juego.
     if (!inHistory()) history.pushState({ ...history.state, [HISTORY_FLAG]: true }, '');
     onChange(true);
@@ -75,6 +88,7 @@ export function createGame({ onChange = () => {} } = {}) {
     root.hidden = true;
     root.classList.remove('game-ready');
     document.documentElement.classList.remove('game-open');
+    setLandingInert(false);
     onChange(false);
     returnFocus?.focus?.({ preventScroll: true });
     returnFocus = null;
@@ -111,6 +125,7 @@ export function createGame({ onChange = () => {} } = {}) {
     hide({ fromHistory: true });
     root.hidden = true;
     document.documentElement.classList.remove('game-open');
+    setLandingInert(false);
     if (inHistory()) history.back();
   });
   // Recarga con el juego abierto: la entrada del historial sobrevive a la recarga, el juego no. Se retira.

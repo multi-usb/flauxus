@@ -260,8 +260,9 @@ function createHeroReticle() {
 //    tenues), su retardo de entrada y una deriva lateral leve. Entran y salen con fundido: nada aparece de golpe.
 //  · Composición adaptable: tamaño, calles y recorrido se calculan del encuadre real (layout), no de coordenadas
 //    por resolución. En vertical, palabras anchas que asoman a ambos lados de ella; en horizontal, cuatro calles.
-//  · Lectura: una palabra que pasa por detrás del texto o del botón del héroe se atenúa (setAvoid), y si dos
-//    palabras se cruzan, la más lejana cede: no hay acumulación de brillo.
+//  · Lectura: una palabra que pasa por detrás de un bloque de texto o del botón del héroe se atenúa (setAvoid:
+//    una zona por bloque, incluida la pista «Desliza para descubrir»), y si dos palabras visibles se cruzan,
+//    la más lejana cede: no hay acumulación de brillo.
 //  · Reposo: gl.js solo la actualiza en el Momento 1; el director detiene el bucle con la pestaña oculta o el
 //    juego abierto. Con movimiento reducido queda como una composición fija.
 function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
@@ -312,9 +313,17 @@ function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
     t.tex.needsUpdate = true;
   }
   // La tipografía puede llegar después de crear la escena: se redibuja una vez, con el mismo tamaño de lienzo.
-  document.fonts?.load(FONT).then(() => textures.forEach(drawWord)).catch(() => {});
+  // Con la tipografía definitiva cambia el ancho de la tinta (t.ink): la composición se repite con el último
+  // encuadre para que el tamaño de cada palabra y su rectángulo de cruce salgan de la misma medida.
+  let lastLayout = null;
+  document.fonts?.load(FONT).then(() => {
+    textures.forEach(drawWord);
+    if (lastLayout) layout(lastLayout);
+  }).catch(() => {});
 
-  const N = mobile ? 5 : 8; // menos palabras en celular
+  // Menos palabras en celular y tableta: con 5 había cuatro grandes a la vez sobre la retícula y la escena se
+  // leía cargada; con 4 (dos por calle, repartidas en la caída) quedan dos o tres encendidas.
+  const N = mobile ? 4 : 8;
   const GOLD = 0.61803;
   const items = [];
   for (let i = 0; i < N; i++) {
@@ -355,6 +364,7 @@ function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
   // key = [t, azimut, distancia, altura de cámara, altura de mira, …] (gl.js · M1)
   let laid = false;
   function layout({ aspect, fov, key }) {
+    lastLayout = { aspect, fov, key };
     const tan = Math.tan((fov * Math.PI) / 360);
     const narrow = aspect < 0.9; // ventana vertical
     const lanes = narrow ? [-0.16, 0.16] : [-0.72, -0.3, 0.3, 0.72]; // centro de cada calle (fracción del medio ancho)
@@ -373,6 +383,7 @@ function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
         ? Math.min(0.86, Math.max(0.34, her + 0.04 + it.size * 0.16))
         : (outer ? 0.2 : 0.15) + it.size * 0.06;
       const w = (frac * 2 * hw) / it.t.ink;
+      it.ink = it.t.ink; // tinta con la que se compuso (pruebas: debe coincidir con la de la textura)
       it.mesh.scale.setScalar(w);
       it.h = w * (it.t.canvas.height / it.t.canvas.width);
       it.top = cy + hh + it.h / 2;
@@ -418,16 +429,22 @@ function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
       if (camera) {
         const r = it.rect;
         const area = Math.max(1e-6, (r[2] - r[0]) * (r[3] - r[1]));
-        // cuánto de la palabra cae sobre texto, o cuánto de un bloque pequeño (la miniatura) queda bajo la palabra
-        let covered = 0;
+        // cuánto de la palabra cae sobre texto (suma de bloques), o cuánto de un bloque queda bajo la palabra:
+        // un bloque pequeño (la pista de scroll, el botón, la miniatura) apenas pesa frente a una palabra ancha,
+        // pero basta con que la palabra cubra una parte de él para que deje de leerse
+        let onText = 0;
+        let ofBlock = 0;
         for (const a of avoid) {
           const o = overlap(r, a);
-          covered = Math.max(covered + o / area, (0.5 * o) / Math.max(1e-6, (a[2] - a[0]) * (a[3] - a[1])));
+          if (o <= 0) continue;
+          onText += o / area;
+          ofBlock = Math.max(ofBlock, o / Math.max(1e-6, (a[2] - a[0]) * (a[3] - a[1])));
         }
-        target = 1 - 0.84 * smooth(covered / 0.18) * textFade;
-        // cruce con otra palabra: la más lejana cede
+        target = 1 - 0.84 * smooth(Math.max(onText, ofBlock) / 0.18) * textFade;
+        // cruce con otra palabra: la más lejana cede (solo ante una palabra que se ve: una en pleno fundido de
+        // entrada o salida, o que aún no ha entrado, no apaga a nadie)
         for (const other of items) {
-          if (other === it || other.depth > it.depth) continue;
+          if (other === it || other.depth > it.depth || !other.mesh.visible) continue;
           if (overlap(r, other.rect) > 0) { target = Math.min(target, 0.15); break; }
         }
       }
@@ -443,6 +460,7 @@ function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
   // Solo para pruebas (?fps): estado de cada palabra y zonas que evita.
   const debug = () => ({
     avoid,
+    staleInk: items.filter((it) => it.ink !== it.t.ink).length,
     words: items.map((it) => ({ text: it.t.text, phase: +it.phase.toFixed(4), opacity: +it.mat.opacity.toFixed(3), k: +it.k.toFixed(2), rect: it.rect.map((n) => +n.toFixed(3)), z: +it.mesh.position.z.toFixed(2) })),
   });
 

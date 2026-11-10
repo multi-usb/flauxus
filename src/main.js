@@ -41,7 +41,8 @@ if (!profile.reducedMotion) {
     state.angle = Math.random() * 12 - 6;
     panel.style.setProperty('--glass-drift-duration', `${duration}ms`);
     panel.style.setProperty('--glass-drift-easing', 'cubic-bezier(.42,0,.58,1)');
-    panel.style.transform = `translate3d(${state.x.toFixed(1)}vw, ${state.y.toFixed(1)}vh, 0) rotate(${state.angle.toFixed(1)}deg)`;
+    // --glass-range (main.css) acota el recorrido en pantallas estrechas para que no salgan del borde
+    panel.style.transform = `translate3d(calc(${state.x.toFixed(1)}vw * var(--glass-range, 1)), calc(${state.y.toFixed(1)}vh * var(--glass-range, 1)), 0) rotate(${state.angle.toFixed(1)}deg)`;
     state.timer = setTimeout(() => driftGlass(panel), duration + 120 + Math.random() * 400);
   };
   bootGlassPanels.forEach((panel, i) => {
@@ -85,7 +86,7 @@ if (!profile.reducedMotion) {
       state.angle = Math.max(-11, Math.min(11, state.angle + (vx > 0 ? 1 : -1) * (2 + Math.random() * 3)));
       panel.style.setProperty('--glass-drift-duration', '360ms');
       panel.style.setProperty('--glass-drift-easing', 'cubic-bezier(.16,.78,.25,1)');
-      panel.style.transform = `translate3d(${state.x.toFixed(1)}vw, ${state.y.toFixed(1)}vh, 0) rotate(${state.angle.toFixed(1)}deg)`;
+      panel.style.transform = `translate3d(calc(${state.x.toFixed(1)}vw * var(--glass-range, 1)), calc(${state.y.toFixed(1)}vh * var(--glass-range, 1)), 0) rotate(${state.angle.toFixed(1)}deg)`;
     });
   }, { passive: true });
 
