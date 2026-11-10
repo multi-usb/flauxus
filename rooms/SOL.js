@@ -7,6 +7,7 @@ import { placeFBX } from '../AssetManager.js';
 import { createHologram } from '../engine/hologram.js';
 import { createGalaxy } from '../engine/sky.js';
 import { GX } from '../GameContext.js';
+import { HM, measureHud } from '../ui/hudMetrics.js';
 import { pad, tone, pluck, hiss, A } from '../AudioSystem.js';
 import { roomGroup, avatarObj, camera, bloom, mat, animAvatar, ctx, W, H, burst, ringFx, shake, glowCircle, bolt, LIME, LIMEH, PAPER, SERIF, damp, clamp, TOUCH, ptr, ptrActive, hint, toast, finish, T, roomGen, groundController } from './context.js';
 
@@ -32,7 +33,10 @@ export const meta = {
      preloader, en un mapa de alturas (`floorMap`, el mismo mecanismo de
      RE): cada consulta lee cuatro celdas. El rango vertical (−0,3…1,25 m)
      cubre la tarima, todas las terrazas (0,20–0,74 m) y los bancos
-     (1,05 m), a los que el rayo ya dejaba subir desde la terraza vecina. */
+     (1,05 m), a los que el rayo ya dejaba subir desde la terraza vecina
+     (0,49 m). El escalón máximo de 55 cm que aplicaba el rayo lo aplica
+     ahora el movimiento (ground.js · roomStepBlocked): desde la tarima
+     de 0,23 m el banco es un obstáculo, no un peldaño. */
   floorY: 0.23,
   floorMap: { cell: .1, radius: 13, baseY: .3, below: .6, above: .95 },
   start: { x: 0, y: SOL_FLOOR, z: 4.2, yaw: Math.PI },
@@ -91,11 +95,47 @@ export const SOL = (() => {
   /* getWorldPosition ya actualiza la cadena de padres de cada articulación: no hace falta recalcular las
      matrices del esqueleto por segunda vez en el cuadro (lo hacía animAvatar un instante antes). */
   const anchors = () => { camera.updateMatrixWorld(); const j = avatarObj.userData.joints; proj(j.wl, anch[0]); proj(j.wr, anch[1]); proj(j.head, anch[2]); return anch };
-  /* Los sensores no salen del cuadro ni se meten bajo la franja del HUD (medida en vivo: GX.uiTop). */
-  const keepX = x => clamp(x, 48, W - 48), keepY = y => clamp(y, (GX.uiTop || 0) + 50, H - 96);
-  /* Separación lateral de los sensores de muñeca: 16 % del ancho, con un mínimo de 92 px para que en pantallas
-     estrechas (360 px) las áreas táctiles de dos sensores no se monten una sobre otra. */
+  /* Los sensores no salen del cuadro ni se meten bajo la franja del HUD (medida en vivo: GX.uiTop). El de la
+     cabeza lleva el rótulo ENCIMA del aro (debajo caía sobre la cara de la avatar): reserva 28 px más arriba. */
+  const headTop = () => (GX.uiTop || 0) + 78;
+  const keepX = x => clamp(x, 48, W - 48), keepY = (y, i) => clamp(y, i === 2 ? headTop() : (GX.uiTop || 0) + 50, H - 96);
+  /* Desfase lateral de los sensores de muñeca respecto a la articulación: 16 % del ancho, mínimo 92 px. */
   const sideX = () => Math.max(W * .16, 92);
+  /* ---- Los tres sensores no se montan ----
+     Antes solo se separaban las dos muñecas entre sí; el de la cabeza quedaba a 65–113 px de ellas en todos los
+     celulares (el área táctil mide 2 × 64 px), y en horizontal a su misma altura: un dedo cargaba dos a la vez.
+     Ahora los tres destinos se resuelven juntos: cada par queda a 2·hitR + 8 px o más. Primero se abre a lo
+     ancho (las muñecas se apartan de la cabeza y entre sí); lo que el ancho de la pantalla no da se resuelve a
+     lo alto (la muñeca baja, la cabeza sube), siempre dentro del cuadro. Sale del radio táctil y del tamaño real
+     de la pantalla: no hay posiciones por resolución. Los sensores ya conectados no cuentan (viajan a su
+     articulación y dejan de ser tocables). */
+  const tgt = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+  function spread() {
+    const D = 2 * hitR() + 8, need = d => Math.sqrt(Math.max(0, D * D - d * d)), L = tgt[0], R = tgt[1], C = tgt[2], x0 = 48, x1 = W - 48;
+    for (let i = 0; i < 3; i++) { tgt[i].x = keepX(tgt[i].x); tgt[i].y = keepY(tgt[i].y, i) }
+    for (let pass = 0; pass < 2; pass++) {
+      if (!cap[0] && !cap[1]) {
+        const n = need(R.y - L.y); if (R.x - L.x < n) { const m = (L.x + R.x) / 2; L.x = m - n / 2; R.x = m + n / 2; if (L.x < x0) { R.x += x0 - L.x; L.x = x0 } if (R.x > x1) { L.x -= R.x - x1; R.x = x1 } L.x = keepX(L.x) }
+      }
+      if (!cap[2]) for (let i = 0; i < 2; i++) {
+        if (cap[i]) continue; const w = tgt[i], s = i ? 1 : -1;
+        const n = need(w.y - C.y); if (s * (w.x - C.x) < n) w.x = keepX(C.x + s * n);
+        const n2 = need(w.x - C.x); if (w.y - C.y < n2) { w.y = keepY(C.y + n2, i); if (w.y - C.y < n2) C.y = keepY(w.y - n2, 2) }
+      }
+    }
+  }
+  /* Destino de cada sensor: su articulación proyectada + desfase (+ una oscilación lenta si k = 1), ya separados. */
+  function targets(a, k) {
+    for (let i = 0; i < 3; i++) {
+      const side = i === 0 ? -1 : i === 1 ? 1 : 0;
+      tgt[i].x = a[i].x + side * sideX() + k * Math.sin(T * .9 + i * 2) * W * .025;
+      tgt[i].y = a[i].y + (i === 2 ? -H * .17 : -H * .03) + k * Math.cos(T * .7 + i * 1.7) * H * .03;
+    }
+    spread(); return tgt
+  }
+  /* Solo carga UN sensor a la vez: el más cercano al puntero dentro de su radio. */
+  let nearI = -1;
+  function nearest() { nearI = -1; if (!pointing()) return; let bd = hitR(); for (let i = 0; i < 3; i++) { if (cap[i] || !orbs[i]) continue; const d = Math.hypot(ptr.x - orbs[i].x, ptr.y - orbs[i].y); if (d < bd) { bd = d; nearI = i } } }
 
   /* ---- Rayos contra el escenario (tocar el suelo para caminar) ----
      player.js lanza un rayo contra toda la sala en cada toque del preludio. Contra los 318.604 triángulos del
@@ -120,21 +160,35 @@ export const SOL = (() => {
 
   /* ---- Encuadre del holograma ----
      Piezas de interfaz de la mitad alta de la pantalla (pestañas, «Volver», «Saltar», pista, título de sala,
-     marca y botones de esquina), medidas en vivo unas seis veces por segundo. engine/hologram.js escala la
-     figura para que quepa bajo las que tiene encima: no hay valores por resolución, y al girar el teléfono o
-     al aparecer y desaparecer un botón el encuadre se recalcula solo. */
-  const HUD_SEL = ['#progress', '#objective', '#btnBack', '#btnSkip', '#btnVoSkip', '#roomHint', '#roomInfo', '#hud .brandwrap', '#hud .rightTop'];
-  const hud = []; let hudEls = null, hudN = 0, hudTick = 0;
-  function measureHud() {
-    hudEls ||= HUD_SEL.map(q => document.querySelector(q)).filter(Boolean);
-    hudN = 0;
-    for (const el of hudEls) {
-      if (!el.offsetParent && getComputedStyle(el).position !== 'fixed') continue;
-      if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
-      const r = el.getBoundingClientRect(); if (r.width < 2 || r.height < 2 || r.bottom <= 0 || r.top > H * .5) continue;
-      const o = hud[hudN] || (hud[hudN] = { x0: 0, x1: 0, b: 0 }); hudN++;
-      o.x0 = (r.left - 8) / W * 2 - 1; o.x1 = (r.right + 8) / W * 2 - 1; o.b = (r.bottom + 8) / H;
+     marca y botones de esquina). Las mide ui/hudMetrics.js en la lectura compartida del HUD (HM.sky) y
+     engine/hologram.js escala la figura para que quepa bajo las que tiene encima: no hay valores por
+     resolución, y al girar el teléfono o al aparecer y desaparecer un botón el encuadre se recalcula solo. */
+  let hudFresh = false;
+  /* ---- El núcleo no tapa el holograma ----
+     En celulares en vertical la figura se encoge para caber bajo la franja del HUD y queda más estrecha que el
+     núcleo verde, que está en la misma línea de mirada: en 360×640 no se veía en todo el preludio. Cuando la
+     figura cabría entera detrás del núcleo se desplaza a un costado, lo justo para asomar junto a él y sin
+     salirse del cuadro. Sale de los tamaños reales en pantalla (núcleo y figura proyectados): en horizontal y en
+     escritorio, donde la figura desborda de sobra al núcleo, el desplazamiento es cero y sigue centrada. */
+  const HOLO_X = 0, HOLO_Z = -110, _hf = new THREE.Vector3(), _hr = new THREE.Vector3(), _hv = new THREE.Vector3();
+  let holoOff = NaN, holoSide = -1;
+  function holoAside(dt, fy) {
+    let want = 0;
+    camera.updateMatrixWorld(); camera.getWorldDirection(_hf); _hr.setFromMatrixColumn(camera.matrixWorld, 0);
+    const tanH = Math.tan(camera.fov * Math.PI / 360) * (camera.aspect || 1);
+    _hv.copy(core.position).sub(camera.position); const zc = _hv.dot(_hf), cx = _hv.dot(_hr);
+    _hv.set(HOLO_X, fy, HOLO_Z).sub(camera.position); const zh = _hv.dot(_hf), hx = _hv.dot(_hr);
+    if (zc > 1 && zh > 1) {
+      const c = cx / (zc * tanH), ch = 1.7 * core.scale.x / (zc * tanH), h = hx / (zh * tanH), hh = holo.halfNDC; // centros y semianchos (NDC)
+      const k = clamp((ch * 1.6 - hh) / (ch * .6), 0, 1);       // 1: la figura cabe tras el núcleo · 0: lo desborda de sobra
+      if (k > 0 && hh > 0 && Math.abs(h - c) < ch + hh) {
+        if (c > .12) holoSide = -1; else if (c < -.12) holoSide = 1; // hacia el lado con más cuadro libre (con histéresis)
+        const lim = Math.max(0, 1 - hh), t = clamp(c + holoSide * (ch + hh * .8), -lim, lim);
+        want = (t - h) * zh * tanH * k;
+      }
     }
+    holoOff = holoOff === holoOff && dt > 0 ? damp(holoOff, want, 2.5, dt) : want;
+    holo.place(HOLO_X + _hr.x * holoOff, fy - 80, HOLO_Z + _hr.z * holoOff, fy);
   }
   /* Apoyo fino de las botas. El clip idle sube y baja los tobillos unos
      4 cm; si la raíz se deja fija, en unas fases las botas flotan y en
@@ -199,7 +253,7 @@ export const SOL = (() => {
          de una malla gigante. No colisiona ni participa del minijuego. */
       if (!holo) holo = createHologram(GX.renderer, { low: TOUCH, height: 172 });
       /* El cuarto argumento es la línea del horizonte: al encuadrarse, la figura se escala desde su cintura. */
-      holo.place(0, fy - 80, -110, fy); holo.setPresence(.95); holo.refit(); hudTick = 0; roomGroup.add(holo.group);
+      holo.place(HOLO_X, fy - 80, HOLO_Z, fy); holo.setPresence(.95); holo.refit(); hudFresh = false; holoOff = NaN; roomGroup.add(holo.group);
       /* Escenario real de SOL: plataforma circular de terrazas. Al terminar de colocarlo se rasteriza su piso en
          el mapa de alturas (todavía bajo el preloader) y sus mallas pasan a resolver los rayos sobre ese mapa. */
       return placeFBX(5, roomGroup, 16, { roughness: .9, metalness: .05 }, () => roomGen)
@@ -210,16 +264,19 @@ export const SOL = (() => {
       cap = [false, false, false]; hold = [0, 0, 0]; capT = [0, 0, 0]; order = []; pending = false; orbs = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]; const p = pad([55, 110, 165], .09, 'sawtooth'); p.set(.5);
       armed = false; px0 = ptr.x; py0 = ptr.y;
       hint(TOUCH ? 'Mantén el dedo sobre cada sensor hasta que el anillo se llene' : 'Mantén el cursor sobre cada sensor hasta que el anillo se llene');
-      const a = anchors(); orbs.forEach((o, i) => { o.x = keepX(a[i].x + (i === 0 ? -sideX() : i === 1 ? sideX() : 0)); o.y = keepY(a[i].y + (i === 2 ? -H * .15 : -H * .03)) })
+      nearI = -1; const t = targets(anchors(), 0); orbs.forEach((o, i) => { o.x = t[i].x; o.y = t[i].y })
     },
     update(dt) {
-      const a = anchors(); let n = 0;
+      const a = anchors(), t = targets(a, 1); let n = 0;
       if (!armed && (ptr.down || ptr.x !== px0 || ptr.y !== py0)) armed = true;
+      /* Pantallas bajas: la avatar se encuadra por debajo del sitio que necesita el sensor de la cabeza (la cámara
+         lee este límite en player.js · composeFrame). Al bajar ella baja también el horizonte: más cielo. */
+      HM.sceneTop = cap[2] ? 0 : headTop() + 40;
+      nearest();
       orbs.forEach((o, i) => {
-        const side = i === 0 ? -1 : i === 1 ? 1 : 0, bx = keepX(a[i].x + side * sideX() + Math.sin(T * .9 + i * 2) * W * .025), by = keepY(a[i].y + (i === 2 ? -H * .17 : -H * .03) + Math.cos(T * .7 + i * 1.7) * H * .03);
         if (cap[i]) { o.x = damp(o.x, a[i].x, 5, dt); o.y = damp(o.y, a[i].y, 5, dt); capT[i] += dt; n++ }
         else {
-          o.x = damp(o.x, bx, 4, dt); o.y = damp(o.y, by, 4, dt); const inside = pointing() && Math.hypot(ptr.x - o.x, ptr.y - o.y) < hitR();
+          o.x = damp(o.x, t[i].x, 4, dt); o.y = damp(o.y, t[i].y, 4, dt); const inside = nearI === i;
           if (inside) { hold[i] += dt; if (Math.floor(hold[i] * 5) !== Math.floor((hold[i] - dt) * 5)) tone(300 + hold[i] * 400 + i * 80, .05, 'sine', .03) } else hold[i] = Math.max(0, hold[i] - dt * .8);
           if (hold[i] >= HR) { cap[i] = true; order.push(i); burst(o.x, o.y, LIMEH, 50, 420, 1, 4); ringFx(o.x, o.y, '#fff', 20, 200, .8, 3); shake(7); pluck([220, 330, 523][i], 0, .9, .1, A.master); hiss(.25, .06, 6000, 0, A.master); toast(names[i] + ' conectada') }
         }
@@ -231,14 +288,14 @@ export const SOL = (() => {
     ambient(dt, t3) {
       /* El holograma se encuadra con la cámara real (preludio y juego) y con la franja del HUD: se ve completo
          en vertical, en horizontal y al girar el teléfono. El polvo que lo orbita acompaña su tamaño. */
-      if (holo) { if (hudTick-- <= 0) { hudTick = 9; measureHud() } holo.fit(camera, hud, hudN, dt); sky?.setOrbitScale(holo.scale) }
+      if (holo) { if (!hudFresh) { hudFresh = true; measureHud(W, H) } if (core) holoAside(dt, meta.floorY ?? 0); holo.fit(camera, HM.sky, HM.skyN, dt); sky?.setOrbitScale(holo.scale) }
       sky?.update(dt, t3); holo?.update(dt, t3, A.lvl || 0, camera)
     },
     /* Solo para pruebas (?debug expone la sala activa): estado del holograma y posición de los sensores. */
-    dbg() { return { holo: holo?.debug ?? null, box: holo?.debug.box(camera) ?? null, hud: hud.slice(0, hudN).map(r => ({ x0: +r.x0.toFixed(3), x1: +r.x1.toFixed(3), b: +r.b.toFixed(3) })), orbs: orbs.map((o, i) => ({ x: Math.round(o.x), y: Math.round(o.y), cap: !!cap[i], hold: +hold[i].toFixed(2) })), hitR: hitR(), armed, map: !!groundController.roomMap } },
+    dbg() { return { holo: holo?.debug ?? null, box: holo?.debug.box(camera) ?? null, hud: HM.sky.slice(0, HM.skyN).map(r => ({ x0: +r.x0.toFixed(3), x1: +r.x1.toFixed(3), b: +r.b.toFixed(3) })), orbs: orbs.map((o, i) => ({ x: Math.round(o.x), y: Math.round(o.y), cap: !!cap[i], hold: +hold[i].toFixed(2) })), hitR: hitR(), armed, map: !!groundController.roomMap } },
     update3d(dt, t3) { let n = 0; for (let i = 0; i < 3; i++) if (cap[i]) n++; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
     draw() {
-      const R = 30, hr = hitR(), on = pointing();
+      const R = 30, on = pointing();
       for (let i = 0; i < 3; i++) {
         const o = orbs[i]; if (!o) continue;
         if (cap[i]) {
@@ -251,7 +308,7 @@ export const SOL = (() => {
           ctx.strokeStyle = '#0d0e09'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(o.x - 7, o.y + .5); ctx.lineTo(o.x - 2, o.y + 5.5); ctx.lineTo(o.x + 7.5, o.y - 5); ctx.stroke(); ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
           continue;
         }
-        const p = hold[i] / HR, inside = on && Math.hypot(ptr.x - o.x, ptr.y - o.y) < hr, ph = T * 1.15 + i * .9, beat = .5 + .5 * Math.sin(T * 3 + i * 2.1);
+        const p = hold[i] / HR, inside = on && nearI === i, ph = T * 1.15 + i * .9, beat = .5 + .5 * Math.sin(T * 3 + i * 2.1);
         /* 1 · fondo oscuro: separa el sensor de la galaxia y del holograma (cian/rosado) sea cual sea lo que haya detrás */
         ctx.fillStyle = INK + (p > 0 ? .8 : .66) + ')'; ctx.beginPath(); ctx.arc(o.x, o.y, p > 0 ? 50 : R + 9, 0, 6.283); ctx.fill();
         /* 2 · halo verde que respira */
@@ -273,12 +330,12 @@ export const SOL = (() => {
         }
         /* 7 · rótulo sobre pastilla oscura */
         ctx.font = `600 13px ${SERIF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        const tw = ctx.measureText(names[i]).width + 16, ly = o.y + (p > 0 ? 68 : 58);
+        const tw = ctx.measureText(names[i]).width + 16, ly = o.y + (p > 0 ? 68 : 58) * (i === 2 ? -1 : 1); // «Cabeza»: rótulo encima del aro
         ctx.fillStyle = INK + '.78)'; ctx.fillRect(o.x - tw / 2, ly - 10, tw, 20); ctx.fillStyle = inside ? LIMEH : PAPER; ctx.fillText(names[i], o.x, ly + .5); ctx.textBaseline = 'alphabetic';
         if (on && !inside && hold[i] === 0) { ctx.strokeStyle = 'rgba(194,254,11,.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(ptr.x, ptr.y); ctx.lineTo(o.x, o.y); ctx.stroke(); ctx.setLineDash([]) }
       }
       if (on) { ctx.lineWidth = 1; ctx.fillStyle = PAPER; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 5, 0, 6.283); ctx.fill(); ctx.strokeStyle = 'rgba(239,234,219,.5)'; ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 12, 0, 6.283); ctx.stroke() }
     },
-    stop() { }
+    stop() { HM.sceneTop = 0 }
   }
 })();

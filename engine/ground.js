@@ -132,6 +132,16 @@ export class GroundController {
     return y === -Infinity ? null : y;
   }
 
+  /* Escalón máximo sobre el mapa de alturas. El mapa guarda la cota más alta de cada celda sin mirar desde
+     dónde se llega: sin este límite la avatar «subía» de un paso a un banco de 1,05 m desde la tarima de
+     0,23 m (el rayo anterior solo aceptaba superficies hasta 55 cm por encima de la altura actual). El
+     movimiento del preludio (player.js) trata como obstáculo la celda que queda más alta que eso. */
+  roomStepBlocked(x, z, y, max = .55) {
+    if (!this.roomMap || this.roomMap.obj !== this.roomObj) return false;
+    const h = this.roomMapHeight(x, z);
+    return h !== null && h > y + max;
+  }
+
   /* Altura real del escenario de una sala con terrazas. Solo se usa cuando
      la sala declara `floorRay: true` en sus metadatos; las salas planas
      siguen con la altura fija de siempre (coste cero).

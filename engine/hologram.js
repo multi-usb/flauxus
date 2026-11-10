@@ -216,6 +216,8 @@ export function createHologram(renderer, { low = false, height = 92 } = {}) {
       applyScale();
     },
     get scale() { return scale; },
+    /** Semiancho de la figura en pantalla (NDC) con la escala que pidió el último `fit()`. */
+    get halfNDC() { return sol.half; },
     /** Solo para pruebas: nivel adaptativo, escala y, si se pide, la caja de la figura medida en la textura. */
     get debug() {
       return {

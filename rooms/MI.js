@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { placeFBX } from '../AssetManager.js';
 import { GX } from '../GameContext.js';
+import { HM } from '../ui/hudMetrics.js';
 import { recOk, pad, tone, playClip, stopClips, A, regionFor, splitRegion, recPeaks, ensureAudio } from '../AudioSystem.js';
 import { S, roomGroup, avatarObj, bloom, glowSprite, animAvatar, ctx, W, H, burst, LIME, LIMEH, PAPER, SERIF, FONT, CARDS, OPLIST, HAND, clamp, lerp, damp, hint, toast, finish, roomGen, $ } from './context.js';
 
@@ -43,7 +44,13 @@ export const meta = {
 
 export const MI = (() => {
   let vals, touched, playing, listened, ops = [null, null, null, null], hand = [], selCard = -1, handles = [], drag, bounds = [], wf = [], evs = [], lvl = 0, halo, arcs = [], ph0 = 0, seq = [], real = false, fbPad = null, origT = 0;
-  const trackLen = () => clamp(H * .2, 90, 160), yBase = () => H * .74, yPh = () => Math.max(H * .34, (GX.uiTop || 0) + 56); // las frases empiezan bajo la franja del HUD
+  /* Maquetación vertical del lienzo, de arriba abajo: franja del HUD → rótulos «frase n» → paneles de onda →
+     (María Clara) → puntos de respiración → «respira» → botones. Todo sale del HUD medido (GX.uiTop y el borde
+     de los botones): los rótulos ya no quedan bajo el aviso ni «respira» bajo los botones, y la cámara recibe
+     el borde inferior de los paneles (HM.sceneTop) para encuadrar a la avatar debajo de ellos, no detrás. */
+  const trackLen = () => clamp(H * .2, 90, 160), panelH = () => clamp(H * .075, 40, 56); // semialto del panel de onda
+  const yBase = () => Math.min(H * .74, (HM.miBtnsTop || H) - 54);
+  const yPh = () => Math.max(H * .34, (GX.uiTop || 0) + 24 + panelH());
   function layout() { const pw = W * .13, gb = W * .02, gv = W * .045; const total = 4 * pw + gb * 4 + gv * vals.reduce((a, b) => a + b, 0); let x = (W - total) / 2; const L = []; for (let i = 0; i < 4; i++) { const p = { x0: x, x1: x + pw }; x += pw; const g = { x0: x, x1: x + gb + gv * vals[i] }; x = g.x1; L.push({ p, g }) } return L }
   const readout = i => `Frase ${i + 1} · respiración de ${Math.round(vals[i] * 900)} ms`;
   function updBtns() { const n = touched.size; $('miListen').disabled = n < 4 || playing || !real; $('miListen').textContent = n < 4 ? `Mueve los 4 puntos (${n}/4)` : '▶ Mi fraseo'; $('miOrig').disabled = playing || !real; $('miConfirm').style.display = (listened && !playing) || (!real && n === 4) ? 'block' : 'none' }
@@ -124,26 +131,26 @@ export const MI = (() => {
       $('miListen').onclick = play; $('miOrig').onclick = playOrig; $('miConfirm').onclick = () => finish({ vals: [...vals], ops: [...ops] }, [['Respiraciones', vals.map(v => Math.round(v * 900)).join(' · ') + ' ms'], ...(HAND.length ? [['Cartas jugadas', ops.some(Boolean) ? ops.map(o => o ? CARDS[o].n : '—').join(' · ') : 'ninguna']] : [])]);
       updBtns(); hint(real ? 'Arrastra cada punto ↕ hacia arriba para alargar su respiración' : 'No encontré la grabación: fraseo en modo provisional (mueve los 4 puntos y confirma)')
     },
-    update(dt) { const L = layout(); $('handWrap').style.top = (yPh() + 68) + 'px'; handles.forEach((h, i) => { const g = L[i].g; h.style.transform = `translate(${(g.x0 + g.x1) / 2}px,${yBase() - vals[i] * trackLen()}px)`; h.setAttribute('aria-valuenow', Math.round(vals[i] * 900)) }); lvl = damp(lvl, A.lvl, 6, dt) },
+    update(dt) { const L = layout(); HM.sceneTop = yPh() + panelH() + 4; $('handWrap').style.top = (yPh() + panelH() + 12) + 'px'; handles.forEach((h, i) => { const g = L[i].g; h.style.transform = `translate(${(g.x0 + g.x1) / 2}px,${yBase() - vals[i] * trackLen()}px)`; h.setAttribute('aria-valuenow', Math.round(vals[i] * 900)) }); lvl = damp(lvl, A.lvl, 6, dt) },
     update3d(dt, t3) { halo.material.opacity = .25 + lvl * .5; halo.scale.setScalar(9 + lvl * 2 + Math.sin(t3 * 1.2) * .4); arcs.forEach((a, i) => { a.material.opacity = .15 + (vals ? vals[i] * .5 : 0); a.rotation.z = Math.sin(t3 * .3 + i) * .05; a.scale.setScalar(1 + (vals ? vals[i] * .18 : 0)) }); animAvatar(avatarObj, 0, t3, true, lvl); if (bloom) bloom.strength = .5 + lvl * .3 },
     draw() {
-      const L = layout(), yp = yPh(), tl = trackLen(), now = playing && seq.length ? (performance.now() - ph0) / 1000 : -1; ctx.save();
+      const L = layout(), yp = yPh(), tl = trackLen(), hp = panelH(), now = playing && seq.length ? (performance.now() - ph0) / 1000 : -1; ctx.save();
       let activeI = -1, px = null;
       if (now >= 0) { for (let i = 0; i < seq.length - 1; i++) { const a = seq[i], b = seq[i + 1]; if (now >= a.t && now <= b.t) { px = lerp(a.x, b.x, (now - a.t) / Math.max(.001, b.t - a.t)); activeI = a.i; if (i % 3 === 0) { } break } } if (px === null) px = seq[seq.length - 1].x }
       for (let i = 0; i < 4; i++) {
         const p = L[i].p, g = L[i].g, w = p.x1 - p.x0; const act = activeI === i;
-        ctx.fillStyle = act ? 'rgba(194,254,11,.12)' : 'rgba(239,234,219,.05)'; ctx.strokeStyle = act ? LIMEH : 'rgba(239,234,219,.18)'; ctx.lineWidth = act ? 2 : 1.5; ctx.beginPath(); ctx.roundRect(p.x0, yp - 56, w, 112, 10); ctx.fill(); ctx.stroke();
-        if (ops[i]) { ctx.fillStyle = LIMEH; ctx.font = `700 11px ${FONT}`; ctx.textAlign = 'right'; ctx.fillText(CARDS[ops[i]].n, p.x1 - 4, yp - 64) }
-        ctx.fillStyle = 'rgba(239,234,219,.55)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'left'; ctx.fillText('frase ' + (i + 1), p.x0 + 8, yp - 64);
+        ctx.fillStyle = act ? 'rgba(194,254,11,.12)' : 'rgba(239,234,219,.05)'; ctx.strokeStyle = act ? LIMEH : 'rgba(239,234,219,.18)'; ctx.lineWidth = act ? 2 : 1.5; ctx.beginPath(); ctx.roundRect(p.x0, yp - hp, w, hp * 2, 10); ctx.fill(); ctx.stroke();
+        if (ops[i]) { ctx.fillStyle = LIMEH; ctx.font = `700 11px ${FONT}`; ctx.textAlign = 'right'; ctx.fillText(CARDS[ops[i]].n, p.x1 - 4, yp - hp - 8) }
+        ctx.fillStyle = 'rgba(239,234,219,.55)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'left'; ctx.fillText('frase ' + (i + 1), p.x0 + 8, yp - hp - 8);
         // forma de onda REAL de la grabación
-        const pk = wf[i] || [], bw = w / pk.length; ctx.fillStyle = act ? LIMEH : 'rgba(239,234,219,.75)'; pk.forEach((v, k) => { const h = Math.max(3, v * 88); ctx.fillRect(p.x0 + k * bw + 1, yp - h / 2, Math.max(1, bw - 2), h) });
+        const pk = wf[i] || [], bw = w / pk.length; ctx.fillStyle = act ? LIMEH : 'rgba(239,234,219,.75)'; pk.forEach((v, k) => { const h = Math.max(3, v * (hp * 2 - 24)); ctx.fillRect(p.x0 + k * bw + 1, yp - h / 2, Math.max(1, bw - 2), h) });
         const gx = (g.x0 + g.x1) / 2; ctx.strokeStyle = 'rgba(239,234,219,.14)'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]); ctx.beginPath(); ctx.moveTo(gx, yBase()); ctx.lineTo(gx, yBase() - tl); ctx.stroke(); ctx.setLineDash([]);
         ctx.strokeStyle = LIMEH; ctx.lineWidth = 3; ctx.globalAlpha = .7; ctx.beginPath(); ctx.moveTo(gx, yBase()); ctx.lineTo(gx, yBase() - vals[i] * tl); ctx.stroke(); ctx.globalAlpha = 1;
         ctx.strokeStyle = 'rgba(194,254,11,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(g.x0 + 3, yp + 4); ctx.quadraticCurveTo(gx, yp + 4 + vals[i] * 38, g.x1 - 3, yp + 4); ctx.stroke();
         ctx.fillStyle = touched.has(i) ? LIMEH : 'rgba(239,234,219,.5)'; ctx.font = `italic 400 14px ${SERIF}`; ctx.textAlign = 'center'; ctx.fillText(touched.has(i) ? Math.round(vals[i] * 900) + ' ms' : 'respira', gx, yBase() + 40)
       }
-      if (px !== null) { ctx.strokeStyle = PAPER; ctx.lineWidth = 2; ctx.shadowColor = LIMEH; ctx.shadowBlur = 18; ctx.beginPath(); ctx.moveTo(px, yp - 72); ctx.lineTo(px, yp + 72); ctx.stroke(); ctx.shadowBlur = 0; if (Math.random() < .25) burst(px, yp, LIMEH, 2, 80, .4, 2) }
+      if (px !== null) { ctx.strokeStyle = PAPER; ctx.lineWidth = 2; ctx.shadowColor = LIMEH; ctx.shadowBlur = 18; ctx.beginPath(); ctx.moveTo(px, yp - hp - 16); ctx.lineTo(px, yp + hp + 16); ctx.stroke(); ctx.shadowBlur = 0; if (Math.random() < .25) burst(px, yp, LIMEH, 2, 80, .4, 2) }
       ctx.restore()
-    }, stop() { $('miUI').style.display = 'none'; stopClips() }
+    }, stop() { HM.sceneTop = 0; $('miUI').style.display = 'none'; stopClips() }
   }
 })();

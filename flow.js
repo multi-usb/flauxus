@@ -21,7 +21,7 @@ import { mat, glowSprite, clearGroup } from './engine/materials.js';
 import { paintHuella, atriumReady } from './atrium/atrium.js';
 import {
   camCur, camLook, stopAuto, placePlayerAtSpawn,
-  placePlayerAtAtrium, setRoomFloor
+  placePlayerAtAtrium, setRoomFloor, snapFov
 } from './player.js';
 import { setRoomInfo, hint, renderProgress, titleCard, ctlRow, hideRoomDom } from './ui/hud.js';
 import { initPrelude, startPreludeVoice } from './ui/prelude.js';
@@ -233,7 +233,9 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     if (assetManager.failed.has(id)) throw new Error('No se pudo descargar el escenario');
 
     loaderStage(62, 'Ajustando luces y cámara');
-    camera.fov = 62; camera.updateProjectionMatrix(); camCur.copy(cur.camPos || new V3(0, 2.3, 8.6)); camLook.copy(cur.camLook || new V3(0, 1.7, 0));
+    /* El campo de visión del aspecto se fija de golpe bajo la cortina (antes: 62° fijo, y en vertical la sala
+       se descubría con el campo abriéndose hasta 74° y la cámara acercándose). */
+    snapFov(); camCur.copy(cur.camPos || new V3(0, 2.3, 8.6)); camLook.copy(cur.camLook || new V3(0, 1.7, 0));
     setRoomInfo(`Momento ${id} · ${r.note}`, r.title, r.desc);
     $('sourceChip').style.display = 'block'; $('sourceChip').innerHTML = r.audio === 'real' ? `♪ <b>${r.source}</b>` : `♪ ${r.source}`;
     $('roomUI').classList.add('active'); hideRoomDom(); hint(''); $('btnBack').style.display = 'block'; $('prompt').classList.remove('show'); $('coach').classList.remove('show'); $('compass').style.display = 'none';

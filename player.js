@@ -23,6 +23,7 @@ import { avatarObj, animAvatar } from './engine/avatar.js';
 import { groundController, getAtriumFBXObj } from './engine/ground.js';
 import { stairGroups, portalObjects, atriumFloor, floatingBlocks, updateFloatingBlocks } from './atrium/atrium.js';
 import { toast } from './ui/toast.js';
+import { HM } from './ui/hudMetrics.js';
 
 /* Callbacks inyectados por Main.js para evitar player ↔ flow. */
 let _enterRoom = () => { };
@@ -186,57 +187,67 @@ export function setCamDt(dt) { camDt = dt }
    · viewFov — el campo vertical era fijo (62°): en vertical el horizontal caía a 30–37° y la sala se veía como
      un recorte del escritorio. Ahora se garantiza un campo horizontal mínimo (HFOV_MIN) abriendo el vertical
      hasta FOV_MAX. En horizontal y en escritorio sigue en 62°.
-   · fovK — cuánto se acerca la cámara para que la avatar conserve su tamaño al abrir el campo.
+   · fovK — cuánto se acerca la cámara para que la avatar conserve su tamaño al abrir el campo. Sale del campo
+     BASE del aspecto, no del instantáneo: los +7° del sprint abren el campo sin acortar el brazo.
    · camFrameScale — el brazo crece con la avatar (SOL 1,5×, LA 1,1×) y, de forma continua, al estrecharse la
      pantalla (antes: dos escalones en aspecto 0,8 y 1,1).
    · composeFrame — sube o baja la mirada lo justo para que María Clara quede en la franja libre entre el HUD de
-     arriba y las piezas de abajo (locución, avisos, círculo), medidas en vivo en su columna.
+     arriba y las piezas de abajo (locución, avisos, círculo), medidas en vivo en su columna. Solo en táctil y
+     en ventanas compactas (frameK): en escritorio el HUD va en columnas laterales y la interfaz de los
+     minijuegos se centra sobre la escena, así que ahí no hay franja que buscar y el encuadre no se toca.
    · mapa de obstáculos — en el preludio la cámara acorta el brazo antes de meterse en un muro del escenario.
    ====================================================================== */
 const FOV_BASE = 62, FOV_MAX = 74, HFOV_MIN = 40, D2R = Math.PI / 180;
 export function viewFov() { const a = camera.aspect || 1.6; return clamp(2 * Math.atan(Math.tan(HFOV_MIN * D2R / 2) / a) / D2R, FOV_BASE, FOV_MAX) }
-export function fovK() { return Math.tan(FOV_BASE * D2R / 2) / Math.tan(camera.fov * D2R / 2) }
-function stepFov(dt, extra = 0) { const f = viewFov() + extra; if (Math.abs(camera.fov - f) > .01) { camera.fov = dt > 0 ? damp(camera.fov, f, 6, dt) : f; camera.updateProjectionMatrix() } }
+/* El campo se lleva en dos partes: la base del aspecto (fovBase, la que compensa fovK) y el extra del sprint. */
+let fovBase = FOV_BASE, fovExtra = 0;
+export function fovK() { return Math.tan(FOV_BASE * D2R / 2) / Math.tan(fovBase * D2R / 2) }
+function stepFov(dt, extra = 0) {
+  const b = viewFov(); fovBase = dt > 0 ? damp(fovBase, b, 6, dt) : b; fovExtra = dt > 0 ? damp(fovExtra, extra, 6, dt) : extra;
+  if (Math.abs(fovBase - b) < .01) fovBase = b; if (Math.abs(fovExtra - extra) < .01) fovExtra = extra;
+  const f = fovBase + fovExtra; if (Math.abs(camera.fov - f) > .001) { camera.fov = f; camera.updateProjectionMatrix() }
+}
+/* Campo del aspecto aplicado de golpe (entrada a una sala, bajo el preloader): sin animación de 62° al campo real. */
+export function snapFov() { stepFov(0) }
+/* Peso del reencuadre por franja: 1 en toda pantalla táctil (celulares y tabletas, en cualquier orientación:
+   ahí la interfaz de los minijuegos descansa abajo —style.css— y la franja libre existe); con ratón, 1 solo en
+   ventanas verticales (aspecto ≤ 0,8) o muy bajas (alto ≤ 500 px) y 0 en escritorio, donde el encuadre queda
+   como estaba antes de la iteración 4. Continuo entre medias para que redimensionar no dé saltos. */
+export function frameK() { return TOUCH ? 1 : Math.max(clamp((1.1 - (camera.aspect || 1.6)) / .3, 0, 1), clamp((560 - H) / 60, 0, 1)) }
 export function camFrameScale() { return clamp(avatarObj.scale.x || 1, 1, 2) * (1 + .18 * clamp((1.1 - (camera.aspect || 1.6)) / .3, 0, 1)) }
 
 /* Franja libre de la pantalla en la columna de la avatar: debajo de lo que el HUD ocupa arriba y encima de lo
-   que ocupa abajo. Se mide ~7 veces por segundo (lecturas de caja, sin escribir estilos). */
-const BAND_IDS = ['progress', 'btnBack', 'btnVoSkip', 'btnSkip', 'roomInfo', 'roomHint', 'unlock', 'vo', 'coach', 'prompt', 'joy', 'btnWalk', 'btnLook', 'laFrame', 'tray', 'laStatus', 'laBtns', 'miBtns', 'handWrap'];
-const BAND_LOW = new Set(['laFrame', 'tray', 'laStatus', 'laBtns', 'miBtns', 'handWrap', 'joy', 'vo']); // piezas que siempre son «lo de abajo»
-let bandEls = null; const FR = { top: 0, bot: 0, n: 0, s: 0, fit: 0, kz: 1 };
-function measureBand() {
-  if (!bandEls) bandEls = BAND_IDS.map($).filter(Boolean);
-  const x0 = W * .36, x1 = W * .64; let top = 0, bot = H;
-  for (const el of bandEls) {
-    if (!el.offsetParent) continue; const r = el.getBoundingClientRect(); if (r.width < 3 || r.height < 3 || r.right < x0 || r.left > x1) continue;
-    if (!BAND_LOW.has(el.id) && r.top + r.bottom < H) top = Math.max(top, r.bottom); else bot = Math.min(bot, r.top)
-  }
-  FR.top = top; FR.bot = bot
-}
+   que ocupa abajo. La mide ui/hudMetrics.js (una lectura compartida cada 8 cuadros); aquí solo se consulta. */
+const FR = { top: 0, bot: 0, s: 0, fit: 0, kz: 1 };
 const _fa = new V3(), _fb = new V3();
 function composeFrame(dt) {
-  if ((FR.n++ & 7) === 0) measureBand();
+  FR.top = HM.top; FR.bot = Math.min(HM.bot, H);
   camera.updateMatrixWorld();
-  const p = avatarObj.position, hh = 1.78 * (avatarObj.scale.y || 1); let want = 0;
-  _fa.set(p.x, p.y, p.z).project(camera); _fb.set(p.x, p.y + hh, p.z).project(camera);
-  if (_fa.z < 1 && _fb.z < 1) {
-    const feet = (-_fa.y * .5 + .5) * H, head = (-_fb.y * .5 + .5) * H, m = 12, lo = feet - (FR.bot - m), hi = head - (FR.top + m);
-    want = clamp(lo <= hi ? clamp(0, lo, hi) : (lo + hi) / 2, -.2 * H, .2 * H); // si no cabe, se centra en la franja
-    FR.fit = (feet - head) / Math.max(40, FR.bot - FR.top - 2 * m) // > 1: la avatar es más alta que la franja libre
-  } else FR.fit = 0;
+  const fk = frameK(); let want = 0; FR.fit = 0;
+  if (fk > 0) {
+    const p = avatarObj.position, hh = 1.78 * (avatarObj.scale.y || 1);
+    _fa.set(p.x, p.y, p.z).project(camera); _fb.set(p.x, p.y + hh, p.z).project(camera);
+    if (_fa.z < 1 && _fb.z < 1) {
+      const feet = (-_fa.y * .5 + .5) * H, head = (-_fb.y * .5 + .5) * H, m = 12, lo = feet - (FR.bot - m), hi = head - (FR.top + m);
+      want = clamp(lo <= hi ? clamp(0, lo, hi) : (lo + hi) / 2, -.2 * H, .2 * H) * fk; // si no cabe, se centra en la franja
+      FR.fit = 1 + ((feet - head) / Math.max(40, FR.bot - FR.top - 2 * m) - 1) * fk // > 1: la avatar es más alta que la franja libre
+    }
+  }
   FR.s = dt > 0 ? damp(FR.s, want, 4, dt) : want;
   if (Math.abs(FR.s) > .5) { camera.rotateX(-Math.atan(2 * FR.s / H * Math.tan(camera.fov * D2R / 2))); camera.updateMatrixWorld() }
 }
-export function frameDebug() { return { top: FR.top, bot: FR.bot, shift: +FR.s.toFixed(1), fov: +camera.fov.toFixed(2), fovK: +fovK().toFixed(3), camK: +camK.toFixed(3), map: !!CM.obj, mapMs: +CM.ms.toFixed(1), kz: +FR.kz.toFixed(3) } }
+export function frameDebug() { return { top: FR.top, bot: FR.bot, shift: +FR.s.toFixed(1), fov: +camera.fov.toFixed(2), fovK: +fovK().toFixed(3), camK: +camK.toFixed(3), map: !!CM.obj, mapMs: +CM.ms.toFixed(1), kz: +FR.kz.toFixed(3), fk: +frameK().toFixed(2) } }
 
-/* Mapa de obstáculos de la sala para la cámara: la cota más alta del escenario (hasta 6 m sobre el suelo de
-   inicio) en celdas de 0,5 m. Se rasteriza una vez por sala, al primer cuadro del preludio y bajo el preloader;
+/* Mapa de obstáculos de la sala para la cámara: la cota más alta y la más baja del escenario (entre 0,8 y 6 m
+   sobre el suelo de inicio) en celdas de 0,5 m. Con las dos cotas, un arco, una viga o una hoja colgante bajo
+   los que la cámara pasa no cuentan como muro: solo bloquea lo que ocupa la altura de la cámara.
+   Se rasteriza una vez por sala, al primer cuadro del preludio y bajo el preloader;
    después cada consulta es una lectura. Mismo criterio que el brazo del atrio con el NavMesh, sin lanzar rayos. */
-const CM = { obj: null, N: 0, R: 24, cell: .5, top: null, ms: 0 };
+const CM = { obj: null, N: 0, R: 24, cell: .5, top: null, low: null, ms: 0 };
 function buildCamMap(obj, base) {
-  const t0 = performance.now(), R = CM.R, cell = CM.cell, N = Math.ceil(2 * R / cell); if (!CM.top || CM.N !== N) CM.top = new Float32Array(N * N);
-  CM.N = N; CM.obj = obj; const top = CM.top; top.fill(-1e9); const yMin = base + .8, yMax = base + 6;
-  const put = (x, y, z) => { if (y < yMin || y > yMax) return; const i = Math.floor((x + R) / cell), j = Math.floor((z + R) / cell); if (i < 0 || j < 0 || i >= N || j >= N) return; const k = j * N + i; if (y > top[k]) top[k] = y };
+  const t0 = performance.now(), R = CM.R, cell = CM.cell, N = Math.ceil(2 * R / cell); if (!CM.top || CM.N !== N) { CM.top = new Float32Array(N * N); CM.low = new Float32Array(N * N) }
+  CM.N = N; CM.obj = obj; const top = CM.top, low = CM.low; top.fill(-1e9); low.fill(1e9); const yMin = base + .8, yMax = base + 6;
+  const put = (x, y, z) => { if (y < yMin || y > yMax) return; const i = Math.floor((x + R) / cell), j = Math.floor((z + R) / cell); if (i < 0 || j < 0 || i >= N || j >= N) return; const k = j * N + i; if (y > top[k]) top[k] = y; if (y < low[k]) low[k] = y };
   obj.updateMatrixWorld(true);
   obj.traverse(o => {
     if (!o.isMesh || !o.geometry || !o.visible) return; const pos = o.geometry.attributes.position; if (!pos) return;
@@ -262,7 +273,7 @@ function buildCamMap(obj, base) {
   });
   CM.ms = performance.now() - t0
 }
-function camBlocked(x, z, y) { const N = CM.N, i = Math.floor((x + CM.R) / CM.cell), j = Math.floor((z + CM.R) / CM.cell); return i >= 0 && j >= 0 && i < N && j < N && CM.top[j * N + i] > y - .2 }
+function camBlocked(x, z, y) { const N = CM.N, i = Math.floor((x + CM.R) / CM.cell), j = Math.floor((z + CM.R) / CM.cell); if (i < 0 || j < 0 || i >= N || j >= N) return false; const k = j * N + i; return CM.top[k] > y - .2 && CM.low[k] < y + .2 }
 
 export function updateCam() {
   const ks = camFrameScale(), dist = rig.dist * ks * fovK(), up = 1.2 * ks;
@@ -305,6 +316,7 @@ const GN = 22, guide = new THREE.InstancedMesh(new THREE.SphereGeometry(.1, 8, 6
 const dummy = new THREE.Object3D();
 export { GN, guide, dummy };
 
+const roomBlocked = (meta, x, z) => !!(meta.isBlocked && meta.isBlocked(x, z)) || groundController.roomStepBlocked(x, z, player.y);
 export function updateAtrium(dt) {
   const on = S.phase === 'atrium', pre = S.phase === 'prelude';
 
@@ -375,12 +387,13 @@ export function updateAtrium(dt) {
     const rr = Math.hypot(nx, nz); if (rr > curLimit) { nx *= curLimit / rr; nz *= curLimit / rr }
 
     // Colisión con obstáculos de la sala (ej. mesa central en LA) con deslizamiento por ejes
+    // y contra los escalones demasiado altos del mapa de alturas (bancos de SOL): engine/ground.js · roomStepBlocked
     const roomMeta = pre && S.room ? rooms[S.room - 1] : null;
-    if (roomMeta?.isBlocked && roomMeta.isBlocked(nx, nz)) {
-      if (!roomMeta.isBlocked(nx, player.z)) {
+    if (roomMeta && roomBlocked(roomMeta, nx, nz)) {
+      if (!roomBlocked(roomMeta, nx, player.z)) {
         nz = player.z;
         vel.z = 0;
-      } else if (!roomMeta.isBlocked(player.x, nz)) {
+      } else if (!roomBlocked(roomMeta, player.x, nz)) {
         nx = player.x;
         vel.x = 0;
       } else {

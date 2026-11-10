@@ -54,7 +54,14 @@ export class LightingManager {
       const c = src[i]; if (!c) { l.intensity = 0; return } l.color.setHex(c.c); l.position.set(c.p[0], c.p[1], c.p[2]); l.intensity = c.e * c.r * c.r;
       /* Calidad baja: sin foco ni segunda puntual, la luz narrativa acompaña a la avatar (desfase `follow`) para
          que la bañe en toda la sala y no solo junto a su posición fija. Sigue siendo una sola luz sin sombra. */
-      if (c.follow && QUALITY.tier === 'low') this.follow = { l, o: c.follow, snap: true }
+      if (c.follow && QUALITY.tier === 'low') {
+        this.follow = { l, o: c.follow, snap: true };
+        /* La intensidad de arriba (e · r²) está pensada para la luz en su sitio fijo, a `r` metros de lo que
+           ilumina. Al acompañar a la avatar queda a |follow| metros de ella (3,2 m en LA♯, no 6): con e · r² le
+           llegaba 3,4 veces la iluminancia prevista y la blusa se quemaba en una mancha lila sin detalle. Aquí
+           la misma `e` (o `fe`, si el preset quiere otra para este modo) se aplica a la distancia real. */
+        l.intensity = (c.fe ?? c.e) * (c.follow[0] ** 2 + c.follow[1] ** 2 + c.follow[2] ** 2);
+      }
     });
     if (this.spot) { const s = P.spot; this.spot.color.setHex(s.c); this.spot.intensity = s.e * s.r * s.r; this.spot.angle = s.ang; this.spot.penumbra = s.pen; this.spot.position.set(s.p[0], s.p[1], s.p[2]); this.spot.target.position.set(s.t[0], s.t[1], s.t[2]) }
   }

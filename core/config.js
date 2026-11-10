@@ -32,7 +32,9 @@ export const OPLIST = ['PAUSA', 'ACELERA', 'RETARDA', 'REPITE', 'SILENCIA', 'DES
 export const normCard = x => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '');
 export const CARD_ALIAS = { PAUSA: 'PAUSA', ACELERA: 'ACELERA', RETARDA: 'RETARDA', REPITE: 'REPITE', SILENCIA: 'SILENCIA', DESVIA: 'DESVIA', INSISTE: 'INSISTE', INTENCION: 'INTENCION', MIINTENCION: 'INTENCION' };
 export const HAND = entry === 'cards' ? (() => { const r = (qs.get('cards') || '').split(/[,;|]/).map(normCard).map(x => CARD_ALIAS[x]).filter(Boolean).slice(0, 4); return r.length ? r : ['PAUSA', 'RETARDA', 'INTENCION'] })() : [];
-// el sistema acumula las entradas ya descubiertas (solo registro: cada puerta sigue entregando su posibilidad al entrar por ella)
+// el sistema acumula las entradas ya descubiertas (solo registro: cada puerta sigue entregando su posibilidad al entrar por ella).
+// Es lo ÚNICO que se conserva entre cargas, y a propósito: a cada puerta se llega con una carga distinta de la página
+// (?entry=), de modo que «Entradas descubiertas · n de 4» del epílogo no puede vivir solo en memoria como el progreso.
 export const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d } catch { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch { } } };
 export const seen = new Set(LS.get('flauxus.entries.v1', []));
 $('entryLabel').textContent = ENTRIES[entry].skill || entryLabel; $('entryLabel').classList.toggle('skill', !!ENTRIES[entry].skill);
@@ -55,5 +57,12 @@ export const SHADOW_R = 9; // radio (m) del frustum de sombra alrededor del avat
    Antes de cada minijuego el usuario CAMINA por la sala mientras escucha a María Clara.
    PRELUDE.enabled=false → vuelve al flujo anterior (sala → ficha → juego). */
 export const PRELUDE = { enabled: true, R: 14, start: { x: 0, z: 4.2 }, trigR: 2.5 };
+
+/* ---------------- locución grabada ----------------
+   Las fichas de sala declaran los archivos de la voz en off (Voz_DO4, Voz_LAs4_1…), pero las grabaciones aún
+   no existen en el proyecto: sondearlas (.mp3 y luego .wav) dejaba dos 404 por fragmento en la consola en cada
+   entrada a una sala. Mientras no existan, la locución se subtitula con ritmo de lectura y no se pide ningún
+   archivo. Cuando se añadan los Voz_*.mp3 junto a index.html, basta pasar esto a true. */
+export const VO_AUDIO = false;
 
 export const EXPERIMENT = { miToFa: true }; // el fraseo de MI mueve ligeramente el tempo de FA (PENDIENTE DE VALIDACIÓN)

@@ -3004,23 +3004,31 @@
       #hud #coach { padding: 8px 12px; font-size: 13px }
     }
 
-    /* LA♯ en horizontal bajo: dos columnas (pentagrama + acciones | bandeja) en vez de una columna que no cabe. */
+    /* LA♯ en horizontal bajo: la interfaz descansa ABAJO en dos mitades (pentagrama, y debajo contador + botones |
+       bandeja de fragmentos). Antes las dos mitades iban centradas en vertical, con contador y botones en filas
+       propias: ocupaban de y≈165 a y≈335 de 390 y a María Clara solo le quedaban 49 px bajo el aviso (la cámara
+       se alejaba 1,4× y aun así solo se le veían las piernas). Ahora la franja libre mide ~120 px. */
     @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
       #laUI[style*="block"] {
         display: grid !important;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        grid-template-areas: "frame tray" "status tray" "btns tray";
-        align-content: center;
+        grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) minmax(0, 2fr);
+        grid-template-areas: "frame frame tray" "status btns tray";
+        align-content: end;
+        align-items: center;
         justify-items: center;
-        column-gap: 16px;
-        row-gap: 6px
+        column-gap: 12px;
+        row-gap: 6px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom))
       }
-      #laUI .frame { grid-area: frame; padding: 16px 8px 8px }
-      #laUI .tray { grid-area: tray; align-self: center }
-      #laUI #laStatus { grid-area: status }
-      #laUI #laBtns { grid-area: btns }
+      #laUI .frame { grid-area: frame; padding: 16px 8px 8px; gap: 6px; max-width: 100% }
+      #laUI .tray { grid-area: tray; align-self: end; gap: 6px 8px }
+      #laUI #laStatus { grid-area: status; font-size: 12px; padding: 2px 6px }
+      #laUI #laBtns { grid-area: btns; gap: 6px }
       #laUI .slot, #laUI .lcard { width: min(92px, 10.5vw); height: 58px }
-      #laUI .lcard img { height: 20px }
+      /* el nombre en una sola línea: en dos empujaba la onda fuera de la tarjeta */
+      #laUI .lcard { padding: 6px 7px }
+      #laUI .lcard strong { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: clip }
+      #laUI .lcard img { height: 24px; margin: 4px 0 0 }
       #laUI .lcard .tiny { display: none }
       #laUI .btns { min-height: 40px; padding: 6px 10px; font-size: 11px }
     }
@@ -3070,3 +3078,42 @@
       #laUI .lcard img { height: 18px }
       #laUI #laStatus { font-size: 12px; padding: 2px 8px }
     }
+
+    /* =====================================================================
+       ITERACIÓN 4 · REVISIÓN
+       ===================================================================== */
+    /* Locución: líneas enteras. ui/voice.js limita #voText a un número entero de líneas según el alto que la
+       maquetación le deja a la caja y lo desplaza de línea en línea con la lectura; aquí solo se recorta el
+       sobrante. Antes la caja se cortaba a un alto cualquiera y la última línea asomaba a media altura. */
+    #hud #voText { overflow: hidden; scroll-behavior: smooth }
+    @media (prefers-reduced-motion: reduce) { #hud #voText { scroll-behavior: auto } }
+    /* la línea de fuente interna solo existe con ?dev: vacía no debe quitarle una línea de texto a la caja */
+    #hud #vo .src:empty { display: none }
+
+    /* LA♯ en vertical con alto de sobra (≥ 701 px): las tarjetas medían el 12 % del alto (101 px en 390×844) y la
+       columna subía hasta el 42 % de la pantalla: a María Clara le quedaban 150 px bajo el aviso y la cabeza lo
+       rozaba. Con tarjetas del 9,5 % la franja libre crece ~60 px y cabe sin alejar la cámara. Los celulares
+       más bajos ya tienen sus propias alturas (reglas de ≤ 700 px, más arriba). */
+    @media (max-aspect-ratio: 4/5) and (min-height: 701px) {
+      #laUI .slot, #laUI .lcard { height: clamp(60px, 9.5vh, 96px) }
+    }
+
+    /* Menú en celulares compactos (≤ 400 × 700): las cuatro entradas de los satélites quedaban en 2 × 2 y las dos
+       últimas (Afiche y Baraja) caían bajo el pliegue de la tarjeta, sin indicio de que hubiera más (699 px de
+       contenido en 614 visibles a 360×640). En una sola fila compacta —igual que en horizontal— caben todas a
+       la vista junto a «Entrar al museo». */
+    @media (max-width: 400px) and (max-height: 700px) {
+      #intro .lede { margin-bottom: 10px }
+      #intro .btn { margin-top: 14px }
+      .sats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; padding-top: 10px }
+      .sats a { min-height: 44px; padding: 6px 2px; align-items: center; justify-content: center; text-align: center; font-size: 10.5px; letter-spacing: 0 }
+      .sats a small { display: none }
+    }
+
+    /* LA♯ en tabletas táctiles en horizontal (formato ancho): la columna de juego también descansa abajo, al
+       alcance de los pulgares, y deja la franja superior a María Clara (la cámara la encuadra ahí en toda
+       pantalla táctil: player.js · frameK). Con ratón la columna sigue centrada, como en escritorio. */
+    @media (min-height: 501px) { body.touch #laUI[style*="block"] { justify-content: safe flex-end } }
+    /* Celular en horizontal: el tope de la caja (26dvh ≈ 101 px) daba dos líneas y media; con 108 px caben tres
+       enteras (3 × 21 px + rótulo + márgenes). */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) { #hud #vo { max-height: 108px } }

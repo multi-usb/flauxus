@@ -25,7 +25,10 @@ export function hint(t) { t = t || ''; if (t === lastHint) return; lastHint = t;
 export function renderProgress() {
   const t = nextRoomId();
   $('progress').innerHTML = rooms.map(r => `<div class="pip${S.completed.has(r.id) ? ' done' : ''}${r.id === t && S.phase === 'atrium' ? ' next' : ''}${S.room === r.id ? ' cur' : ''}" data-room="${r.id}" title="${r.title}"><b>${S.completed.has(r.id) ? '✓' : r.short}</b></div>`).join('');
-  $('objective').textContent = t ? `Ahora: ${rooms[t - 1].note} · ${rooms[t - 1].title}` : 'Las seis salas están completas';
+  /* Dentro de una sala el rótulo nombra ESA sala; en el atrio, la siguiente por visitar. Antes mostraba siempre la
+     siguiente pendiente: al entrar directo a otra (o al volver a una ya hecha) decía «Ahora: DO4» dentro de SOL. */
+  const o = S.room ? rooms[S.room - 1] : t ? rooms[t - 1] : null;
+  $('objective').textContent = o ? `Ahora: ${o.note} · ${o.title}` : 'Las seis salas están completas';
 }
 export function fade(fn) {
   const f = $('flash');

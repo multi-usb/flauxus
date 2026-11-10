@@ -11,6 +11,9 @@
   <link rel="preload" href="./fonts/unbounded-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="./fonts/martian-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- Icono de pestaña propio (el mismo isotipo de la landing, copiado a brand/): sin él el navegador pide /favicon.ico y
+       deja un 404 en la consola en cada carga. -->
+  <link rel="icon" href="./brand/flauxus-iso.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
   <!-- Solo para pruebas automatizadas (?raf=timer): los navegadores no entregan requestAnimationFrame a una página
        que no se está pintando (panel oculto, ventana tapada) y el juego quedaría detenido en el preloader.
