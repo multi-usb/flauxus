@@ -90,4 +90,7 @@ export function animateLogo(svg, { reducedMotion = false } = {}) {
 }
 
 // Formato según el ancho: en pantallas angostas (retrato) el cuadrado; si no, el horizontal.
-export const narrowFormat = () => (matchMedia('(max-width: 767px)').matches ? 'cuadrado' : 'horizontal');
+// «Estrecho» = celular en vertical. Un celular en horizontal (< 768 px de ancho pero ≤ 500 px de alto) usa la
+// composición ancha, igual que main.css (misma condición en sus bloques de celular).
+export const NARROW_QUERY = '(max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait)';
+export const narrowFormat = () => (matchMedia(NARROW_QUERY).matches ? 'cuadrado' : 'horizontal');

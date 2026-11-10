@@ -196,24 +196,61 @@ export function createXray(hero, { mobile, reducedMotion, renderer }) {
   let lastHitY = -1;
   const HIT_GRACE_MS = 240; // ventana de tolerancia para cruzar costuras del modelo con fluidez
 
-  addEventListener('pointermove', (e) => {
+  const move = (e) => {
     if (e.pointerType === 'touch' && !pointer.touching) return;
     pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true;
     if (!hasPointer) { smoothX = pointer.x; smoothY = pointer.y; hasPointer = true; }
-  }, { passive: true });
-  addEventListener('pointerdown', (e) => {
+  };
+  const down = (e) => {
     if (e.pointerType !== 'touch') return;
     pointer.touching = true; pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true;
     smoothX = pointer.x; smoothY = pointer.y; hasPointer = true;
-  }, { passive: true });
+  };
   const up = (e) => {
     if (e.pointerType !== 'touch') return;
     pointer.touching = false;
     releaseAt = performance.now() + 600; // la radiografía se queda un instante tras soltar
   };
-  addEventListener('pointerup', up, { passive: true });
-  addEventListener('pointercancel', up, { passive: true });
-  document.addEventListener('pointerleave', () => { pointer.inside = false; });
+  const leave = () => { pointer.inside = false; };
+
+  // Los oyentes se montan y se desmontan: con el videojuego abierto la radiografía no escucha nada.
+  // (Antes eran permanentes: un toque sobre [ JUEGA YA ] —que en celular queda encima de su cuerpo— abría la
+  // radiografía, el iframe del juego se tragaba el «pointerup» y el estado quedaba encendido.)
+  let listening = false;
+  function listen(on) {
+    if (on === listening) return;
+    listening = on;
+    const fn = on ? 'addEventListener' : 'removeEventListener';
+    window[fn]('pointermove', move, { passive: true });
+    window[fn]('pointerdown', down, { passive: true });
+    window[fn]('pointerup', up, { passive: true });
+    window[fn]('pointercancel', up, { passive: true });
+    document[fn]('pointerleave', leave);
+  }
+  listen(true);
+
+  // Estado de reposo inmediato (sin fundido): nada tocado, círculo cerrado, capas de hueso y tejido apagadas.
+  function reset() {
+    pointer.touching = false;
+    pointer.inside = false;
+    hasPointer = false;
+    releaseAt = 0;
+    amount = 0;
+    pulse = 0;
+    hit = false;
+    hitY = -1;
+    lastHitY = -1;
+    missAt = -Infinity;
+    uniforms.uRadius.value = 0;
+    uniforms.uPulse.value = 0;
+    for (const l of layers) l.visible = false;
+    if (bones) bones.visible = false;
+  }
+  // false: suelta los oyentes y vuelve al reposo (juego abierto). true: vuelve a escuchar desde un estado limpio.
+  function setActive(on) {
+    reset();
+    listen(!!on);
+  }
 
   // enabled: la escena del personaje está en pantalla; scale: resolución interna (px internos por px CSS)
   function update({ enabled, dt, time, scale, level }) {
@@ -280,5 +317,5 @@ export function createXray(hero, { mobile, reducedMotion, renderer }) {
   // Una nota de María Clara acaba de sonar: los huesos se encienden.
   function note(v = 1) { pulse = Math.max(pulse, v); }
 
-  return { update, note };
+  return { update, note, setActive };
 }

@@ -88,7 +88,7 @@ export async function createHero({ glbBuffer, profile, channels }) {
   reticle.position.set(0, 1.42, -0.15);
   scene.add(reticle);
 
-  // Lluvia 3D de conceptos de identidad: ESCUCHA · RECORRE · INTERVIENE en el vacío espacial
+  // Lluvia lenta de palabras de identidad detrás de ella: ESCUCHA · RECORRE · INTERVIENE
   const wordsRain = createWordsRain({ mobile: profile.mobile, reducedMotion: profile.reducedMotion });
   scene.add(wordsRain.group);
 
@@ -252,171 +252,199 @@ function createHeroReticle() {
   return group;
 }
 
-// Lluvia 3D de conceptos de identidad: ESCUCHA · RECORRE · INTERVIENE en el vacío espacial
+// Lluvia lenta de palabras detrás de María Clara: ESCUCHA · RECORRE · INTERVIENE.
+// Cada palabra es un plano con su textura (se dibuja una sola vez) que cae despacio en el espacio 3D, DETRÁS de
+// ella: la profundidad la oculta tras su cuerpo, así que nunca tapa su rostro. Por cuadro solo cambian posición
+// y opacidad (nada se vuelve a dibujar ni a subir a la GPU) y todo viaja en el mismo lienzo: cero capas nuevas.
+//  · Ritmo: cada palabra tiene su propia duración de caída (≈ 26–46 s por pantalla; las lejanas, más lentas y
+//    tenues), su retardo de entrada y una deriva lateral leve. Entran y salen con fundido: nada aparece de golpe.
+//  · Composición adaptable: tamaño, calles y recorrido se calculan del encuadre real (layout), no de coordenadas
+//    por resolución. En vertical, palabras anchas que asoman a ambos lados de ella; en horizontal, cuatro calles.
+//  · Lectura: una palabra que pasa por detrás del texto o del botón del héroe se atenúa (setAvoid), y si dos
+//    palabras se cruzan, la más lejana cede: no hay acumulación de brillo.
+//  · Reposo: gl.js solo la actualiza en el Momento 1; el director detiene el bucle con la pestaña oculta o el
+//    juego abierto. Con movimiento reducido queda como una composición fija.
 function createWordsRain({ mobile = false, reducedMotion = false } = {}) {
   const group = new THREE.Group();
   group.renderOrder = -1;
 
   // Solo las tres palabras de identidad — nada más
-  const wordList = [
-    { text: 'ESCUCHA', type: 'h' },
-    { text: 'RECORRE', type: 'h' },
-    { text: 'INTERVIENE', type: 'h' },
-  ];
+  const WORDS = ['ESCUCHA', 'RECORRE', 'INTERVIENE'];
+  const FONT = '800 80px "Space Grotesk", "Martian Mono", sans-serif';
+  const PAD = 88; // margen de la textura: el resplandor se apaga antes del borde (sin franjas recortadas)
+  const CELL = 58; // ancho reservado por letra: el lienzo no cambia de tamaño cuando llega la tipografía
 
-  const textureCache = new Map();
-  function getTexture(item) {
-    const key = `${item.text}_${item.type}`;
-    if (textureCache.has(key)) return textureCache.get(key);
-
-    // High-resolution canvas (2× font size) for crisp text at any zoom
-    const fontSize = 80;
-    const padding = 32;
-
+  const textures = WORDS.map((text) => {
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    if (item.type === 'v') {
-      const chars = item.text.split(' ');
-      const charH = fontSize * 1.3;
-      canvas.width = 160;
-      canvas.height = Math.ceil(chars.length * charH + padding * 2);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `800 ${fontSize}px "Space Grotesk", "Martian Mono", monospace`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      // Pass 1: wide outer lime halo
-      ctx.shadowColor = '#c2fe0b';
-      ctx.shadowBlur = 42;
-      ctx.fillStyle = 'rgba(194, 254, 11, 0.45)';
-      chars.forEach((c, idx) => ctx.fillText(c, 80, padding + idx * charH + charH * 0.5));
-
-      // Pass 2: focused mid glow
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = 'rgba(194, 254, 11, 0.78)';
-      chars.forEach((c, idx) => ctx.fillText(c, 80, padding + idx * charH + charH * 0.5));
-
-      // Pass 3: crisp white core
-      ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 5;
-      ctx.fillStyle = '#ffffff';
-      chars.forEach((c, idx) => ctx.fillText(c, 80, padding + idx * charH + charH * 0.5));
-
-    } else {
-      canvas.height = 128;
-      ctx.font = `800 ${fontSize}px "Space Grotesk", "Martian Mono", monospace`;
-      const w = ctx.measureText(item.text).width;
-      canvas.width = Math.ceil(w + padding * 2);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `800 ${fontSize}px "Space Grotesk", "Martian Mono", monospace`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const cy = 64;
-
-      // Pass 1: wide outer lime halo
-      ctx.shadowColor = '#c2fe0b';
-      ctx.shadowBlur = 50;
-      ctx.fillStyle = 'rgba(194, 254, 11, 0.40)';
-      ctx.fillText(item.text, padding, cy);
-
-      // Pass 2: focused mid glow
-      ctx.shadowBlur = 24;
-      ctx.fillStyle = 'rgba(194, 254, 11, 0.82)';
-      ctx.fillText(item.text, padding, cy);
-
-      // Pass 3: crisp white core
-      ctx.shadowColor = '#ffffff';
-      ctx.shadowBlur = 5;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(item.text, padding, cy);
-    }
-
+    canvas.width = PAD * 2 + CELL * text.length;
+    canvas.height = PAD * 2 + 80;
     const tex = new THREE.CanvasTexture(canvas);
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    // 2× canvas → divide by 260 to keep same 3D world size
-    const res = { tex, w: canvas.width / 260, h: canvas.height / 260 };
-    textureCache.set(key, res);
-    return res;
+    tex.generateMipmaps = false;
+    const t = { text, canvas, tex, ink: 0.8 };
+    drawWord(t);
+    return t;
+  });
+  function drawWord(t) {
+    const { canvas, text } = t;
+    const g = canvas.getContext('2d');
+    const max = canvas.width - PAD * 2;
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.font = FONT;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2 + 4;
+    // halo lima amplio y suave → halo corto → núcleo claro (no blanco puro: es fondo, no titular)
+    g.shadowColor = '#c2fe0b';
+    g.shadowBlur = 34;
+    g.fillStyle = 'rgba(194, 254, 11, 0.30)';
+    g.fillText(text, cx, cy, max);
+    g.shadowBlur = 12;
+    g.fillStyle = 'rgba(194, 254, 11, 0.55)';
+    g.fillText(text, cx, cy, max);
+    g.shadowColor = 'transparent';
+    g.shadowBlur = 0;
+    g.fillStyle = 'rgba(238, 255, 200, 0.92)';
+    g.fillText(text, cx, cy, max);
+    t.ink = Math.min(max, g.measureText(text).width) / canvas.width; // parte del lienzo que ocupa la tinta
+    t.tex.needsUpdate = true;
   }
+  // La tipografía puede llegar después de crear la escena: se redibuja una vez, con el mismo tamaño de lienzo.
+  document.fonts?.load(FONT).then(() => textures.forEach(drawWord)).catch(() => {});
 
+  const N = mobile ? 5 : 8; // menos palabras en celular
+  const GOLD = 0.61803;
   const items = [];
-  // Sistema de calles: 3 calles verticales, palabras escalonadas dentro de cada calle
-  // para que NUNCA coincidan ni en X ni en Y.
-  const laneCount = mobile ? 2 : 3;
-  const perLane   = Math.ceil(9 / laneCount); // máximo filas por calle
-  const xSpan     = mobile ? 2.6 : 3.4;
-  const ySpan     = 6.0; // rango total de caída
-  const yStep     = ySpan / 3; // separación entre palabras de la misma calle (≥ 2 u)
-
-  for (let i = 0; i < (mobile ? 6 : 9); i++) {
-    const itemData = wordList[i % wordList.length];
-    const { tex, w, h } = getTexture(itemData);
-
-    const baseOpacity = 0.38 + Math.random() * 0.42;
+  for (let i = 0; i < N; i++) {
+    const t = textures[i % textures.length];
+    const depth = (i * GOLD) % 1; // 0 = cerca de ella, 1 = lejos
     const mat = new THREE.MeshBasicMaterial({
-      map: tex,
+      map: t.tex,
       transparent: true,
-      opacity: baseOpacity,
+      opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       fog: false,
     });
-
-    const geom = new THREE.PlaneGeometry(w, h);
-    const mesh = new THREE.Mesh(geom, mat);
-
-    // Asignar calle fija (determinista) y escalonar Y dentro de ella
-    const lane    = i % laneCount;
-    const rowInLane = Math.floor(i / laneCount);
-    const laneX   = -xSpan / 2 + (lane + 0.5) * (xSpan / laneCount);
-    const jitter  = (Math.random() - 0.5) * 0.18; // micro-variación para no verse rígido
-    const x       = laneX + jitter;
-    const y       = -1.0 + rowInLane * yStep + Math.random() * 0.4;
-    const z       = -0.5 - Math.random() * 1.8;
-
-    mesh.position.set(x, y, z);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, t.canvas.height / t.canvas.width), mat);
+    mesh.position.z = -0.8 - depth * 1.9;
     group.add(mesh);
-
     items.push({
       mesh,
       mat,
-      baseOpacity,
-      lane,
-      laneX,       // X base de la calle — se mantiene en respawn
-      speed: 0.14 + Math.random() * 0.18, // velocidad más uniforme
-      swaySpeed: 0.4 + Math.random() * 0.6,
-      swayOffset: Math.random() * Math.PI * 2,
-      initX: x,
+      t,
+      depth,
+      base: 0.46 - depth * 0.2, // las lejanas, más tenues
+      // segundos que tarda en cruzar la pantalla: las lejanas caen más despacio (paralaje)
+      period: (26 + depth * 14) * (0.92 + Math.random() * 0.2),
+      phase: (i / N + (Math.random() - 0.5) * 0.08 + 1) % 1, // repartidas en la caída desde el primer cuadro
+      delay: 0.5 + i * 0.6 + Math.random() * 0.4, // entrada progresiva (s)
+      sway: 0.14 + Math.random() * 0.16, // rad/s de la deriva lateral
+      swayAt: Math.random() * Math.PI * 2,
+      jitter: Math.random() - 0.5,
+      size: Math.random(),
+      k: 1, // atenuación suavizada (texto del héroe / cruce con otra palabra)
+      rect: [0, 0, 0, 0],
+      lane: 0, hw: 1, top: 0, travel: 1, h: 0.1,
     });
   }
 
-  function update(dt, time, beat = 0) {
-    if (reducedMotion) return;
-    const beatMultiplier = 1 + beat * 0.75;
+  // Encuadre de referencia (primer plano del Momento 1): de ahí salen el tamaño, las calles y el recorrido.
+  // key = [t, azimut, distancia, altura de cámara, altura de mira, …] (gl.js · M1)
+  let laid = false;
+  function layout({ aspect, fov, key }) {
+    const tan = Math.tan((fov * Math.PI) / 360);
+    const narrow = aspect < 0.9; // ventana vertical
+    const lanes = narrow ? [-0.16, 0.16] : [-0.72, -0.3, 0.3, 0.72]; // centro de cada calle (fracción del medio ancho)
+    // parte del ancho que ocupa ella (≈ 0,75 m con los brazos en jarra) en el plano de la figura
+    const her = Math.min(1, 0.75 / (2 * tan * key[2] * aspect));
+    items.forEach((it, i) => {
+      const d = key[2] - it.mesh.position.z; // distancia cámara → plano de la palabra
+      const hh = tan * d;
+      const hw = hh * aspect;
+      const cy = key[3] + (key[4] - key[3]) * (d / key[2]);
+      it.lane = lanes[i % lanes.length];
+      it.hw = hw;
+      // ancho de la tinta como fracción del ancho visible: en vertical asoma a ambos lados de ella
+      const outer = Math.abs(it.lane) > 0.5;
+      const frac = narrow
+        ? Math.min(0.86, Math.max(0.34, her + 0.04 + it.size * 0.16))
+        : (outer ? 0.2 : 0.15) + it.size * 0.06;
+      const w = (frac * 2 * hw) / it.t.ink;
+      it.mesh.scale.setScalar(w);
+      it.h = w * (it.t.canvas.height / it.t.canvas.width);
+      it.top = cy + hh + it.h / 2;
+      it.travel = hh * 2 + it.h;
+    });
+    laid = true;
+  }
+
+  // Zonas de texto del héroe en pantalla (0..1, y hacia abajo): detrás de ellas las palabras se atenúan.
+  let avoid = [];
+  function setAvoid(rects) { avoid = rects || []; }
+
+  const v = new THREE.Vector3();
+  const smooth = (x) => { const c = Math.min(1, Math.max(0, x)); return c * c * (3 - 2 * c); };
+  const overlap = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+  let age = 0;
+
+  // fade: presencia global (se apaga con el giro de cámara hacia el portal); textFade: cuánto texto del héroe queda.
+  function update(dt, time, beat = 0, camera = null, { fade = 1, textFade = 1 } = {}) {
+    if (!laid) return;
+    const still = reducedMotion;
+    if (!still) age += dt;
 
     for (const it of items) {
-      it.mesh.position.y -= it.speed * dt * beatMultiplier;
-      // Sway muy sutil para no salirse de la calle
-      it.mesh.position.x = it.laneX + Math.sin(time * it.swaySpeed + it.swayOffset) * 0.06;
-      it.mat.opacity = Math.min(0.95, it.baseOpacity * (1 + beat * 0.4));
-
-      if (it.mesh.position.y < -1.8) {
-        // Vuelve a aparecer arriba en su misma calle.
-        // Busca la Y más alta de su calle para asegurarse de dejar distancia.
-        let topY = 4.2;
-        for (const other of items) {
-          if (other !== it && other.lane === it.lane) {
-            if (other.mesh.position.y > topY) topY = other.mesh.position.y;
-          }
-        }
-        it.mesh.position.y = topY + yStep + Math.random() * 0.5;
-        it.initX = it.laneX + (Math.random() - 0.5) * 0.18;
-        it.mesh.position.x = it.initX;
+      if (!still) it.phase = (it.phase + dt / it.period) % 1;
+      const p = it.phase;
+      const drift = still ? 0 : Math.sin(time * it.sway + it.swayAt) * 0.045;
+      it.mesh.position.x = (it.lane + it.jitter * 0.1 + drift) * it.hw;
+      it.mesh.position.y = it.top - p * it.travel;
+      // rectángulo de la tinta en pantalla (para no pasar encendida por detrás del texto ni de otra palabra)
+      if (camera) {
+        const hx = (it.mesh.scale.x * it.t.ink) / 2;
+        const hy = it.h * 0.16;
+        v.set(it.mesh.position.x + group.position.x - hx, it.mesh.position.y + hy, it.mesh.position.z).project(camera);
+        const x0 = (v.x + 1) / 2; const y0 = (1 - v.y) / 2;
+        v.set(it.mesh.position.x + group.position.x + hx, it.mesh.position.y - hy, it.mesh.position.z).project(camera);
+        it.rect[0] = x0; it.rect[1] = y0; it.rect[2] = (v.x + 1) / 2; it.rect[3] = (1 - v.y) / 2;
       }
+    }
+
+    for (const it of items) {
+      let target = 1;
+      if (camera) {
+        const r = it.rect;
+        const area = Math.max(1e-6, (r[2] - r[0]) * (r[3] - r[1]));
+        // cuánto de la palabra cae sobre texto, o cuánto de un bloque pequeño (la miniatura) queda bajo la palabra
+        let covered = 0;
+        for (const a of avoid) {
+          const o = overlap(r, a);
+          covered = Math.max(covered + o / area, (0.5 * o) / Math.max(1e-6, (a[2] - a[0]) * (a[3] - a[1])));
+        }
+        target = 1 - 0.84 * smooth(covered / 0.18) * textFade;
+        // cruce con otra palabra: la más lejana cede
+        for (const other of items) {
+          if (other === it || other.depth > it.depth) continue;
+          if (overlap(r, other.rect) > 0) { target = Math.min(target, 0.15); break; }
+        }
+      }
+      it.k = still ? target : it.k + (target - it.k) * (1 - Math.exp(-dt / 0.45));
+      const p = it.phase;
+      const envelope = smooth(p / 0.16) * (1 - smooth((p - 0.8) / 0.2)); // entra y sale con fundido
+      const intro = still ? 1 : smooth((age - it.delay) / 2.4);
+      it.mat.opacity = it.base * envelope * intro * it.k * fade * (1 + beat * 0.08);
+      it.mesh.visible = it.mat.opacity > 0.004;
     }
   }
 
-  return { group, update };
+  // Solo para pruebas (?fps): estado de cada palabra y zonas que evita.
+  const debug = () => ({
+    avoid,
+    words: items.map((it) => ({ text: it.t.text, phase: +it.phase.toFixed(4), opacity: +it.mat.opacity.toFixed(3), k: +it.k.toFixed(2), rect: it.rect.map((n) => +n.toFixed(3)), z: +it.mesh.position.z.toFixed(2) })),
+  });
+
+  return { group, update, layout, setAvoid, debug };
 }

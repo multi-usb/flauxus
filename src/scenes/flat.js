@@ -71,6 +71,7 @@ export function createFlatBackend({ profile, channels }) {
     camInfo: () => null,
     get xrayState() { return { amount: 0 }; },
     xrayNote() {},
+    setXrayActive() {},
     get flood() { return document.documentElement.dataset.moment === 'm3' ? 1 : 0; },
     setLevel() {},
     setQuality() {},

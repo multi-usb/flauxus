@@ -70,5 +70,14 @@ export function createNoteTrigger({ audio, backend, lens }) {
     if (moved < 18) return;
     if (zone !== lastZone || (moved > 110 && now - lastAt > 1400)) fire(zone, xs.x, xs.y, now);
   }
-  return { update, stats, get inside() { return inside; } };
+  // Juego abierto: la exploración se corta en seco (sin esperar los 250 ms) y la música queda lista para volver.
+  function reset() {
+    if (inside) audio.explore(false);
+    inside = false;
+    outSince = 0;
+    pendingTap = 0;
+    wasTouching = false;
+    lastZone = -1;
+  }
+  return { update, reset, stats, get inside() { return inside; } };
 }

@@ -80,7 +80,7 @@ export function createActivation({ profile, backend, sfx, onLogo }) {
   // Clic / toque sobre la escena: un pulso en DO4 — la imagen vuelve a ser código un instante.
   addEventListener('pointerdown', (e) => {
     if (t < T_END || root.dataset.stage !== 'live' || root.classList.contains('away')) return;
-    if (e.target.closest('button, a, #player')) return;
+    if (e.target.closest('button, a, #player, #game')) return;
     pulse = 1;
     backend.glitch?.(0.6);
     sfx('pulse', { freq: DO4, dur: 0.8 });

@@ -2,7 +2,7 @@ import { SCROLL_SCREENS } from '../config.js';
 import { track } from '../lib/track.js';
 import { span } from '../ui/type.js';
 import { createWords } from '../ui/words.js';
-import { logoSVG } from '../ui/logo.js';
+import { logoSVG, NARROW_QUERY } from '../ui/logo.js';
 import { sharpHTML } from '../ui/sharp.js';
 
 // Momento 3 · Qué es FLAUXUS, sobre la pantalla inundada de verde (tinta negra).
@@ -24,7 +24,7 @@ export function createM3({ profile, pulseRewind }) {
   section.querySelectorAll('[data-sharp]').forEach((el) => { el.outerHTML = sharpHTML('♯'); });
   // Marca vertical gigante en negro sobre el verde (la pantalla inundada): el formato vertical (FLA / UX / US) en
   // escritorio; en móvil, el horizontal como banda superior.
-  const vert = matchMedia('(max-width: 767px)').matches ? 'horizontal' : 'vertical';
+  const vert = matchMedia(NARROW_QUERY).matches ? 'horizontal' : 'vertical';
   section.querySelector('.m3-vert').innerHTML = logoSVG({ format: vert, color: '#000' });
   let lastLit = -1;
   let lastQ = 0;

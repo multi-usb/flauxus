@@ -3,7 +3,7 @@ import { createPipeline } from './postfx.js';
 import { createHero } from './hero.js';
 import { createXray } from './xray.js';
 import { PORTAL } from './portal.js';
-import { sampleKeys, span } from '../lib/math.js';
+import { sampleKeys, span, smooth } from '../lib/math.js';
 
 // Backend WebGL. Un solo renderer, un solo shader de posproceso.
 // Plano secuencia continuo en una sola escena: M1 (primer plano extremo → giro a su espalda),
@@ -84,6 +84,8 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
   function aspect() {
     hero.camera.clearViewOffset();
     hero.setAspect(pipeline.aspect);
+    // La lluvia de palabras se recompone con el encuadre: tamaño, calles y recorrido salen del plano inicial de M1.
+    hero.wordsRain?.layout({ aspect: pipeline.aspect, fov: hero.camera.fov, key: M1[kind][0] });
   }
   aspect();
 
@@ -120,8 +122,12 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
       // Punto 1: Telemetría sonora viva en la retícula radar (rotación y pulso)
       hero.reticle.update?.(dt, performance.now() / 1000, beat);
 
-      // Lluvia 3D de conceptos identitarios (ESCUCHA, RECORRE, INTERVIENE)
-      hero.wordsRain?.update(dt, performance.now() / 1000, beat);
+      // Lluvia lenta de palabras (ESCUCHA, RECORRE, INTERVIENE): cede ante el texto del héroe mientras se lee
+      // y se disuelve con el giro de cámara hacia el portal, para que el paso al Momento 2 no tenga corte.
+      hero.wordsRain?.update(dt, performance.now() / 1000, beat, hero.camera, {
+        fade: 1 - smooth(span(q, 0.1, 0.36)),
+        textFade: 1 - smooth(span(q, 0.08, 0.32)),
+      });
 
       // Punto 4: Parallax multicapa cinematográfico
       // Plano medio: María Clara se orienta apenas hacia el cursor
@@ -233,6 +239,10 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
     get crtState() { return portalState; },
     get xrayState() { return xrayState; },
     xrayNote: (v) => xray.note(v),
+    // Zonas de texto del héroe (fracciones de pantalla) que la lluvia de palabras no debe cruzar encendida.
+    setHeroAvoid(rects) { hero.wordsRain?.setAvoid(rects); },
+    // Juego abierto/cerrado: la radiografía se apaga, suelta sus oyentes y vuelve limpia (scenes/xray.js).
+    setXrayActive(on) { xray.setActive(on); xrayState = { amount: 0 }; },
     get flood() { return floodState; },
     setBoot(v) { Object.assign(boot, v); },
     setBeat(v) { beat = profile.reducedMotion ? 0 : v; },
@@ -245,7 +255,7 @@ export async function createGlBackend({ canvas, glbBuffer, profile, channels }) 
     setLevel(v) { level = v; u.uLevel.value = v; },
     kick: () => {},
     setQuality: (name) => pipeline.setQuality(name),
-    debug: () => ({ shown, wanted, power: u.uPower.value, switching: !!switching }),
+    debug: () => ({ shown, wanted, power: u.uPower.value, switching: !!switching, rain: hero.wordsRain?.debug(), xray: xrayState.amount || 0 }),
     bench(n = 60) {
       const gl = pipeline.renderer.getContext();
       const px = new Uint8Array(4);

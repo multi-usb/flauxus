@@ -1627,7 +1627,7 @@ html.flat-rewind #osd {
 }
 
 /* ---------- Móvil: composiciones propias, no escaladas ---------- */
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .hud-iso {
     top: calc(28px + env(safe-area-inset-top));
     left: 28px;
@@ -1896,7 +1896,7 @@ html.flat-rewind #osd {
   white-space: nowrap;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   #boot .press-start { font-size: 13px; }
   #boot .tape-label { font-size: 12px; }
   .hero-lockup img { width: 112px; height: 142px; }
@@ -2118,7 +2118,7 @@ html.flood .cross {
 
 /* ---------- Cierre: campo de trazos diagonales que se enciende por filas ---------- */
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .hud-chapter {
     top: calc(34px + env(safe-area-inset-top));
     left: 64px;
@@ -2250,7 +2250,7 @@ html.flood .cross {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .sys-log {
     top: calc(76px + env(safe-area-inset-top));
     left: 24px;
@@ -2309,7 +2309,7 @@ html.drop #hud-cta {
   color: var(--rw-negro);
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   #sound .snd-label {
     display: none;
   }
@@ -2347,7 +2347,7 @@ html.drop #hud-cta {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .sys-log {
     bottom: calc(76px + env(safe-area-inset-bottom));
     left: 16px;
@@ -2361,7 +2361,7 @@ html.drop #hud-cta {
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   #sys[data-stage="live"] .sys-log {
     display: none;
   }
@@ -2410,7 +2410,7 @@ html[data-input="touch"] .sys-hint .t {
   width: fit-content;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   #sys[data-stage="live"]::after {
     content: none;
   }
@@ -2523,7 +2523,7 @@ html.started[data-moment="m2"] .hud-scroll {
   font-size: var(--fs-corner);
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   :root {
     --fs-corner: 12px;
   }
@@ -3201,7 +3201,7 @@ html.started[data-moment="m1"] #scanlines {
   display: none !important;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .boot-logo { width: 76vw; top: 32%; }
   #boot.ready .boot-logo { top: 23%; }
   .boot-tape { width: 78vw; top: 61%; }
@@ -3519,7 +3519,7 @@ html.started[data-moment="m1"] #scanlines {
 }
 
 /* Tablets and desktop keep the wide composition from the reference. */
-@media (min-width: 768px) {
+@media (min-width: 768px), (max-height: 500px) and (orientation: landscape) {
   #boot .boot-logo { top: 32.4%; width: min(60vw, 920px); }
   #boot.ready .boot-logo { top: 23.8%; width: min(60vw, 920px); }
 
@@ -3651,7 +3651,7 @@ html.flood #sound:focus-visible {
 
 #sound:active::before { transform: scale(.92); }
 
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   #sound::before { width: 40px; height: 40px; }
 }
 
@@ -3886,7 +3886,7 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
    46 px de solape medidos entre 320 y 430 px de ancho). Ahora #boot es una columna centrada: el logotipo se
    acota por ancho Y por alto, y lo demás fluye debajo con su separación. Las figuras de fondo no cambian.
    ===================================================================== */
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   #boot {
     display: flex;
     flex-direction: column;
@@ -3980,7 +3980,7 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
 /* Celulares: la cita larga mide en píxeles (líneas de texto), pero su hueco estaba en vh (34 % del alto). En
    pantallas bajas (320×568, 375×667) no cabía y la foto siguiente la pisaba. Todo lo que va después de la cita
    baja exactamente lo que le falte al hueco (--m4-shift); en pantallas altas el desplazamiento es 0. */
-@media (max-width: 767px) {
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .m4-stage { --m4-shift: max(0px, 310px - 34vh); height: calc(310vh + var(--m4-shift)); }
   .ph-c { top: calc(196vh + var(--m4-shift)); }
   .ph-d { top: calc(214vh + var(--m4-shift)); }
@@ -3992,15 +3992,201 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
    en píxeles pero el vh es diminuto, así que las posiciones en vh se amontonaban. Aquí la composición usa una
    unidad con suelo (--u = 6,4 px, como si la pantalla midiera 640 px de alto) y las fotos se acotan por ambas
    dimensiones, igual que en escritorio. */
-@media (min-width: 768px) and (max-height: 560px) {
+@media (min-width: 768px) and (max-height: 560px), (max-height: 500px) and (orientation: landscape) {
   .m4-stage { --u: 6.4px; height: calc(300 * var(--u)); }
   .m4-name { top: calc(22 * var(--u)); }
   .ph-a { top: calc(28 * var(--u)); left: 33vw; width: min(27vw, calc(60 * var(--u))); }
   .ph-b { top: calc(18 * var(--u)); width: min(40vw, calc(78 * var(--u))); }
-  .m4-facts { top: calc(70 * var(--u)); width: min(24vw, 380px); }
+  .m4-facts { top: calc(70 * var(--u)); width: clamp(230px, 24vw, 380px); }
   .ph-d { top: calc(96 * var(--u)); width: min(46vw, calc(90 * var(--u))); }
-  .m4-quote.q1 { top: calc(98 * var(--u)); width: min(32vw, 540px); }
+  .m4-quote.q1 { top: calc(98 * var(--u)); width: clamp(260px, 32vw, 540px); }
   .ph-c { top: calc(150 * var(--u)); width: min(24vw, calc(46 * var(--u))); }
   .ph-e { top: calc(168 * var(--u)); width: min(26vw, calc(42 * var(--u))); }
   .m4-quote.q2 { top: calc(246 * var(--u)); }
+}
+
+/* =====================================================================
+   ITERACIÓN 4 · el videojuego siempre por encima de la landing
+   El juego vive en #game (ui/game.js). Antes tenía z-index 60 y por encima quedaban la lente de la radiografía
+   (89), el cursor (90), el atajo [ JUEGA YA ] (95) y el contador de pruebas (100): una lente encendida en el
+   instante de entrar se quedaba pintada sobre el juego. Dos garantías, además del apagado en JS:
+   1) #game es la capa más alta de la página; 2) con el juego abierto, el resto de la landing no se pinta.
+   ===================================================================== */
+#game {
+  z-index: 2147483000;
+  isolation: isolate;
+}
+
+html.game-open body > :not(#game) {
+  visibility: hidden !important;
+}
+
+#lens[hidden],
+html.game-open #lens,
+html.game-open #cursor,
+html.game-open #crtoff {
+  display: none !important;
+}
+
+/* =====================================================================
+   ITERACIÓN 4 · INICIO EN CELULAR: una sola figura, de frente
+   Antes había dos figuras de María Clara (de espaldas a la izquierda y de frente a la derecha), recortadas y
+   debajo del logotipo, el lema y el botón: saturaban y dificultaban la lectura. Ahora, en pantallas estrechas:
+   foto → textos → animación. La figura frontal va centrada y arriba (rostro y torso despejados), se funde hacia
+   abajo, y el logotipo, el lema y el botón se apilan en la mitad inferior sobre el fondo oscuro. Los cristales
+   siguen flotando, pero a los lados del torso y por debajo del texto. El escritorio no cambia.
+   La imagen de espaldas ni siquiera se descarga aquí (ver <picture> en index.html).
+   ===================================================================== */
+#boot picture { display: contents; }
+
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
+  #boot {
+    justify-content: flex-end;
+    gap: clamp(10px, 2.2svh, 20px);
+    padding-bottom: max(clamp(20px, 4.5svh, 44px), env(safe-area-inset-bottom));
+  }
+
+  /* durante la carga, el rótulo del progreso cuelga por debajo de la flauta: se le deja sitio */
+  #boot:not(.ready) { padding-bottom: max(clamp(48px, 10svh, 84px), env(safe-area-inset-bottom)); }
+
+  #boot .boot-home-left,
+  #boot .boot-preload-left { display: none !important; }
+
+  /* la misma figura en la carga (tenue) y en el inicio (plena): al terminar la carga solo «se enciende» */
+  #boot .boot-preload-right,
+  #boot .boot-home-right {
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 38%, rgba(0, 0, 0, .3) 60%, rgba(0, 0, 0, .1) 100%);
+    mask-image: linear-gradient(180deg, #000 0%, #000 38%, rgba(0, 0, 0, .3) 60%, rgba(0, 0, 0, .1) 100%);
+  }
+
+  #boot .boot-preload-right,
+  #boot:not(.entering) .boot-home-right {
+    left: 50%;
+    right: auto;
+    top: max(1.5svh, env(safe-area-inset-top));
+    bottom: auto;
+    height: min(94svh, 235vw);
+    max-height: none;
+    animation: none;
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  #boot .boot-preload-right { opacity: .42; }
+  #boot.ready .boot-preload-right { opacity: 0; }
+
+  /* el texto manda sobre los cristales (z-index 3) */
+  #boot .boot-logo,
+  #boot .boot-tape,
+  #boot .home-tagline,
+  #boot .press-start,
+  #boot .home-audio-caption { z-index: 4; }
+
+  #boot .boot-logo,
+  #boot.ready .boot-logo { width: min(54vw, 23svh); }
+
+  #boot .home-tagline,
+  #boot .home-audio-caption,
+  #boot .tape-label { text-shadow: 0 1px 10px rgba(0, 0, 0, .9), 0 0 2px rgba(0, 0, 0, .8); }
+
+  /* la leyenda no invade la columna del botón de sonido */
+  #boot .home-audio-caption { width: auto; max-width: calc(100% - 132px); font-size: clamp(10px, 3.1vw, 12px); margin-right: max(0px, calc(190px - 50vw)); }
+
+  /* cristales: a los costados del torso, lejos del rostro (el script les suma una deriva de ±15vw / ±11vh) */
+  #boot .boot-glass-left,
+  #boot.ready .boot-glass-left { left: 3%; top: 31%; }
+  #boot .boot-glass-top,
+  #boot.ready .boot-glass-top { left: 80%; top: 33%; height: clamp(64px, 13svh, 104px); }
+}
+
+/* celular en horizontal: una sola figura, completa, al borde derecho */
+@media (max-height: 500px) and (orientation: landscape) {
+  #boot .boot-home-left,
+  #boot .boot-preload-left { display: none !important; }
+
+  #boot .boot-preload-right,
+  #boot:not(.entering) .boot-home-right {
+    left: auto;
+    right: calc(11vw - 58svh);
+    top: 3svh;
+    bottom: auto;
+    height: 116svh;
+    max-height: none;
+    animation: none;
+  }
+
+  /* el texto manda sobre los cristales */
+  #boot .home-tagline,
+  #boot .press-start,
+  #boot .home-audio-caption { z-index: 4; }
+}
+
+/* tableta en vertical: se retira la figura de espaldas; la frontal conserva su lugar */
+@media (min-width: 768px) and (max-width: 1099px) and (orientation: portrait) {
+  #boot .boot-home-left,
+  #boot .boot-preload-left { display: none !important; }
+}
+
+/* Héroe en celular horizontal: la miniatura de María Clara repetía la figura junto al modelo 3D y pisaba
+   «Desliza para descubrir». Y en pantallas táctiles no hay cursor que pasar. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hero-mini-avatar { display: none; }
+}
+
+html[data-input="touch"] .hero-copy > .hero-cursor-hint { display: none; }
+
+/* =====================================================================
+   ITERACIÓN 4 · AUDITORÍA RESPONSIVE (320×568 → 2560×1080)
+   Casos que la matriz de tamaños encontró fuera del escritorio. Todo con medidas relativas al espacio real.
+   ===================================================================== */
+
+/* M5 en celular vertical. El detalle de la sala (nota, título y botón) se ancla abajo y mide en vw; el
+   osciloscopio y la fila de notas se anclan arriba y medían en vh. En pantallas bajas (320×568, 360×640,
+   375×667) las dos mitades se encontraban: el nombre de la nota quedaba encima de la fila de notas y la tapaba.
+   Ahora el osciloscopio ocupa lo que sobra: alto de pantalla − cabecera − fila de notas − detalle. */
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
+  #m5 {
+    --m5-note: 18vw;
+    --m5-title: 9vw;
+    --m5-detail: calc(var(--m5-note) * .85 + var(--m5-title) * 3.1 + 56px);
+    --m5-osc: max(96px, min(80vw, 42svh, calc(100svh - 266px - var(--m5-detail) - env(safe-area-inset-top) - env(safe-area-inset-bottom))));
+  }
+  .osc-wrap { width: var(--m5-osc); }
+  .notes { top: calc(80px + var(--m5-osc) + 44px + env(safe-area-inset-top)); }
+  .sala-note { font-size: var(--m5-note); }
+  .sala-title { font-size: var(--m5-title); }
+  /* la escala de M3 deja libre la columna del botón de sonido */
+  .scale { right: 72px; }
+}
+
+@media (max-height: 700px) and (orientation: portrait) and (max-width: 767px) {
+  #m5 { --m5-note: 13vw; --m5-title: 7vw; }
+  .m5-quote p { font-size: min(7.2vw, 3.9svh); }
+  /* héroe: en pantallas bajas «Desliza para descubrir» caía sobre el rostro de María Clara; el botón
+     «Comenzar a explorar» ya cumple esa función */
+  .hero-lockup .hero-scroll { display: none; }
+}
+
+/* M5 en celular horizontal: la fila de notas sube por encima del botón de sonido y la cita final se acomoda. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .notes { bottom: max(14vh, 72px); }
+  .m5-quote { top: 12vh; }
+  /* M3: la ficha técnica quedaba debajo de «PIERDE.» y la escala pegada a la frase */
+  .m3-spec { display: none; }
+  .m3-c { bottom: 27%; }
+  .hero-copy { bottom: calc(74px + env(safe-area-inset-bottom)); }
+  .hero-explore { min-height: 44px; }
+}
+
+/* M3 en tableta vertical: la escala se apretaba contra el borde izquierdo (reservaba el ancho de la marca
+   vertical, que aquí no llega tan abajo) y la marca pisaba «AQUÍ NADIE PIERDE.» */
+@media (min-width: 768px) and (orientation: portrait) {
+  .scale { right: calc(var(--rw-pad) + 72px); }
+  .m3-vert { height: 46vh; width: calc(46vh * 524 / 908); }
+}
+
+/* Créditos en pantallas táctiles: cada nombre enlazado ofrece al menos 44 px de alto para el dedo. */
+html[data-input="touch"] .m6-person {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }

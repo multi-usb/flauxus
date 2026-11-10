@@ -62,7 +62,14 @@
 <body>
   <!-- 0 · Inicio: el logotipo se reconstruye; la cinta carga; PRESS START arranca imagen y sonido -->
   <div id="boot" role="dialog" aria-label="FLAUXUS">
-    <img class="boot-figure boot-home-left" src="/images/personaje/posterior.webp" alt="" aria-hidden="true" />
+    <!-- La figura de espaldas solo existe en la composición ancha: en celular, tableta vertical y celular
+         horizontal no se muestra (main.css) y tampoco se descarga (se sirve un píxel transparente). -->
+    <picture>
+      <source
+        media="(max-width: 767px), (max-width: 1099px) and (orientation: portrait), (max-height: 500px) and (orientation: landscape)"
+        srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+      <img class="boot-figure boot-home-left" src="/images/personaje/posterior.webp" alt="" aria-hidden="true" />
+    </picture>
     <img class="boot-figure boot-home-right" src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />
     <img class="boot-figure boot-preload-left" src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />
     <img class="boot-figure boot-preload-right" src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />

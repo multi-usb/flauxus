@@ -37,6 +37,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   const soundBtn = document.getElementById('sound');
   soundBtn.innerHTML = '<canvas class="viz" aria-hidden="true"></canvas><span class="snd-label" aria-hidden="true"></span>';
   let moments = [];
+  let noteTrigger = null;
   const exploreHero = () => {
     const portalStart = moments[1]?.track?.start;
     const targetY = portalStart != null ? portalStart + 80 : window.innerHeight * 1.35;
@@ -54,7 +55,17 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   const player = createPlayer({ channels, profile });
   // Mientras se juega, la landing se congela debajo (sin render ni música) y conserva su punto del scroll.
   let gameOpen = false;
-  const game = createGame({ onChange: (on) => { gameOpen = on; last = performance.now(); } });
+  // Las capas fijas que viven por encima de la página (lente de la radiografía, sus notas) se desactivan al abrir
+  // y vuelven desde un estado limpio al cerrar: el bucle no corre mientras se juega, así que nada las apagaría.
+  const game = createGame({
+    onChange: (on) => {
+      gameOpen = on;
+      last = performance.now();
+      backend.setXrayActive?.(!on);
+      lens.setActive(!on);
+      noteTrigger?.reset();
+    },
+  });
 
   let forcedRewind = 0; // segundos de rebobinado forzado (frase del M3, botón del cierre)
   let rewinding = false;
@@ -80,7 +91,7 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
     document.documentElement.classList.add('drop');
     setTimeout(() => document.documentElement.classList.remove('drop'), 600);
   });
-  const noteTrigger = createNoteTrigger({ audio, backend, lens });
+  noteTrigger = createNoteTrigger({ audio, backend, lens });
   const viz = createSoundViz(soundBtn.querySelector('.viz'), audio, profile);
   const activation = createActivation({
     profile,
@@ -107,7 +118,26 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
   if (!profile.touch) {
     addEventListener('pointermove', (e) => { mouseTarget = (e.clientX / innerWidth) * 2 - 1; }, { passive: true });
   }
-  addEventListener('resize', () => backend.resize());
+  // Texto y botón del héroe, en fracciones de pantalla: la lluvia de palabras del fondo se atenúa al pasar por
+  // detrás de ellos (scenes/hero.js). Se mide al arrancar y cuando cambia el tamaño, nunca por cuadro.
+  function measureHero() {
+    const zones = [];
+    const base = document.getElementById('m1').getBoundingClientRect(); // fijada arriba mientras es el momento activo
+    for (const el of document.querySelectorAll('#m1 .hero-lockup, #m1 .hero-copy, #m1 .hero-mini-avatar')) {
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const m = 14; // aire alrededor del bloque (px)
+      zones.push([(r.left - base.left - m) / innerWidth, (r.top - base.top - m) / innerHeight,
+        (r.right - base.left + m) / innerWidth, (r.bottom - base.top + m) / innerHeight]);
+    }
+    backend.setHeroAvoid?.(zones);
+  }
+  let heroTimer = 0;
+  addEventListener('resize', () => {
+    backend.resize();
+    clearTimeout(heroTimer);
+    heroTimer = setTimeout(measureHero, 220);
+  });
 
   // El cursor personalizado se activa desde el primer momento, incluidos el preloader y la pantalla de inicio.
   createCursor();
@@ -207,6 +237,8 @@ export async function createExperience({ canvas, glbBuffer, profile, glModule })
     requestAnimationFrame(frame);
     backend.powerOn();
     activation.start();
+    measureHero();
+    setTimeout(measureHero, 1400); // otra vez cuando el texto del héroe terminó de entrar
     // Dentro del gesto de PRESS START (el navegador lo exige). Los stems (1,6 MB) bajan desde aquí,
     // fuera del presupuesto del héroe; la música entra con fundido cuando llegan.
     audio.start();
