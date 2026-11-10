@@ -23,7 +23,13 @@ export function createM4({ profile }) {
   const quotes = [...stage.querySelectorAll('.m4-quote')].map((el) => ({ el, type: createTyper(el.querySelector('.type'), profile) }));
   const name = stage.querySelector('.m4-name');
   let stageH = 0;
-  const measure = () => { stageH = stage.offsetHeight; };
+  // Profundidad de cada capa: la del marcado (data-depth), salvo que la composición la ajuste por CSS (--depth;
+  // en celular las fotos que flanquean la cita viajan con ella). Se lee al medir, nunca por cuadro.
+  const depthOf = (el) => { const v = parseFloat(getComputedStyle(el).getPropertyValue('--depth')); return Number.isFinite(v) ? v : +el.dataset.depth; };
+  const measure = () => {
+    stageH = stage.offsetHeight;
+    for (const l of layers) l.depth = depthOf(l.el);
+  };
   addEventListener('resize', measure);
   measure();
 

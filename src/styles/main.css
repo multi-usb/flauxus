@@ -533,9 +533,23 @@ html.started #sound {
     transform .25s ease;
 }
 
+/* El vaivén del botón conserva su centrado: la animación reemplaza a «transform», así que cada fotograma repite el
+   translateX(-50%). (Con «hero-scroll-nudge», que solo mueve en Y, el botón quedaba medio ancho a la derecha del
+   centro y en celular se salía de la pantalla; con movimiento reducido no hay animación y por eso no se notaba.) */
+@keyframes cta-nudge {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  55% { transform: translateX(-50%) translateY(5px); }
+}
+
 #osd.on .cta.on {
   visibility: visible;
-  animation: hero-scroll-nudge 2s ease-in-out infinite;
+  animation: cta-nudge 2s ease-in-out infinite;
+}
+
+/* Bajo el cursor o con el foco, el botón se queda quieto y manda su estado propio (inclinación del :hover). */
+#osd.on .cta.on:hover,
+#osd.on .cta.on:focus-visible {
+  animation: none;
 }
 
 .cta:hover,
@@ -3986,6 +4000,11 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
   .ph-d { top: calc(214vh + var(--m4-shift)); }
   .ph-e { top: calc(246vh + var(--m4-shift)); }
   .m4-quote.q2 { top: calc(290vh + var(--m4-shift)); }
+  /* En una sola columna, la cita larga queda entre dos fotos (ph-b arriba, ph-c abajo). Con profundidades
+     distintas el parallax las acercaba hasta pisar la primera y la última línea de la cita (ph-b se atrasaba,
+     ph-c se adelantaba). Aquí las dos viajan a la profundidad de la cita (--depth, lo lee m4-maria-clara.js):
+     el hueco entre ellas es el mismo en todo el recorrido. Las demás capas conservan su parallax. */
+  .ph-b, .ph-c { --depth: 1.05; }
 }
 
 /* Celular en horizontal y ventanas muy bajas (≥ 768 px de ancho, ≤ 560 px de alto): los textos miden lo mismo

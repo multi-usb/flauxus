@@ -17,6 +17,8 @@ export function createGame({ onChange = () => {} } = {}) {
   const close = root.querySelector('.game-close');
   let frame = null;
   let returnFocus = null;
+  let pendingBack = 0; // «atrás» pedidos por hide() que el navegador aún no ha procesado
+  let backTimer = 0;
 
   const inHistory = () => !!history.state?.[HISTORY_FLAG];
 
@@ -76,7 +78,13 @@ export function createGame({ onChange = () => {} } = {}) {
     onChange(false);
     returnFocus?.focus?.({ preventScroll: true });
     returnFocus = null;
-    if (!fromHistory && inHistory()) history.back();
+    if (!fromHistory && inHistory()) {
+      pendingBack++;
+      history.back();
+      // Si ese «atrás» no llegara (navegación cruzada), la cuenta no debe tragarse un «atrás» real del usuario.
+      clearTimeout(backTimer);
+      backTimer = setTimeout(() => { pendingBack = 0; }, 1500);
+    }
   }
 
   close.addEventListener('click', () => hide());
@@ -85,6 +93,13 @@ export function createGame({ onChange = () => {} } = {}) {
 
   // Botón atrás con el juego abierto: se cierra el juego. «Adelante» no reabre una partida: la entrada se retira.
   addEventListener('popstate', () => {
+    // Llega el «atrás» que pidió hide(): no es el usuario. Si entre tanto se abrió otro juego (cerrar y reabrir
+    // seguidos), ese juego recupera su entrada en el historial en vez de cerrarse.
+    if (pendingBack > 0) {
+      pendingBack--;
+      if (frame && !inHistory()) history.pushState({ ...history.state, [HISTORY_FLAG]: true }, '');
+      return;
+    }
     if (frame && !inHistory()) hide({ fromHistory: true });
     else if (!frame && inHistory()) history.back();
   });
