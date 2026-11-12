@@ -61,7 +61,7 @@ export const meta = {
 
 export const LA = (() => {
   const NAMES = ['Fragmento A', 'Fragmento B', 'Fragmento C', 'Fragmento D', 'Fragmento E', 'Fragmento F'];
-  let bounds = [], wf = [], slots = [null, null, null, null], tray = [], cuts = new Map(), playing = false, listened = false, drag = null, ghost = null, chisel = false, papers = [], real = false, fbPad = null;
+  let bounds = [], wf = [], slots = [null, null, null, null], tray = [], cuts = new Map(), playing = false, listened = false, drag = null, ghost = null, endDrag = null, chisel = false, papers = [], real = false, fbPad = null;
   // Cincel: 1 = invertido · 2 = tajo y separación (corta a la mitad, deja un silencio y la 2ª mitad vuelve al revés)
   function playFrag(i, when = 0, short = false) {
     const m = cuts.get(i) || 0, s = bounds[i], e = short ? Math.min(bounds[i + 1], s + 1.2) : bounds[i + 1];
@@ -72,7 +72,7 @@ export const LA = (() => {
   function status() { const n = slots.filter(s => s !== null).length; $('laStatus').textContent = `${n} de 4 espacios compuestos` + (cuts.size ? ` · ${cuts.size} intervenido${cuts.size > 1 ? 's' : ''}` : ''); $('laListen').disabled = n < 4 || playing || !real; $('laConfirm').style.display = (listened && !playing) || (!real && n === 4) ? 'block' : 'none' }
   function cardEl(i, asGhost) {
     const c = document.createElement('div'); c.className = 'lcard' + (cuts.has(i) ? ' cut' : '') + (!asGhost && drag && drag.i === i ? ' lifted' : ''); c.dataset.i = i; if (cuts.has(i)) c.dataset.tag = cuts.get(i) === 1 ? 'invertido' : 'tajo';
-    c.innerHTML = `<strong>${NAMES[i]}</strong><img src="${wf[i]}" alt=""><div class="tiny">${fmt(bounds[i])} – ${fmt(bounds[i + 1])}</div>`; if (!asGhost) c.addEventListener('pointerdown', e => onCard(e, i)); return c
+    c.innerHTML = `<strong>${NAMES[i]}</strong><img src="${wf[i]}" alt="" draggable="false"><div class="tiny">${fmt(bounds[i])} – ${fmt(bounds[i + 1])}</div>`; if (!asGhost) c.addEventListener('pointerdown', e => onCard(e, i)); return c
   }
   function render() {
     const fr = $('laFrame'); fr.innerHTML = ''; slots.forEach((c, i) => { const el = document.createElement('div'); el.className = 'slot' + (c !== null ? ' full' : ''); if (c === null) el.textContent = ['I', 'II', 'III', 'IV'][i]; else el.appendChild(cardEl(c)); fr.appendChild(el) });
@@ -83,24 +83,52 @@ export const LA = (() => {
   function onCard(e, i) {
     if (S.phase !== 'play' || playing) return; e.preventDefault();
     if (chisel) { const n = ((cuts.get(i) || 0) + 1) % 3; if (n) cuts.set(i, n); else cuts.delete(i); hiss(.2, .08, 5000, 0, A.master); shake(n ? 5 : 2); burst(e.clientX, e.clientY, LIMEH, n ? 22 : 8, 260, .6, 3); toast(n === 1 ? 'Cincel · invertido' : n === 2 ? 'Cincel · tajo y separación' : 'Cincel · fragmento restaurado'); if (real && n) { stopClips(); playFrag(i, 0, true) } listened = false; render(); return }
-    const r = e.currentTarget.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, ox = sx - r.left, oy = sy - r.top, pid = e.pointerId; let moved = false;
-    ghost = cardEl(i, true); ghost.classList.add('drag'); ghost.style.width = r.width + 'px'; ghost.style.height = r.height + 'px';
+    /* ARRASTRE. Un solo arrastre a la vez: con un fragmento en el aire, otro dedo (o la palma) sobre una tarjeta no
+       abre un segundo arrastre. Antes lo abría, pisaba la tarjeta fantasma del primero y esta se quedaba pegada en
+       pantalla para siempre (y al soltar saltaba un error que dejaba la interfaz a medias). */
+    if (endDrag) return;
+    /* Punto de agarre en coordenadas de la tarjeta SIN transformar. Con ratón la tarjeta está inclinada y levantada
+       por el «hover»: su caja en pantalla es mayor que la tarjeta y está corrida; medir con ella desplazaba y
+       agrandaba el fragmento al levantarlo. Se deshace esa transformación alrededor del centro de la caja. */
+    const card = e.currentTarget, w = card.offsetWidth, h = card.offsetHeight, r = card.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, pid = e.pointerId;
+    const m = new DOMMatrix(getComputedStyle(card).transform), det = m.a * m.d - m.b * m.c || 1, cx = sx - (r.left + r.width / 2), cy = sy - (r.top + r.height / 2);
+    const ox = clamp((m.d * cx - m.c * cy) / det + w / 2, 0, w), oy = clamp((m.a * cy - m.b * cx) / det + h / 2, 0, h);
+    let moved = false;
+    const g = ghost = cardEl(i, true); g.classList.add('drag'); g.style.width = w + 'px'; g.style.height = h + 'px';
+    /* La tarjeta fantasma se mueve solo con transform (sin recalcular la maquetación en cada evento) y gira y crece
+       alrededor del punto agarrado: ese punto queda exactamente bajo el dedo, se agarre por donde se agarre. */
+    g.style.transformOrigin = ox + 'px ' + oy + 'px';
+    const place = (x, y) => { g.style.transform = `translate3d(${x - ox}px,${y - oy}px,0) scale(1.1) rotate(-3deg)` };
+    const slotsEl = () => document.querySelectorAll('#laFrame .slot');
+    /* La captura mantiene el gesto aunque el puntero salga de la ventana o del marco de la landing. */
+    try { card.setPointerCapture(pid) } catch { }
     const mv = ev => {
-      if (ev.pointerId !== pid) return; if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 7) { moved = true; document.body.appendChild(ghost); drag = { i }; render() }
-      if (moved) { ghost.style.left = (ev.clientX - ox) + 'px'; ghost.style.top = (ev.clientY - oy) + 'px'; const s = slotEl(ev.clientX, ev.clientY); document.querySelectorAll('#laFrame .slot').forEach(x => x.classList.toggle('hover', x === s)) }
+      if (ev.pointerId !== pid) return;
+      /* Al despegar NO se vuelve a pintar la bandeja (antes se reconstruía entera y se destruía la tarjeta que tenía
+         el puntero): basta con atenuar la original. */
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) > 7) { moved = true; drag = { i }; card.classList.add('lifted'); place(ev.clientX, ev.clientY); $('laUI').appendChild(g) } // dentro de #laUI: hereda la letra y el relleno de las tarjetas de cada formato
+      if (moved) { place(ev.clientX, ev.clientY); const s = slotEl(ev.clientX, ev.clientY); slotsEl().forEach(x => x.classList.toggle('hover', x === s)) }
     };
-    const up = ev => {
-      if (ev.pointerId !== pid) return; removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
-      if (!moved) { ghost = null; if (real) { stopClips(); playFrag(i) } return } // toque = oír el fragmento
-      const s = slotEl(ev.clientX, ev.clientY); ghost.remove(); ghost = null; drag = null;
+    /* Fin del gesto. `drop` = se soltó de verdad; sin él (pointercancel, la ventana pierde el foco, la sala se
+       cierra) el fragmento vuelve a su sitio y nada cambia: antes una cancelación lo «soltaba» donde estuviera. */
+    const end = (ev, drop) => {
+      removeEventListener('pointermove', mv); removeEventListener('pointerup', up); removeEventListener('pointercancel', cancel); removeEventListener('blur', cancel);
+      try { card.releasePointerCapture(pid) } catch { }
+      endDrag = null; g.remove(); if (ghost === g) ghost = null; drag = null; card.classList.remove('lifted'); slotsEl().forEach(x => x.classList.remove('hover'));
+      if (!drop) return;
+      if (!moved) { if (real) { stopClips(); playFrag(i) } return } // toque = oír el fragmento
+      const s = slotEl(ev.clientX, ev.clientY);
       if (s) {
-        const si = [...document.querySelectorAll('#laFrame .slot')].indexOf(s); const prev = slots[si]; removeFrom(i); if (prev !== null && prev !== i) tray.push(prev); slots[si] = i;
+        const si = [...slotsEl()].indexOf(s); const prev = slots[si]; removeFrom(i); if (prev !== null && prev !== i) tray.push(prev); slots[si] = i;
         burst(ev.clientX, ev.clientY, LIMEH, 16, 220, .5, 3); ringFx(ev.clientX, ev.clientY, LIMEH, 10, 80, .4, 2); ftext(ev.clientX, ev.clientY - 40, 'encaja', LIMEH, 18); if (real) { stopClips(); playFrag(i, 0, true) }
       }
       else { removeFrom(i); tray.push(i); tone(180, .08, 'triangle', .04, 0, A.master) }
       listened = false; render()
     };
-    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', up)
+    const up = ev => { if (ev.pointerId === pid) end(ev, S.phase === 'play' && !playing) };
+    const cancel = ev => { if (ev?.pointerId === undefined || ev.pointerId === pid) end(ev, false) };
+    endDrag = () => end(null, false);
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); addEventListener('pointercancel', cancel); addEventListener('blur', cancel)
   }
   function play() {
     if (slots.some(s => s === null) || playing || !real) return; playing = true; status(); ensureAudio(); stopClips(); let t = 0; const els = [...document.querySelectorAll('#laFrame .slot')];
@@ -211,7 +239,7 @@ export const LA = (() => {
       avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
       avatarObj.rotation.y = gp.yaw ?? 0;
 
-      cuts = new Map(); playing = false; listened = false; drag = null; chisel = false; real = recOk(6);
+      endDrag?.(); cuts = new Map(); playing = false; listened = false; drag = null; chisel = false; real = recOk(6);
       const reg = regionFor(6); bounds = splitRegion(6, reg.from, reg.to, 6); wf = [0, 1, 2, 3, 4, 5].map(i => wfImg(recPeaks(6, bounds[i], bounds[i + 1], 36)));
       slots = [null, null, null, null]; tray = [0, 1, 2, 3, 4, 5]; if (!real) { fbPad = pad([110, 165, 220], .05); fbPad.set(1) }
       $('laUI').style.display = 'block'; const cb = $('chiselBtn'); cb.style.display = S.mod.has('chisel') ? 'block' : 'none'; cb.classList.remove('on'); cb.classList.toggle('nudge', S.mod.has('chisel')); cb.textContent = '✂ Cincel'; if (S.mod.has('chisel')) setTimeout(() => { if (S.phase === 'play' && S.room === 6) toast('Cincel de Deconstrucción listo · actívalo para intervenir') }, 900);
@@ -251,6 +279,6 @@ export const LA = (() => {
       animAvatar(avatarObj, 0, t3, true, A.lvl);
       if (bloom) bloom.strength = .55;
     },
-    draw() { }, stop() { $('laUI').style.display = 'none'; ghost?.remove(); ghost = null; stopClips() }
+    draw() { }, stop() { endDrag?.(); $('laUI').style.display = 'none'; ghost?.remove(); ghost = null; stopClips() }
   }
 })();

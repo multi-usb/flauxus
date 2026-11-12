@@ -169,7 +169,11 @@ export const FA = (() => {
       zObj.forEach((o, i) => { const p = prog[i], done = on[i]; o.fill.material.opacity = p * .4; o.fill.scale.setScalar(.2 + p * .8); o.ring.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.color.setHex(done || p > 0 ? LIME : PALE); o.beam.material.opacity = .12 + p * .4; o.ring.rotation.z += dt * .5 });
       discs.forEach(d => { d.material.opacity = Math.max(0, d.material.opacity - dt * .35); d.scale.setScalar(Math.max(.2, d.scale.x - dt * .1)) });
       if (magic) { magic.emit(avatarObj.position, moving ? (keys.has('ShiftLeft') ? 8 : 5.4) : 0, dt); magic.update(dt, GX.renderer) }
-      ribbon?.update(t3, .85 + Math.min(.6, (A.lvl || 0) * .6)); // la cinta late con el volumen de la música animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
+      ribbon?.update(t3, .85 + Math.min(.6, (A.lvl || 0) * .6)); // la cinta late con el volumen de la música
+      /* María Clara camina con su flauta: piernas del clip «walk» y brazos por IK; quieta, la misma pose de flauta.
+         Esta llamada va en su propia línea: al añadir la cinta quedó detrás del comentario «//» de arriba y dejó de
+         ejecutarse (la avatar se deslizaba congelada y sin flauta por toda la sala). */
+      animAvatar(avatarObj, moving ? 5.4 : 0, t3, !moving, A.lvl); if (bloom) bloom.strength = .6
     },
     draw() {
       const k = TOUCH ? .78 : 1, cx = W - 112 * k, cy = H - (TOUCH ? 250 : 200), r = 74 * k, s = r / RM; ctx.save(); ctx.fillStyle = 'rgba(13,14,9,.72)'; ctx.strokeStyle = 'rgba(194,254,11,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.283); ctx.fill(); ctx.stroke();

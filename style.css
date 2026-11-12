@@ -1763,11 +1763,17 @@
       color: var(--fg-3)
     }
 
+    /* Fragmento en el aire: rooms/LA.js lo mueve con transform desde la esquina de la ventana. Sin transición
+       (la de .lcard lo haría ir 150 ms por detrás del dedo). */
     .lcard.drag {
       position: fixed;
+      left: 0;
+      top: 0;
       z-index: 80;
       cursor: grabbing;
       transform: scale(1.1) rotate(-3deg);
+      transition: none;
+      will-change: transform;
       box-shadow: 12px 20px 28px rgba(0, 0, 0, .55);
       pointer-events: none;
       margin: 0
