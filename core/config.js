@@ -59,10 +59,10 @@ export const SHADOW_R = 9; // radio (m) del frustum de sombra alrededor del avat
 export const PRELUDE = { enabled: true, R: 14, start: { x: 0, z: 4.2 }, trigR: 2.5 };
 
 /* ---------------- locución grabada ----------------
-   Las fichas de sala declaran los archivos de la voz en off (Voz_DO4, Voz_LAs4_1…), pero las grabaciones aún
-   no existen en el proyecto: sondearlas (.mp3 y luego .wav) dejaba dos 404 por fragmento en la consola en cada
-   entrada a una sala. Mientras no existan, la locución se subtitula con ritmo de lectura y no se pide ningún
-   archivo. Cuando se añadan los Voz_*.mp3 junto a index.html, basta pasar esto a true. */
-export const VO_AUDIO = false;
+   Cada sala tiene su narración en audio/locucion/<SALA>.ogg · .m4a y sus subtítulos por frases, con los tiempos
+   de esa grabación, en audio/locucion/pistas.js (ui/voice.js). Con false no se pide ningún archivo de voz y los
+   mismos subtítulos avanzan con su reloj propio. (Los nombres Voz_* que aún figuran en `vo.files` de las
+   fichas eran provisionales, de antes de existir las grabaciones: ya no se usan.) */
+export const VO_AUDIO = true;
 
 export const EXPERIMENT = { miToFa: true }; // el fraseo de MI mueve ligeramente el tempo de FA (PENDIENTE DE VALIDACIÓN)

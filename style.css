@@ -3117,3 +3117,36 @@
     /* Celular en horizontal: el tope de la caja (26dvh ≈ 101 px) daba dos líneas y media; con 108 px caben tres
        enteras (3 × 21 px + rótulo + márgenes). */
     @media (max-height: 500px) and (min-aspect-ratio: 4/5) { #hud #vo { max-height: 108px } }
+
+    /* =====================================================================
+       ITERACIÓN 5 · SUBTÍTULOS DE LA LOCUCIÓN
+       Una frase a la vez (ui/voice.js), en una caja que SIEMPRE mide dos líneas: no cambia de alto al cambiar de
+       frase, así que ni el HUD ni el encuadre de la cámara (que usa su borde superior) se mueven mientras María
+       Clara habla. Sigue en la región «voz» del HUD —franja inferior, sobre los controles táctiles—, igual en
+       todas las salas. Letra ≥ 16 px en cualquier formato, sobre veladura oscura (contraste AA de sobra).
+       ===================================================================== */
+    #hud #vo { max-width: 680px; max-height: none; overflow: hidden; padding: 10px 16px 12px; background: rgba(0, 0, 0, .8) }
+    #hud #vo .who { margin-bottom: 4px }
+    #hud #voText {
+      position: relative;
+      height: 3em;                      /* dos líneas exactas: 2 × 1,5 */
+      overflow: hidden;
+      font-size: clamp(16px, 2.1vw, 20px);
+      line-height: 1.5
+    }
+    #voText .vl, #voText .vm { position: absolute; left: 0; right: 0; top: 0; text-wrap: balance }
+    #voText .vm { visibility: hidden; pointer-events: none }           /* medidor: cuántas líneas ocuparía una frase */
+    #voText .vl {
+      bottom: 0;
+      display: flex;
+      align-items: center;              /* una sola línea queda centrada en la caja */
+      opacity: 0;
+      transform: translateY(6px)
+    }
+    #voText .vl.on { opacity: 1; transform: none; transition: opacity .2s var(--ease), transform .2s var(--ease) }
+    #voText .vl.out { opacity: 0; transform: translateY(-6px); transition: opacity .18s var(--ease), transform .18s var(--ease) }
+    @media (prefers-reduced-motion: reduce) {
+      #voText .vl, #voText .vl.on, #voText .vl.out { transition: none; transform: none }
+    }
+    /* texto para lectores de pantalla (aria-live): presente pero sin ocupar sitio */
+    #voLive { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }

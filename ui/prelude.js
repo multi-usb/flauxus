@@ -16,7 +16,7 @@ import { avatarObj } from '../engine/avatar.js';
 import { glowSprite, makeTextSprite, clearGroup } from '../engine/materials.js';
 import { A } from '../AudioSystem.js';
 import { player, stopAuto, updateCam, resetPlayerForPrelude } from '../player.js';
-import { voRun, voStop, VO } from './voice.js';
+import { voRun, voStop, voPreload, VO } from './voice.js';
 import { fade } from './hud.js';
 import { toast } from './toast.js';
 
@@ -69,6 +69,7 @@ export function initPrelude(id, narrate = true) {
   resetPlayerForPrelude(startPos, floorY);
   avatarObj.position.copy(player); avatarObj.rotation.y = startPos.yaw;
   stopAuto(); A.ambient?.set(.35, .8); updateCam();
+  voPreload(id);   // la grabación de la voz se pide ya, mientras la cortina aún tapa la sala
   if (narrate) voRun(id);
 }
 
