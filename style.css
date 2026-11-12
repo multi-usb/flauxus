@@ -3144,7 +3144,8 @@
       transform: translateY(6px)
     }
     #voText .vl.on { opacity: 1; transform: none; transition: opacity .2s var(--ease), transform .2s var(--ease) }
-    #voText .vl.out { opacity: 0; transform: translateY(-6px); transition: opacity .18s var(--ease), transform .18s var(--ease) }
+    /* la que sale se va en la mitad de tiempo: así no se leen dos frases montadas durante el relevo */
+    #voText .vl.out { opacity: 0; transform: translateY(-6px); transition: opacity .09s ease-out, transform .18s var(--ease) }
     @media (prefers-reduced-motion: reduce) {
       #voText .vl, #voText .vl.on, #voText .vl.out { transition: none; transform: none }
     }
