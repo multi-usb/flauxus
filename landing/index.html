@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="es" class="locked">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <title>FLAUXUS</title>
+  <meta name="description" content="Un dispositivo de identidad: la práctica de un artista, jugable en una URL." />
+  <link rel="icon" href="/brand/flauxus-iso.svg" type="image/svg+xml" />
+  <!-- Solo para pruebas automatizadas (?raf=timer): una página que no se está pintando (pestaña o panel oculto)
+       no recibe requestAnimationFrame y la experiencia quedaría detenida. No se usa en la versión publicada. -->
+  <script>
+    if (new URLSearchParams(location.search).get('raf') === 'timer') {
+      window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 16);
+      window.cancelAnimationFrame = (id) => clearTimeout(id);
+      Object.defineProperty(document, 'hidden', { get: () => false });
+      Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+    }
+  </script>
+  <style>
+    html,
+    body {
+      background: #020403
+    }
+
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: #020403;
+      overflow: hidden;
+      z-index: 2147483647
+    }
+
+    html:not(.boot-css-ready) #boot>* {
+      visibility: hidden !important
+    }
+
+    #boot .boot-figure {
+      visibility: hidden
+    }
+
+    #boot:not(.ready) .boot-home-left,
+    #boot:not(.ready) .boot-home-right,
+    #boot:not(.ready) .home-tagline,
+    #boot:not(.ready) .press-start,
+    #boot:not(.ready) .home-audio-caption {
+      visibility: hidden !important;
+      opacity: 0 !important;
+      animation: none !important
+    }
+
+    html:not(.started) #gl,
+    html:not(.started) #flat,
+    html:not(.started) #story,
+    html:not(.started) #scanlines {
+      visibility: hidden !important
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 0 · Inicio: el logotipo se reconstruye; la cinta carga; PRESS START arranca imagen y sonido -->
+  <div id="boot" role="dialog" aria-label="FLAUXUS">
+    <!-- La figura de espaldas solo existe en la composición ancha: en celular, tableta vertical y celular
+         horizontal no se muestra (main.css) y tampoco se descarga (se sirve un píxel transparente). -->
+    <picture>
+      <source
+        media="(max-width: 767px), (max-width: 1099px) and (orientation: portrait), (max-height: 500px) and (orientation: landscape)"
+        srcset="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+      <img class="boot-figure boot-home-left" src="/images/personaje/posterior.webp" alt="" aria-hidden="true" />
+    </picture>
+    <img class="boot-figure boot-home-right" src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />
+    <img class="boot-figure boot-preload-left" src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />
+    <img class="boot-figure boot-preload-right" src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />
+    <i class="boot-glass boot-glass-left" aria-hidden="true"></i>
+    <i class="boot-glass boot-glass-top" aria-hidden="true"></i>
+    <div class="boot-logo"></div>
+    <div class="boot-tape" aria-live="polite">
+      <div class="tape-bar" role="progressbar" aria-label="Carga de la experiencia" aria-valuemin="0"
+        aria-valuemax="100" aria-valuenow="0">
+        <svg class="tape-flute" viewBox="0 0 408 48" aria-hidden="true">
+          <defs>
+            <clipPath id="flute-progress-clip">
+              <rect class="flute-progress-rect" x="0" y="0" width="0" height="48" />
+            </clipPath>
+          </defs>
+          <g class="flute-fill" fill="currentColor" clip-path="url(#flute-progress-clip)">
+            <path
+              d="M4 20c7-1 14-1.5 22-1.5h86c8 0 13-1.6 20-4.1 8-2.9 17-3.2 25-.8 7 2.1 11 4.9 19 4.9h131v12H176c-8 0-12 2.8-19 4.9-8 2.4-17 2.1-25-.8-7-2.5-12-4.1-20-4.1H26c-8 0-15-.5-22-1.5z" />
+            <path d="M307 18.5h77q10 0 22 3.5v4q-12 3.5-22 3.5h-77z" />
+          </g>
+          <g fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round">
+            <path
+              d="M4 20c7-1 14-1.5 22-1.5h86c8 0 13-1.6 20-4.1 8-2.9 17-3.2 25-.8 7 2.1 11 4.9 19 4.9h131v12H176c-8 0-12 2.8-19 4.9-8 2.4-17 2.1-25-.8-7-2.5-12-4.1-20-4.1H26c-8 0-15-.5-22-1.5z" />
+            <path
+              d="M13 19v10M22 18.5v11M108 18.5v11M120 17.5v13M158 19.5v9M176 18.5v11M307 18.5h77q10 0 22 3.5v4q-12 3.5-22 3.5h-77" />
+            <path d="M319 18.5v11M342 18.5v11M365 18.5v11M388 19.5v9" />
+            <ellipse cx="35" cy="24.5" rx="5.8" ry="4.2" />
+            <ellipse cx="174" cy="24.5" rx="5.8" ry="4.2" />
+            <ellipse cx="201" cy="24.5" rx="5.8" ry="4.2" />
+            <ellipse cx="228" cy="24.5" rx="5.8" ry="4.2" />
+            <circle cx="330" cy="17.5" r="2.1" />
+            <circle cx="330" cy="34.5" r="2.1" />
+            <circle cx="353" cy="17.5" r="2.1" />
+            <circle cx="353" cy="34.5" r="2.1" />
+            <circle cx="376" cy="18.5" r="2" />
+            <circle cx="376" cy="33.5" r="2" />
+          </g>
+          <g fill="#11170a" stroke="currentColor" stroke-width="1">
+            <ellipse cx="35" cy="24.5" rx="4.2" ry="3" />
+            <ellipse cx="174" cy="24.5" rx="4.2" ry="3" />
+            <ellipse cx="201" cy="24.5" rx="4.2" ry="3" />
+            <ellipse cx="228" cy="24.5" rx="4.2" ry="3" />
+          </g>
+        </svg>
+      </div>
+      <p class="tape-label"><span class="tape-pct">0</span>% · Tomando aire para sonar...</p>
+    </div>
+    <p class="home-tagline">La flautista aumentada <strong>y su ecosistema interactivo</strong></p>
+    <button class="press-start waiting" type="button" disabled aria-label="Entrar a vivir la experiencia"><i
+        class="home-play" aria-hidden="true"></i><span>Entrar a vivir <strong>la experiencia</strong></span></button>
+    <p class="home-audio-caption"><svg aria-hidden="true" viewBox="0 0 24 24">
+        <path
+          d="M4 13v-2a8 8 0 0 1 16 0v2M4 13a2 2 0 0 0 2 2h1v-5H6a2 2 0 0 0-2 2Zm16 0a2 2 0 0 1-2 2h-1v-5h1a2 2 0 0 1 2 2Z"
+          fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M12 18h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg> Experiencia sonora inmersiva</p>
+  </div>
+
+  <canvas id="gl" aria-hidden="true"></canvas>
+
+  <!-- Respaldo sin WebGL: vistas reales del personaje como hoja de modelo -->
+  <div id="flat" aria-hidden="true">
+    <figure class="flat-sheet">
+      <img data-src="/images/personaje/posterior.webp" alt="" />
+      <img data-src="/images/personaje/lateral.webp" alt="" />
+      <img data-src="/images/personaje/izquierda.webp" alt="" />
+      <img data-src="/images/personaje/frontal.webp" alt="" />
+    </figure>
+  </div>
+
+  <div id="scanlines" aria-hidden="true"></div>
+
+  <!-- HUD del portal: se alinea con la pantalla 3D en cada cuadro -->
+  <div id="osd" aria-hidden="true">
+    <div class="osd-screen"><img class="osd-poster" alt="" /></div>
+    <p class="osd-prompt prompt-tag">[E] ENCONTRAR EL SONIDO</p>
+    <button class="cta" type="button" tabindex="-1" data-cursor data-scramble>[ JUEGA YA ]</button>
+  </div>
+
+  <!-- HUD fijo -->
+  <div id="hud" aria-hidden="true">
+    <span class="hud-iso"></span>
+    <p class="hud-chapter">01 / 06</p>
+    <p class="hud-counter">00:00:00</p>
+    <p class="hud-rewind">TOMANDO AIRE ∿∿</p>
+    <i class="hud-hint"></i>
+    <span class="hud-scroll" aria-hidden="true"><i>↓</i><small>Desliza para descubrir</small></span>
+  </div>
+  <!-- Secuencia de activación + telemetría del Momento 1 (ui/activation.js) -->
+  <div id="sys" aria-hidden="true" hidden>
+    <div class="sys-log"></div>
+    <p class="sys-hint"><span class="d">[ CURSOR ] RADIOGRAFÍA · [ CLIC ] PULSO DO4</span><span class="t">[ TOCA ]
+        RADIOGRAFÍA Y PULSO DO4</span></p>
+  </div>
+  <!-- Atajo al portal: siempre a mano (fuera del portal) -->
+  <button id="hud-cta" class="prompt-btn" type="button" data-cursor data-scramble>[ JUEGA YA ]</button>
+  <button id="sound" type="button" aria-pressed="true" aria-label="Sonido" data-cursor></button>
+
+  <main id="story">
+    <!-- 1 · Impacto: primer plano extremo + logotipo -->
+    <section id="m1" class="moment" aria-label="FLAUXUS">
+      <!-- El título y la frase viven en la pantalla 3D (scenes/wall.js); aquí, para lectores de pantalla -->
+      <h1 class="sr-only">FLAUXUS</h1>
+      <p class="sr-only">María Clara. La flautista que se convierte en cyborg, nota a nota.</p>
+      <button class="hero-mini-avatar" type="button" aria-label="Comenzar a explorar con María Clara" data-cursor>
+        <img src="/images/personaje/frontal.webp" alt="" aria-hidden="true" />
+      </button>
+      <div class="hero-composition">
+        <div class="hero-lockup">
+          <img src="/brand/flauxus-cuadrado-blanco.svg" alt="FLAUXUS" />
+          <p class="hero-artist"><strong>María Clara</strong> Lozada Ocampo</p>
+          <div class="hero-manifesto">
+            <p class="hero-desc">Una experiencia para explorar el sonido, el cuerpo, la tradición y la tecnología.</p>
+          </div>
+          <span class="hero-scroll" aria-hidden="true"><i>↓</i><small>Desliza para descubrir</small></span>
+        </div>
+        <div class="hero-copy">
+          <p>La flautista que se<br />convierte en cyborg,<br /><strong>nota a nota.</strong></p>
+          <button class="hero-explore" type="button">Comenzar a explorar</button>
+          <p class="hero-cursor-hint"><i></i><span><strong>Pasa el</strong> cursor</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · Portal: JUEGA YA (el portal vive en el lienzo; el HUD en #osd) -->
+    <section id="m2" class="moment" aria-label="Juega ya">
+      <p class="sr-only">Portal con el concept art del juego. Botón: JUEGA YA.</p>
+    </section>
+
+    <!-- 3 · Universo -->
+    <section id="m3" class="moment" aria-label="Qué es FLAUXUS">
+      <div class="m3-vert" aria-hidden="true"></div>
+      <p class="m3-spec" aria-hidden="true">DO4 → LA♯4<br />261,63 – 466,16 Hz<br />6 / ◀◀</p>
+      <i class="cross x1" aria-hidden="true"></i><i class="cross x2" aria-hidden="true"></i><i class="cross x3"
+        aria-hidden="true"></i>
+      <div class="m3-a">
+        <p class="m3-a1" data-text="Un dispositivo de identidad:"></p>
+        <p class="m3-a2" data-text="la práctica de un artista, jugable en una URL."></p>
+      </div>
+      <div class="m3-b">
+        <p class="m3-b1" data-text="Cuando algo falla, el aire vuelve a soplar."></p>
+      </div>
+      <p class="m3-c t-mega reveal" aria-label="Aquí nadie pierde."><span>Aquí nadie</span><span>pierde.</span></p>
+      <ol class="scale" aria-label="Escala de las seis salas">
+        <li>DO4</li>
+        <li>RE4</li>
+        <li>MI4</li>
+        <li>FA<span class="sharp" data-sharp></span>4</li>
+        <li>SOL<span class="sharp" data-sharp></span>4</li>
+        <li>LA<span class="sharp" data-sharp></span>4</li>
+      </ol>
+    </section>
+
+    <!-- 4 · María Clara: composición editorial -->
+    <section id="m4" class="moment" aria-label="María Clara Lozada Ocampo">
+      <div class="m4-stage-mask">
+        <div class="m4-stage">
+          <h2 class="m4-name" data-depth="0.45"><span>María Clara</span><span>Lozada Ocampo</span></h2>
+          <figure class="ph ph-a" data-depth="1.15"><img src="/images/fotos/brazo-dorado.webp"
+              alt="María Clara Lozada Ocampo extiende su flauta hacia la cámara" loading="lazy" decoding="async"
+              width="782" height="1150" /><i class="ph-scan"></i></figure>
+          <figure class="ph ph-b" data-depth="0.8"><img src="/images/fotos/partituras-vestido-blanco.webp"
+              alt="María Clara Lozada Ocampo sentada entre partituras, vista desde arriba" loading="lazy"
+              decoding="async" width="1600" height="900" /><i class="ph-scan"></i></figure>
+          <figure class="ph ph-c" data-depth="1.35"><img src="/images/fotos/flauta-luz-magenta.webp"
+              alt="María Clara Lozada Ocampo con su flauta bajo luz magenta" loading="lazy" decoding="async" width="900"
+              height="1600" /><i class="ph-scan"></i></figure>
+          <figure class="ph ph-d" data-depth="0.95"><img src="/images/fotos/mano-partitura.webp"
+              alt="María Clara Lozada Ocampo detrás de una partitura iluminada" loading="lazy" decoding="async"
+              width="1600" height="1067" /><i class="ph-scan"></i></figure>
+          <figure class="ph ph-e" data-depth="1.2"><img src="/images/fotos/retrato-sala.webp"
+              alt="María Clara Lozada Ocampo de pie en una sala con piso de madera" loading="lazy" decoding="async"
+              width="632" height="1142" /><i class="ph-scan"></i></figure>
+          <!-- Microcontenidos (iteración 5): un marcador por fotografía. El script (moments/m4-maria-clara.js) lo ancla a
+               su foto (data-for; data-at = punto de la foto, lejos del rostro), lo despliega con hover o foco en
+               escritorio y con un toque en táctil. Los textos salen del Guion Técnico de Interacción v3.0 (fichas
+               de sala y locuciones de María Clara); no se añade ningún dato que no conste ahí. -->
+          <div class="m4-tip" data-for="ph-a" data-at="0.05 0.8">
+            <button class="m4-tip-btn" type="button" aria-expanded="false" aria-controls="m4-tip-a"
+              aria-describedby="m4-tip-a" data-cursor><span class="m4-tip-chip"><i class="m4-tip-dot"
+                  aria-hidden="true"></i>Intervención</span></button>
+            <p class="m4-tip-text" id="m4-tip-a">Interviene obras del repertorio canónico para flauta con técnicas extendidas, electrónica e improvisación.</p>
+          </div>
+          <div class="m4-tip" data-for="ph-b" data-at="0.08 0.76">
+            <button class="m4-tip-btn" type="button" aria-expanded="false" aria-controls="m4-tip-b"
+              aria-describedby="m4-tip-b" aria-label="MataЯ al padre" data-cursor><span class="m4-tip-chip"><i class="m4-tip-dot"
+                  aria-hidden="true"></i>Mata<span class="mirror" aria-hidden="true">R</span> al padre</span></button>
+            <p class="m4-tip-text" id="m4-tip-b">Una metáfora y un detonante creativo: la intérprete asume un lugar de autoridad frente a la tradición.</p>
+          </div>
+          <div class="m4-tip" data-for="ph-c" data-at="0.06 0.8">
+            <button class="m4-tip-btn" type="button" aria-expanded="false" aria-controls="m4-tip-c"
+              aria-describedby="m4-tip-c" data-cursor><span class="m4-tip-chip"><i class="m4-tip-dot"
+                  aria-hidden="true"></i>Unicornio cyborg</span></button>
+            <p class="m4-tip-text" id="m4-tip-c">En «Unscheduled Disassembly» (2024) usó teléfonos como sensores de movimiento durante el performance.</p>
+          </div>
+          <div class="m4-tip" data-for="ph-d" data-at="0.5 0.8">
+            <button class="m4-tip-btn" type="button" aria-expanded="false" aria-controls="m4-tip-d"
+              aria-describedby="m4-tip-d" data-cursor><span class="m4-tip-chip"><i class="m4-tip-dot"
+                  aria-hidden="true"></i>Seis salas</span></button>
+            <p class="m4-tip-text" id="m4-tip-d">Seis salas sobre la escala de tonos enteros: DO, RE, MI, FA♯, SOL♯ y LA♯.</p>
+          </div>
+          <div class="m4-tip" data-for="ph-e" data-at="0.06 0.78">
+            <button class="m4-tip-btn" type="button" aria-expanded="false" aria-controls="m4-tip-e"
+              aria-describedby="m4-tip-e" data-cursor><span class="m4-tip-chip"><i class="m4-tip-dot"
+                  aria-hidden="true"></i>El cuerpo</span></button>
+            <p class="m4-tip-text" id="m4-tip-e">Tocar ocupando espacio: «la dimensión corporal no se agota en la técnica».</p>
+          </div>
+          <div class="m4-facts" data-depth="1">
+            <p>Flautista e intérprete de música contemporánea y expandida</p>
+            <p>Su práctica se mueve entre la tradición académica, la electrónica y el cuerpo</p>
+          </div>
+          <blockquote class="m4-quote q1" data-depth="1.05">
+            <p class="type"
+              data-text="«Construir un cuerpo disciplinado para la interpretación de música académica occidental implica un conflicto silencioso: una tensión entre la estandarización de la práctica y la demanda de ser yo, una artista única y original.»">
+            </p>
+            <cite>Carrusel 1, lámina 1</cite>
+          </blockquote>
+          <blockquote class="m4-quote q2" data-depth="1.05">
+            <p class="type" data-text="«Entonces puedo hacer lo que quiera.»"></p>
+            <cite>Carrusel 1, lámina 8</cite>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · Las seis salas: osciloscopio XY -->
+    <section id="m5" class="moment" aria-label="Las seis salas">
+      <div class="osc-wrap">
+        <canvas class="osc" aria-hidden="true"></canvas>
+        <p class="osc-freq" aria-hidden="true"></p>
+      </div>
+      <ol class="notes"></ol>
+      <div class="sala-detail" aria-live="polite">
+        <p class="sala-note split"></p>
+        <h3 class="sala-title"></h3>
+        <!-- Entrar a la sala: tecla E en escritorio; en pantallas táctiles, tocar este botón -->
+        <button class="prompt-tag sala-prompt" type="button" data-cursor></button>
+      </div>
+      <blockquote class="m5-quote">
+        <p class="type" data-text="«la octava en realidad no termina donde empieza, termina al doble de frecuencia.»">
+        </p>
+        <cite>María Clara Lozada Ocampo</cite>
+      </blockquote>
+    </section>
+
+    <!-- 6 · Cierre -->
+    <section id="m6" class="moment m6" aria-label="Créditos">
+      <div class="m6-inner">
+        <h2 class="m6-title" aria-label="REWIND/FLAUXUS">
+          <span class="m6-rewind" aria-hidden="true">by REWIND/</span>
+          <span class="m6-logo" aria-hidden="true"></span>
+        </h2>
+        <!-- Identidad institucional: logotipo oficial (versión vertical en blanco, tal como lo publica
+             javerianacali.edu.co), sin recortes ni cambios de color o proporción, con su área de respeto. -->
+        <div class="m6-inst-block r">
+          <a class="m6-uni" href="https://www.javerianacali.edu.co/" target="_blank" rel="noopener noreferrer" data-cursor
+            aria-label="Pontificia Universidad Javeriana Cali, se abre en una pestaña nueva"><img
+              src="/brand/javeriana-cali-vertical-blanco.svg" alt="Pontificia Universidad Javeriana Cali" width="155"
+              height="165" decoding="async" /></a>
+          <p class="m6-prog"><span>Maestría en Comunicación y Creación Interactiva</span><span>Pontificia Universidad
+              Javeriana Cali</span></p>
+        </div>
+        <!-- Créditos académicos. Cada nombre enlaza a su perfil público (pestaña nueva). Los cargos son los de
+             los créditos originales del proyecto; no se añaden títulos ni trayectorias. -->
+        <footer class="m6-credits" aria-label="Créditos del proyecto">
+          <section class="m6-group m6-team" aria-labelledby="m6-team-k">
+            <h3 class="m6-k r" id="m6-team-k">Integrantes</h3>
+            <dl>
+              <div class="r">
+                <dt>Dirección Transmedia &amp; Curaduría</dt>
+                <dd><a class="m6-person" href="https://www.linkedin.com/in/annaoc/" target="_blank"
+                    rel="noopener noreferrer" data-cursor>Ana María Ocampo Coutin<span class="sr-only"> · perfil de LinkedIn, se abre en una pestaña nueva</span></a></dd>
+              </div>
+              <div class="r">
+                <dt>Dirección UX &amp; WebGL</dt>
+                <dd><a class="m6-person" href="https://www.linkedin.com/in/santiago-labrador/" target="_blank"
+                    rel="noopener noreferrer" data-cursor>Santiago David Labrador Navarro<span class="sr-only"> · perfil de LinkedIn, se abre en una pestaña nueva</span></a></dd>
+              </div>
+              <div class="r">
+                <dt>Dirección de Arte 3D &amp; UI</dt>
+                <dd><a class="m6-person"
+                    href="https://www.linkedin.com/in/jaime-andr%C3%A9s-messa-enr%C3%ADquez-230a12174/" target="_blank"
+                    rel="noopener noreferrer" data-cursor>Jaime Andrés Messa Enríquez<span class="sr-only"> · perfil de LinkedIn, se abre en una pestaña nueva</span></a></dd>
+              </div>
+            </dl>
+          </section>
+          <section class="m6-group m6-academic" aria-labelledby="m6-academic-k">
+            <h3 class="m6-k r" id="m6-academic-k">Dirección académica</h3>
+            <dl>
+              <div class="r">
+                <dt>Directora de proyecto</dt>
+                <dd><a class="m6-person" href="https://www.javerianacali.edu.co/profesores/juliana-pino-mesa"
+                    target="_blank" rel="noopener noreferrer" data-cursor>Juliana Pino Mesa<span class="sr-only"> · perfil académico en la Pontificia Universidad Javeriana Cali, se abre
+                      en una pestaña nueva</span></a>
+                  <span class="m6-inst" aria-hidden="true">Perfil académico · Javeriana Cali</span>
+                </dd>
+              </div>
+              <div class="r m6-artist">
+                <dt>Artista colaboradora</dt>
+                <dd>María Clara Lozada Ocampo</dd>
+              </div>
+            </dl>
+          </section>
+        </footer>
+        <!-- «Tomar aire de nuevo» rebobina al inicio. El ícono de Instagram queda listo para enlazar la cuenta
+             del proyecto: cuando exista, basta con dar el destino aquí (data-instagram) y decidir su uso. -->
+        <button class="prompt-btn rewind-btn r" type="button" data-cursor data-scramble data-instagram=""><svg
+            class="ig-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="3" y="3" width="18" height="18" rx="5.2" />
+            <circle cx="12" cy="12" r="4.1" />
+            <circle class="ig-dot" cx="17.3" cy="6.7" r="1.1" />
+          </svg><span class="rewind-label">∿∿ Tomar aire de nuevo</span></button>
+      </div>
+    </section>
+  </main>
+
+  <div id="player" role="dialog" aria-modal="true" aria-label="Concept art del juego" hidden>
+    <div class="player-video"></div>
+    <button class="player-close prompt-btn" type="button" aria-label="Volver" data-cursor>◀◀</button>
+  </div>
+
+  <div id="game" role="dialog" aria-modal="true" aria-label="FLAUXUS · el videojuego" hidden>
+    <div class="game-frame"></div>
+    <button class="game-close player-close prompt-btn" type="button" aria-label="Salir del juego y volver a la página" data-cursor>◀◀<span>Salir</span></button>
+  </div>
+
+  <div id="crtoff" aria-hidden="true"></div>
+  <div id="lens" aria-hidden="true"></div>
+  <div id="cursor" aria-hidden="true"></div>
+
+  <noscript>
+    <p style="color:#fff;padding:24px">FLAUXUS · Un dispositivo de identidad: la práctica de un artista, jugable en una
+      URL.</p>
+  </noscript>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
