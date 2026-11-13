@@ -14,7 +14,7 @@ import { H } from '../engine/fx.js';
 import { HM } from './hudMetrics.js';
 import { avatarObj } from '../engine/avatar.js';
 import { glowSprite, makeTextSprite, clearGroup } from '../engine/materials.js';
-import { A } from '../AudioSystem.js';
+import { A, startPreludeMusic } from '../AudioSystem.js';
 import { player, stopAuto, updateCam, resetPlayerForPrelude } from '../player.js';
 import { voRun, voStop, voPreload, VO } from './voice.js';
 import { fade } from './hud.js';
@@ -70,11 +70,13 @@ export function initPrelude(id, narrate = true) {
   avatarObj.position.copy(player); avatarObj.rotation.y = startPos.yaw;
   stopAuto(); A.ambient?.set(.35, .8); updateCam();
   voPreload(id);   // la grabación de la voz se pide ya, mientras la cortina aún tapa la sala
-  if (narrate) voRun(id);
+  if (narrate) { startPreludeMusic(id); voRun(id) }
 }
 
-/* La voz se lanza desde `flow.js` justo después del fundido del preloader. */
-export function startPreludeVoice(id) { voRun(id) }
+/* La voz y la música se lanzan desde `flow.js` justo después del fundido del
+   preloader. La música sigue sonando durante la ficha y se reinicia al
+   empezar el Momento (AudioSystem.killBus). */
+export function startPreludeVoice(id) { startPreludeMusic(id); voRun(id) }
 export function updatePrelude(dt) {
   if (!PRE.grp) return;
   const id = S.room, r = ROOMS[id - 1], floorY = r?.floorY ?? r?.start?.y ?? 0;

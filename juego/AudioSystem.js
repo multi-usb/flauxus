@@ -10,7 +10,7 @@ import { toast } from './ui/toast.js';
 export const A = {
   ctx: null, master: null, an: null, anBuf: null, pan: null, bus: null, verb: null,
   muted: false, nodes: [], keep: [], ambient: null, noiseBuf: null, voices: new Set(),
-  clip: { srcs: [], timers: [], el: null }, lvl: 0, fake: 0
+  clip: { srcs: [], timers: [], el: null }, pre: null, lvl: 0, fake: 0
 };
 
 export const trackFiles = new Map([
@@ -91,6 +91,9 @@ export function newBus() {
 }
 
 export function killBus() {
+  /* La música del preludio vive fuera del bus: se retira acá para que el
+     Momento arranque su propia música desde el principio. */
+  stopPreludeMusic(.18);
   for (const n of A.nodes) { try { n.stop?.(); } catch { } }
   A.nodes = [];
   for (const v of [...A.voices]) v.stop(true);
@@ -110,6 +113,7 @@ export function setMuted(m) {
   if (A.master) A.master.gain.setTargetAtTime(m ? 0 : .75, A.ctx.currentTime, .05);
   for (const v of A.voices) if (v.el) v.el.muted = m;
   if (A.clip.el) A.clip.el.muted = m;
+  if (A.pre?.el) A.pre.el.muted = m;
   if (VO?.el) VO.el.muted = m;
   $('btnSound')?.classList.toggle('off', m);
   toast(m ? 'Sonido desactivado' : 'Sonido activado');
@@ -189,6 +193,149 @@ export function startAmbient() {
   if (A.ambient || !ensureAudio()) return;
   A.ambient = pad([55, 82.41, 110, 164.81], .045, 'sine', A.keep);
   A.ambient.set(1, 2);
+}
+
+/* ---- música del preludio ----
+   La música de la sala suena por debajo de la locución mientras se camina.
+   Va por una rama propia conectada al master, no al bus del minijuego: así
+   `killBus()` puede retirarla y el Momento arranca su música desde 0
+   (Voice y playClip siempre empiezan en el offset inicial). */
+const PRE_LEVEL = .16;
+const PRE_TRACK = new Set([1, 3, 4, 6]);
+const PRE_CHORDS = {
+  1: [130.81, 196, 261.63],
+  2: [73.42, 110, 146.83],
+  3: [146.83, 220, 293.66],
+  4: [55, 82.41, 110],
+  5: [55, 110, 164.81],
+  6: [110, 165, 220]
+};
+
+export function startPreludeMusic(id) {
+  stopPreludeMusic(0);
+  const x = ensureAudio();
+  /* Sin Web Audio queda el <audio> para las salas con grabación real. */
+  if (!x) {
+    if (PRE_TRACK.has(id) && trackFiles.has(id)) {
+      const el = new Audio(recUrl(id));
+      el.loop = true; el.volume = PRE_LEVEL; el.muted = A.muted;
+      el.play().catch(() => { });
+      A.pre = { id, el, src: null, nodes: [], gain: null, stopped: false };
+      return A.pre;
+    }
+    return null;
+  }
+  const pre = A.pre = { id, src: null, el: null, nodes: [], gain: null, stopped: false };
+  const g = pre.gain = x.createGain();
+  g.gain.value = 0;
+  g.connect(A.master);
+  const buf = Rec.buf.get(id);
+  if (buf) {
+    /* Grabación confirmada de la sala: la misma que usa el minijuego. */
+    const src = x.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const lp = x.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 5200;
+    lp.Q.value = .4;
+    src.connect(lp).connect(g);
+    src.start(0);
+    pre.src = src;
+  } else {
+    /* RE y SOL todavía no tienen grabación: su preludio usa el mismo
+       material sintético de la sala, para no inventar una obra. */
+    const freqs = PRE_CHORDS[id] || PRE_CHORDS[1];
+    const lp = x.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = id === 5 ? 900 : 1100;
+    lp.Q.value = .5;
+    lp.connect(g);
+    for (const f of freqs) {
+      const o = x.createOscillator();
+      o.type = id === 5 ? 'sawtooth' : id === 2 ? 'triangle' : 'sine';
+      o.frequency.value = f;
+      o.detune.value = rand(-7, 7);
+      o.connect(lp);
+      o.start();
+      pre.nodes.push(o);
+    }
+    const lfo = x.createOscillator();
+    lfo.frequency.value = id === 2 ? .8 : .12;
+    const lg = x.createGain();
+    lg.gain.value = id === 2 ? .04 : .06;
+    lfo.connect(lg).connect(g.gain);
+    lfo.start();
+    pre.nodes.push(lfo);
+    if (id === 2) {
+      /* Pulso de 96 BPM muy filtrado: referencia de la sala sin el click
+         seco que el usuario escuchará al empezar el minijuego. */
+      const pulse = x.createOscillator();
+      pulse.type = 'sine';
+      pulse.frequency.value = 48.7;
+      const pg = x.createGain();
+      pg.gain.value = .04;
+      const plfo = x.createOscillator();
+      plfo.frequency.value = 1.6;
+      const plg = x.createGain();
+      plg.gain.value = .04;
+      plfo.connect(plg).connect(pg.gain);
+      pulse.connect(pg).connect(g);
+      pulse.start(); plfo.start();
+      pre.nodes.push(pulse, plfo);
+    }
+    if (id === 5) {
+      const flfo = x.createOscillator();
+      flfo.frequency.value = .08;
+      const fg = x.createGain();
+      fg.gain.value = 320;
+      flfo.connect(fg).connect(lp.frequency);
+      flfo.start();
+      pre.nodes.push(flfo);
+    }
+  }
+  const t = x.currentTime;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(PRE_LEVEL, t + 1.2);
+  /* En la entrada directa (?room=N) todavía no hubo gesto: el primer toque
+     o tecla reanuda el contexto y la música aparece con la locución. */
+  if (x.state === 'suspended') {
+    const resume = () => {
+      try { x.resume(); } catch { }
+      removeEventListener('pointerdown', resume, true);
+      removeEventListener('keydown', resume, true);
+    };
+    addEventListener('pointerdown', resume, true);
+    addEventListener('keydown', resume, true);
+    pre.resume = resume;
+  }
+  return pre;
+}
+
+export function stopPreludeMusic(fade = .35) {
+  const pre = A.pre;
+  if (!pre) return;
+  A.pre = null;
+  pre.stopped = true;
+  if (pre.resume) {
+    removeEventListener('pointerdown', pre.resume, true);
+    removeEventListener('keydown', pre.resume, true);
+    pre.resume = null;
+  }
+  if (pre.el) { try { pre.el.pause(); } catch { } }
+  const x = A.ctx;
+  if (!x || !pre.gain) return;
+  const t = x.currentTime;
+  try {
+    pre.gain.gain.cancelScheduledValues(t);
+    pre.gain.gain.setTargetAtTime(0, t, Math.max(.01, fade / 3));
+  } catch { }
+  setTimeout(() => {
+    try { pre.src?.stop(); } catch { }
+    for (const n of pre.nodes) { try { n.stop(); } catch { } }
+    try { pre.gain?.disconnect(); } catch { }
+    pre.nodes = [];
+  }, (fade + .15) * 1000);
 }
 
 export function sting() {
