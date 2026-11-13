@@ -780,12 +780,17 @@ html.started #sound {
 }
 
 /* el original trae puntos de carrusel abajo: se recortan */
+/* Los datos se anclan por ABAJO (top = la línea donde terminan; el bloque crece hacia arriba con translateY).
+   Antes se anclaban por arriba y su hueco hasta la foto siguiente (ph-d) estaba en vh: al subir el texto a un
+   tamaño de lectura, el bloque —que mide en líneas, no en vh— se metía en la foto. El parallax usa «translate»,
+   así que «transform» queda libre para esto. */
 .m4-facts {
-  top: 70vh;
+  top: 84vh;
+  transform: translateY(-100%);
   left: var(--rw-pad);
   width: min(26vw, 380px);
   z-index: 4;
-  font-size: var(--fs-hud);
+  font-size: var(--fs-sm); /* frases de lectura: 14–16 px (antes 11,2 px) */
   line-height: 1.6;
   color: var(--rw-verde);
 }
@@ -894,7 +899,7 @@ html.started #sound {
 }
 
 .note .hz {
-  font-size: 9px;
+  font-size: var(--fs-hud);
   opacity: .6;
 }
 
@@ -1650,9 +1655,10 @@ html.flat-rewind #osd {
 /* ---------- Móvil: composiciones propias, no escaladas ---------- */
 @media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
   .hud-iso {
-    top: calc(28px + env(safe-area-inset-top));
-    left: 28px;
-    width: 24px;
+    top: calc(20px + env(safe-area-inset-top));
+    left: 20px;
+    width: 44px;
+    height: 44px;
   }
 
   .hud-counter {
@@ -1716,10 +1722,12 @@ html.flat-rewind #osd {
   }
 
   .m4-facts {
-    top: 104vh;
+    top: 123vh; /* termina justo encima de ph-b (126vh), mida lo que mida el texto */
     left: 24px;
     right: 24px;
     width: auto;
+    font-size: var(--fs-sm); /* texto de lectura: 14 px en celular (antes 11,2 px) */
+    line-height: 1.55;
   }
 
   .ph-b {
@@ -2550,7 +2558,14 @@ html.started[data-moment="m2"] .hud-scroll {
   }
 
   .hud-iso {
-    width: 28px;
+    /* La X es un botón circular: en celular medía 28 × 62 px (solo se había acotado el ancho) y el isotipo
+       se veía dentro de una píldora deformada. Círculo de 44 px, el mínimo táctil. */
+    width: 44px;
+    height: 44px;
+  }
+
+  .hud-iso svg {
+    width: 22px;
   }
 
   .hud-chapter {
@@ -3072,7 +3087,7 @@ html.boot-art-ready #boot .boot-figure { visibility: visible; }
 
 .hero-desc {
   margin: 0;
-  font: 300 clamp(12.5px, 1.05vw, 14.5px)/1.5 'Poppins', var(--font-text), sans-serif;
+  font: 300 var(--fs-sm)/1.5 'Poppins', var(--font-text), sans-serif;
   color: #d8d8d8;
   letter-spacing: -0.01em;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.9);
@@ -3114,7 +3129,7 @@ html.boot-art-ready #boot .boot-figure { visibility: visible; }
 }
 
 .hero-scroll small {
-  font: 400 clamp(12.5px, 1.05vw, 14px) 'Poppins', var(--font-text), sans-serif;
+  font: 400 var(--fs-xs) 'Poppins', var(--font-text), sans-serif;
   color: #a8fe0b;
   letter-spacing: 0.02em;
   animation: hero-scroll-label 1.7s ease-in-out infinite;
@@ -3499,7 +3514,7 @@ html.started[data-moment="m1"] #scanlines {
 
 #boot .tape-label {
   top: calc(100% + 8px);
-  font-size: clamp(11px, 3.2vw, 14px);
+  font-size: var(--fs-xs);
 }
 
 #boot .home-tagline {
@@ -3517,7 +3532,7 @@ html.started[data-moment="m1"] #scanlines {
   min-height: 50px;
   padding: 6px clamp(8px, 2.5vw, 16px);
   gap: clamp(4px, 1.8vw, 9px);
-  font-size: clamp(12px, 3.5vw, 17px);
+  font-size: clamp(var(--fs-sm), 3.9vw, 17px);
 }
 
 #boot .press-start > span { white-space: nowrap; }
@@ -3536,7 +3551,7 @@ html.started[data-moment="m1"] #scanlines {
 #boot .home-audio-caption {
   top: 76svh;
   width: calc(100% - 32px);
-  font-size: clamp(11px, 3.2vw, 14px);
+  font-size: var(--fs-xs);
 }
 
 /* Tablets and desktop keep the wide composition from the reference. */
@@ -3595,11 +3610,11 @@ html.started[data-moment="m1"] #scanlines {
   #boot.ready .boot-home-left { left: -20vw; bottom: -64svh; height: 138svh; }
   #boot.ready .boot-home-right { right: -23vw; top: -44svh; height: 132svh; }
   #boot .boot-tape { top: 58svh; width: min(48vw, 390px); }
-  #boot .tape-label { top: 52px; font-size: 11px; }
+  #boot .tape-label { top: 52px; font-size: var(--fs-xs); }
   #boot .home-tagline { top: 39svh; width: 88vw; white-space: nowrap; font-size: clamp(13px, 2.4vw, 19px); }
-  #boot.ready .press-start { top: 63svh; width: min(58vw, 590px); height: clamp(48px, 12svh, 60px); font-size: clamp(13px, 1.8vw, 18px); }
+  #boot.ready .press-start { top: 63svh; width: min(58vw, 590px); height: clamp(48px, 12svh, 60px); font-size: clamp(var(--fs-sm), 1.9vw, 18px); }
   #boot .press-start .home-play { flex-basis: clamp(42px, 7vw, 68px); height: clamp(34px, 9svh, 44px); }
-  #boot .home-audio-caption { top: 82svh; font-size: 11px; }
+  #boot .home-audio-caption { top: 82svh; font-size: var(--fs-xs); }
 }
 
 /* Audio control: the icon itself changes from white to green; mute draws a slash over the speaker. */
@@ -3796,7 +3811,7 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
 @media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
   .hero-composition { grid-template-columns: 21% 1fr 33%; padding-right: 4.5vw; padding-left: 4.5vw; }
   .hero-lockup img { width: clamp(142px, 17vw, 190px); height: 205px; }
-  .hero-lockup > p { font-size: clamp(10px, 1.15vw, 13px); }
+  .hero-lockup > p { font-size: var(--fs-xs); }
   .hero-copy { width: min(100%, 310px); }
   .hero-copy > p:first-child { margin-bottom: 22px; font-size: clamp(19px, 2.15vw, 24px); }
   .hero-explore { min-height: 58px; font-size: clamp(15px, 1.7vw, 19px); }
@@ -3818,8 +3833,8 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
     left: clamp(18px, 5vw, 34px);
     margin: 0;
   }
-  .hero-lockup img { width: clamp(78px, 18vw, 132px); height: auto; max-height: 150px; }
-  .hero-lockup > p { margin-top: 8px; font-size: clamp(9px, 1.6vw, 12px); }
+  .hero-lockup img { width: clamp(84px, 24vw, 132px); height: auto; max-height: 150px; }
+  .hero-lockup > p { margin-top: 6px; font-size: var(--fs-xs); }
   .hero-lockup .hero-scroll {
     position: absolute;
     top: calc(100% + 18px);
@@ -3828,7 +3843,7 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
     margin: 0;
     font-size: 18px;
   }
-  .hero-scroll small { font-size: 11px; }
+  .hero-scroll small { font-size: var(--fs-xs); }
   .hero-copy {
     position: absolute;
     left: 20px;
@@ -3869,12 +3884,12 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
 @media (max-height: 520px) and (orientation: landscape) and (max-width: 900px) {
   #m1 { min-height: 100svh; }
   .hero-lockup { top: calc(8px + env(safe-area-inset-top)); left: 18px; }
-  .hero-lockup img { width: 74px; max-height: 86px; }
-  .hero-lockup > p { font-size: 9px; margin-top: 4px; }
+  .hero-lockup img { width: clamp(74px, 11vw, 92px); max-height: 92px; }
+  .hero-lockup > p { font-size: var(--fs-xs); margin-top: 4px; }
   .hero-lockup .hero-scroll { top: calc(100% + 12px); font-size: 16px; }
   .hero-copy { left: auto; right: 18px; bottom: calc(66px + env(safe-area-inset-bottom)); width: min(42vw, 310px); }
   .hero-copy > p:first-child { font-size: clamp(14px, 2.7vw, 18px); margin-bottom: 10px; }
-  .hero-explore { min-height: 42px; font-size: 12px; }
+  .hero-explore { min-height: 42px; font-size: var(--fs-sm); }
 }
 
 @media (max-height: 700px) and (orientation: portrait) and (max-width: 767px) {
@@ -4023,8 +4038,10 @@ html.hero-entering #m1 .hero-mini-avatar { transition-delay: .25s; }
   .m4-name { top: calc(22 * var(--u)); }
   .ph-a { top: calc(28 * var(--u)); left: 33vw; width: min(27vw, calc(60 * var(--u))); }
   .ph-b { top: calc(18 * var(--u)); width: min(40vw, calc(78 * var(--u))); }
-  .m4-facts { top: calc(70 * var(--u)); width: clamp(230px, 24vw, 380px); }
-  .ph-d { top: calc(96 * var(--u)); width: min(46vw, calc(90 * var(--u))); }
+  /* los datos (anclados por abajo) terminan en 100u y ph-d empieza en 102u (antes 96u): con el texto a tamaño de
+     lectura el bloque necesita ese hueco bajo ph-a; ph-d sigue terminando muy por encima de ph-e (168u) */
+  .m4-facts { top: calc(100 * var(--u)); width: clamp(230px, 24vw, 380px); }
+  .ph-d { top: calc(102 * var(--u)); width: min(46vw, calc(90 * var(--u))); }
   .m4-quote.q1 { top: calc(98 * var(--u)); width: clamp(260px, 32vw, 540px); }
   .ph-c { top: calc(150 * var(--u)); width: min(24vw, calc(46 * var(--u))); }
   .ph-e { top: calc(168 * var(--u)); width: min(26vw, calc(42 * var(--u))); }
@@ -4119,7 +4136,7 @@ html.game-open #crtoff {
   #boot .tape-label { text-shadow: 0 1px 10px rgba(0, 0, 0, .9), 0 0 2px rgba(0, 0, 0, .8); }
 
   /* la leyenda no invade la columna del botón de sonido */
-  #boot .home-audio-caption { width: auto; max-width: calc(100% - 132px); font-size: clamp(10px, 3.1vw, 12px); margin-right: max(0px, calc(190px - 50vw)); }
+  #boot .home-audio-caption { width: auto; max-width: calc(100% - 132px); font-size: var(--fs-xs); margin-right: max(0px, calc(190px - 50vw)); }
 
   /* cristales: a los costados del torso, lejos del rostro (el script les suma una deriva de ±15vw / ±11vh) */
   #boot .boot-glass-left,
@@ -4266,7 +4283,8 @@ html[data-input="touch"] .m6-person {
   }
   .note { min-height: var(--m5-notes-h); padding: 4px 2px; gap: 2px; }
   .note .n { font-size: clamp(13px, 2.2vw, 18px); }
-  .note .hz { font-size: 9px; white-space: nowrap; }
+  /* 12 px desde 667 px de ancho; por debajo se ajusta a su casilla (9 px en 568 px, donde «261,63 Hz» no cabe más grande) */
+  .note .hz { font-size: clamp(9px, 3.5vw - 10.9px, 12px); letter-spacing: -.02em; white-space: nowrap; }
 
   .sala-detail,
   .m5-quote {
@@ -4282,6 +4300,8 @@ html[data-input="touch"] .m6-person {
      de sonido: el contenido se desplaza por debajo de esos dos botones fijos y los cruzaba. */
   .m4-facts,
   .m4-quote.q2 { left: max(var(--rw-pad), calc(64px + env(safe-area-inset-left))); }
+  /* los datos siguen a la altura de la ventana para no alcanzar la cita: 14 px desde 375 px de alto, 12 px en 320 */
+  .m4-facts { font-size: clamp(12px, 3.75vh, var(--fs-sm)); }
 
   /* héroe: el párrafo de entrada no entra en la retícula ni en el brazo del modelo */
   .hero-manifesto { max-width: min(330px, 30vw); }
@@ -4353,4 +4373,244 @@ html[data-input="touch"] .m6-person {
     border-radius: 9999px;
     background: rgba(2, 5, 3, .74);
   }
+}
+
+/* =====================================================================
+   Iteración 5 · legibilidad en celular y microcontenidos de M4
+   La escala de lectura vive en fonts.css (--fs-xs … --fs-display). Aquí, lo que no era un valor suelto:
+   veladuras para el texto que flota sobre imagen o 3D y los marcadores interactivos de las fotografías.
+   ===================================================================== */
+
+/* Inicio en celular: el lema cae sobre la chaqueta gris del personaje (contraste medido 4,7:1 de mediana y
+   1,7:1 en los puntos claros). Una veladura elíptica del negro del fondo, sin bordes, lo separa de la imagen. */
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
+  #boot .home-tagline {
+    padding: 10px 14px;
+    background: radial-gradient(ellipse closest-side, rgba(2, 4, 3, .82), rgba(2, 4, 3, .6) 64%, rgba(2, 4, 3, 0));
+  }
+}
+
+/* Tabletas y escritorio: el mismo lema cruza las chaquetas de los dos personajes (1024 × 768: 1,6:1 en los puntos
+   claros). La veladura va en un seudoelemento para no mover el texto, que aquí va en una sola línea. */
+@media (min-width: 768px) {
+  #boot .home-tagline { isolation: isolate; }
+
+  #boot .home-tagline::before {
+    content: "";
+    position: absolute;
+    inset: -12px -6px;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(ellipse closest-side, rgba(2, 4, 3, .78), rgba(2, 4, 3, .56) 66%, rgba(2, 4, 3, 0));
+  }
+}
+
+/* Héroe en celular y tableta vertical: logotipo, nombre y entradilla flotan sobre la retícula verde, la lluvia
+   de palabras y el personaje; la frase central, sobre sus piernas. Misma veladura suave detrás de cada bloque. */
+@media (max-width: 767px), (min-width: 768px) and (orientation: portrait) {
+  .hero-lockup::before,
+  .hero-copy > p:first-child::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .hero-lockup::before {
+    inset: -18px -22px -20px -34px;
+    background: radial-gradient(ellipse 74% 66% at 36% 46%, rgba(2, 5, 3, .8), rgba(2, 5, 3, .52) 60%, rgba(2, 5, 3, 0));
+  }
+
+  .hero-manifesto { margin-top: 8px; }
+
+  .hero-copy > p:first-child {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .hero-copy > p:first-child::before {
+    inset: -16px -8px;
+    background: radial-gradient(ellipse closest-side, rgba(2, 5, 3, .74), rgba(2, 5, 3, .46) 62%, rgba(2, 5, 3, 0));
+  }
+}
+
+/* [ JUEGA YA ]: texto blanco sobre un cristal verde translúcido; con el piso claro del atrio detrás el contraste
+   medido era 3,7:1 (2,6:1 en los puntos claros). Una capa del negro del fondo bajo el cristal lo deja por encima
+   de AA sin cambiar la forma ni el brillo del botón. Vale también para el estado bajo el cursor. */
+.cta {
+  background: linear-gradient(100deg, rgba(194, 254, 11, .28), rgba(194, 254, 11, .12)), rgba(2, 5, 3, .56);
+}
+
+.cta:hover,
+.cta:focus-visible {
+  background: linear-gradient(120deg, rgba(229, 255, 221, .34), rgba(170, 214, 174, .18) 48%, rgba(194, 254, 11, .28)), rgba(2, 5, 3, .5);
+}
+
+/* «Desliza para descubrir» (portal): verde sobre la retícula verde del suelo; halo oscuro para despegarlo. */
+.hud-scroll small { text-shadow: 0 0 6px rgba(0, 0, 0, .95), 0 1px 12px rgba(0, 0, 0, .9); }
+
+/* ---------- M4 · microcontenidos: un marcador por fotografía (moments/m4-maria-clara.js) ---------- */
+/* El marcador es un botón real de 44 px de alto; lo visible es una pastilla con el punto verde del sistema y una
+   etiqueta de 1–3 palabras. Aparece cuando su foto ya se condensó (.on). Abierto (.open) despliega la frase. */
+.m4-tip {
+  z-index: 6;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px) scale(.94);
+  transform-origin: 0 50%;
+  transition: opacity .42s ease, transform .42s var(--rw-ease), visibility 0s .42s;
+}
+
+.m4-tip.on {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.m4-tip.open { z-index: 7; }
+
+/* En celular las fotos c, d y e forman un collage apretado y cada una viajaba a su propia profundidad: sus
+   posiciones relativas cambiaban con el scroll y un marcador acababa sobre el rostro de la foto vecina. Aquí
+   las tres viajan juntas, a la profundidad de la cita (como ya hacían ph-b y ph-c), con d y e colocadas donde
+   el parallax las dejaba a mitad del recorrido; cada marcador se ancla donde no cae sobre ningún rostro ni
+   sobre otro marcador (--ax / --ay = punto de su foto; lo lee el script al medir). */
+@media (max-width: 767px) and (min-height: 501px), (max-width: 767px) and (orientation: portrait) {
+  .ph-d, .ph-e { --depth: 1.05; }
+  .ph-d { top: calc(219vh + var(--m4-shift)); }
+  .ph-e { top: calc(238vh + var(--m4-shift)); }
+  .m4-tip[data-for="ph-c"] { --ax: 0; --ay: 0; }
+  .m4-tip[data-for="ph-d"] { --ax: -.4; --ay: 1; }
+  .m4-tip[data-for="ph-e"] { --ax: -.9; --ay: .5; }
+}
+
+/* Tableta y celular en horizontal: ph-b es pequeña y queda detrás del apellido gigante, así que su marcador
+   caía sobre las letras de «OCAMPO». Aquí se ancla en el borde superior de la foto, por encima del nombre
+   (el nombre empieza 4 unidades más abajo que la foto y viaja más despacio: nunca se vuelven a cruzar). */
+@media (max-width: 1024px) and (min-width: 768px), (max-height: 500px) and (orientation: landscape) {
+  .m4-tip[data-for="ph-b"] { --ay: -.14; }
+}
+
+/* Celular en horizontal: los datos suben por el carril izquierdo hasta la esquina de ph-a; su marcador se corre
+   a la derecha de ese carril. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .m4-tip[data-for="ph-a"] { --ax: .45; }
+}
+
+.m4-tip-btn {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rw-blanco);
+  font: 600 var(--fs-xs)/1 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.m4-tip-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px 8px 10px;
+  border: 1px solid rgba(194, 254, 11, .75);
+  background: rgba(2, 4, 3, .88);
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.m4-tip-dot {
+  position: relative;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--rw-verde);
+}
+
+.m4-tip-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--rw-verde);
+  opacity: 0;
+  animation: m4-tip-ping 2.4s ease-out infinite;
+}
+
+@keyframes m4-tip-ping {
+  0% { opacity: .9; transform: scale(.6); }
+  70%, 100% { opacity: 0; transform: scale(1.5); }
+}
+
+.m4-tip.open .m4-tip-chip,
+.m4-tip-btn:focus-visible .m4-tip-chip {
+  background: var(--rw-verde);
+  border-color: var(--rw-verde);
+  color: var(--rw-negro);
+}
+
+.m4-tip.open .m4-tip-dot,
+.m4-tip-btn:focus-visible .m4-tip-dot { background: var(--rw-negro); }
+
+.m4-tip.open .m4-tip-dot::after,
+.m4-tip-btn:focus-visible .m4-tip-dot::after { animation: none; }
+
+.m4-tip-btn:focus { outline: none; }
+.m4-tip-btn:focus-visible .m4-tip-chip { outline: 2px solid var(--rw-blanco); outline-offset: 2px; }
+
+/* La frase: texto de lectura (14–16 px) sobre el negro del fondo, con el filo verde de las fichas. Su posición
+   (left/top) la calcula el script con medidas reales; el ancho nunca supera la ventana menos sus márgenes. */
+.m4-tip-text {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: min(280px, calc(100vw - 24px));
+  margin: 0;
+  padding: 12px 14px 13px;
+  border-left: 2px solid var(--rw-verde);
+  background: rgba(2, 4, 3, .95);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .55);
+  color: var(--rw-blanco);
+  font: 400 var(--fs-sm)/1.45 var(--font-text);
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity .22s ease, transform .22s ease, visibility 0s .22s;
+}
+
+.m4-tip.open .m4-tip-text {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.m4-tip-k {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--rw-verde);
+  font: 600 var(--fs-xs)/1.2 var(--font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.m4-tip.compact .m4-tip-k { display: none; }
+/* …y con menos aire: en 360 px de ancho así cabe en la franja que queda entre el borde y el rostro */
+.m4-tip.compact .m4-tip-text { padding: 8px 10px 9px; }
+
+.m4-tip-text .nw { white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m4-tip,
+  .m4-tip-text,
+  .m4-tip-chip { transition: none; transform: none; }
+  .m4-tip-dot::after { animation: none; }
 }

@@ -101,7 +101,7 @@ export function createM2({ profile, backend, channels, player, game, sfx, audioR
       osd.style.transform = `translate3d(${r.x.toFixed(1)}px,${r.y.toFixed(1)}px,0)`;
       osd.style.width = `${r.w.toFixed(1)}px`;
       osd.style.height = `${r.h.toFixed(1)}px`;
-      osd.style.fontSize = `${Math.max(10, Math.min(15, r.w / 22)).toFixed(1)}px`;
+      osd.style.fontSize = `${Math.max(12, Math.min(15, r.w / 22)).toFixed(1)}px`;
 
       const i = Math.floor(time / 1.6) % PROMPTS.length;
       if (i !== promptIndex) { prompt.textContent = PROMPTS[i]; promptIndex = i; }
