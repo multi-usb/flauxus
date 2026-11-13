@@ -80,3 +80,5 @@ El juego carga versiones optimizadas:
 Si se edita un escenario o una grabación, se vuelve a generar su versión optimizada. `?fbx` carga los FBX
 originales para comparar. Los personajes (`personaje/*_rig_Run.fbx`) siguen en FBX: su animación depende de
 los nombres y poses de los huesos.
+
+`Stockhausen` se publica en estéreo 48 kHz (9,0 MB en OGG y 14,5 MB en M4A) desde su máster nuevo; el resto de grabaciones se mantienen en 44,1 kHz.
