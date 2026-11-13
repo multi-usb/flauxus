@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <title>Flauxus — la flautista aumentada y su ecosistema interactivo</title>
+  <!-- Tipografía de la landing, servida desde fonts/ (ver style.css). Se precarga porque el canvas y los
+       rótulos 3D del atrio la usan al dibujarse y no esperan a que llegue. -->
+  <link rel="preload" href="./fonts/tektur-latin-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/unbounded-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="./fonts/martian-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- Icono de pestaña propio (el mismo isotipo de la landing, copiado a brand/): sin él el navegador pide /favicon.ico y
+       deja un 404 en la consola en cada carga. -->
+  <link rel="icon" href="./brand/flauxus-iso.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <!-- Solo para pruebas automatizadas (?raf=timer): los navegadores no entregan requestAnimationFrame a una página
+       que no se está pintando (panel oculto, ventana tapada) y el juego quedaría detenido en el preloader.
+       Con este parámetro el bucle avanza con un temporizador. No se usa en el juego publicado. -->
+  <script>
+    if (new URLSearchParams(location.search).get('raf') === 'timer') {
+      window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 16);
+      window.cancelAnimationFrame = id => clearTimeout(id);
+    }
+  </script>
+  <script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script>
+</head>
+
+<body>
+  <canvas id="g2d"></canvas>
+  <div id="flash"></div>
+  <!-- La cortina arranca visible: cubre el primer paint y se retira recién
+       cuando el atrio, el avatar y los shaders ya están listos. La portada
+       (#intro) queda debajo, intacta, para aparecer al levantarse. -->
+  <!-- Preloader (ui/loader.js): etapa real de carga + bytes del escenario cuando se conocen.
+       Sin medición, la barra es un barrido de actividad: no se muestran porcentajes inventados. -->
+  <div id="preloader" class="on" role="status" aria-live="polite" aria-hidden="false">
+    <div class="pl-glow" aria-hidden="true"></div>
+    <div class="pl-panel">
+      <div class="pl-brand" aria-hidden="true"></div>
+      <div class="pl-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="pl-copy">
+        <div class="pl-kicker" id="plKicker">Flauxus</div>
+        <div class="pl-title" id="plTitle">El museo imposible</div>
+        <div class="pl-sub" id="plSub">Preparando el museo</div>
+      </div>
+      <div class="pl-meter" id="plMeter" aria-hidden="true"><i id="plBar"></i></div>
+      <div class="pl-pct" id="plPct" aria-hidden="true"></div>
+      <ol class="pl-steps" id="plSteps" aria-hidden="true"></ol>
+      <div class="pl-error" id="plError" role="alert" hidden>
+        <p id="plErrorMsg"></p>
+        <div class="pl-error-btns" id="plErrorBtns"></div>
+      </div>
+    </div>
+  </div>
+  <div id="titleCard">
+    <div class="tc-note" id="tcNote"></div>
+    <div class="tc-title" id="tcTitle"></div>
+  </div>
+
+  <!-- HUD por regiones (style.css · «HUD POR REGIONES»). Cada elemento vive en una región de una rejilla y se
+       apila con sus vecinos: no hay coordenadas sueltas, así que nada se encima al cambiar el tamaño o el formato.
+       Escritorio: tres columnas (izquierda · centro · derecha). Pantallas estrechas: las columnas se disuelven
+       y cada grupo pasa a su franja (ver las áreas de la rejilla). -->
+  <div id="hud">
+    <div class="hud-tl">
+      <!-- Embebido en la landing: hueco reservado para el botón «Salir» (#btnExit, al final del body) -->
+      <span class="exit-slot" aria-hidden="true"></span>
+      <div class="brandwrap">
+        <div class="brand">Flauxus<i></i></div>
+        <div class="subbrand">la flautista aumentada</div>
+      </div>
+    </div>
+    <div class="mid">
+      <div id="progress"></div>
+      <div id="objective"></div>
+    </div>
+    <div class="rightTop ui"><span class="chip" id="entryLabel"></span><button class="icon" id="btnSound"
+        aria-label="Sonido">♪</button><button class="icon" id="btnHelp" aria-label="Ayuda">?</button></div>
+
+    <div class="hud-left">
+      <button id="btnBack" class="ui">← Volver al atrio</button>
+      <div id="roomInfo">
+        <div class="k" id="roomKicker"></div>
+        <h1 id="roomTitle"></h1>
+        <p id="roomDesc"></p>
+      </div>
+      <div id="joy" class="ui">
+        <div id="joyKnob"></div>
+      </div>
+    </div>
+
+    <div class="hud-center">
+      <div class="hud-notice">
+        <div id="unlock" class="paper"></div>
+        <div id="roomHint"></div>
+      </div>
+      <div class="hud-speech">
+        <div id="vo">
+          <div class="who">María Clara · en off</div>
+          <p id="voText" aria-hidden="true"><span class="vl"></span><span class="vl"></span><span class="vm"></span></p>
+          <p id="voLive" aria-live="polite"></p>
+          <div class="src" id="voSrc"></div>
+        </div>
+        <div id="coach"></div>
+        <button id="prompt" class="ui"></button>
+      </div>
+    </div>
+
+    <div class="hud-right">
+      <div class="hud-skips">
+        <button id="btnVoSkip" class="ui">Saltar locución ›</button>
+        <button id="btnSkip" class="ui">Saltar esta sala ›</button>
+      </div>
+      <div class="hud-actions">
+        <button id="btnLook" class="ui" aria-label="Girar la vista">⟳</button>
+        <button id="btnWalk" class="ui"></button>
+        <div id="sourceChip"></div>
+      </div>
+    </div>
+
+    <!-- Tarjetas de sala (ficha y cierre): ocupan la región central de la rejilla, bajo la barra superior -->
+    <div id="brief" class="card paper ui"></div>
+    <div id="done" class="card paper ui"></div>
+
+    <div id="compass">
+      <div class="mk"></div>
+      <div class="arrow" id="cmpArrow"></div>
+      <div class="lbl" id="cmpLabel"></div>
+    </div>
+  </div>
+
+  <div id="roomUI">
+    <div id="miUI">
+      <div id="miHandles"></div>
+      <div id="handWrap">
+        <div id="hand"></div>
+        <div id="intMenu"></div>
+      </div>
+      <div id="miBtns"><button class="btns" id="miOrig">▶ Original</button><button class="btns" id="miListen" disabled>▶
+          Mi fraseo</button><button class="btns go" id="miConfirm" style="display:none">Confirmar ✓</button></div>
+    </div>
+    <div id="laUI">
+      <div class="frame" id="laFrame"></div>
+      <div class="tray" id="tray"></div>
+      <div id="laStatus"></div>
+      <div id="laBtns"><button class="btns" id="chiselBtn" style="display:none">✂ Cincel</button><button class="btns"
+          id="laListen" disabled>▶ Escuchar secuencia</button><button class="btns go" id="laConfirm"
+          style="display:none">Entregar obra ✓</button></div>
+    </div>
+  </div>
+
+  <div id="intro">
+    <div class="box paper">
+      <div class="eyebrow">Experiencia interactiva · trabajo de grado</div>
+      <h1 class="big">Flauxus</h1>
+      <p class="lede">Un museo que no se queda quieto. Camina por sus escaleras, escucha a María Clara y toca el sonido
+        hasta que cambie.</p>
+      <div class="how" id="introHow"></div>
+      <button class="btn" id="btnStart">Entrar al museo</button>
+      <div class="note" id="introEntry"></div>
+      <!-- Satélites: cada producto físico abre el museo con una posibilidad distinta (core/config.js) -->
+      <div class="sats" id="devPick"></div>
+    </div>
+    <!-- contrapeso del hueco de «Salir» (embebido): mantiene el panel centrado en la ventana -->
+    <div class="intro-bal" aria-hidden="true"></div>
+  </div>
+  <div id="help">
+    <div class="box paper ui">
+      <h3>Controles</h3>
+      <div id="helpBody"></div><button class="btn" id="helpClose">Cerrar</button>
+    </div>
+  </div>
+
+  <div id="epilogue">
+    <div id="epInner">
+      <div class="eyebrow">Epílogo</div>
+      <h2>La partitura de tu huella</h2>
+      <p>La experiencia termina después de la sexta sala. Esta salida no añade una séptima sala: convierte lo que
+        hiciste dentro del sistema —tu aire, tu pulso, tus pausas, tu recorrido, tus conexiones, tu reensamblaje— en una
+        huella propia.</p><canvas id="traceCanvas" width="1600" height="900"></canvas>
+      <div class="epBtns"><button class="primary" id="downloadTrace">Descargar mi partitura (.png)</button><button
+          id="restart">Rebobinar y empezar de nuevo</button></div>
+      <div id="epEntries"></div>
+      <div id="epSummary"></div>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <!-- Solo dentro de la landing: salir del juego. Un único botón, siempre encima (también sobre el preloader, el
+       menú y el epílogo). El HUD le reserva su hueco (.exit-slot), así que nunca se encima con «Volver al atrio». -->
+  <button id="btnExit" aria-label="Salir del juego y volver a la página" hidden>◀◀<span>Salir</span></button>
+
+  <script type="module" src="./Main.js"></script>
+</body>
+
+</html>

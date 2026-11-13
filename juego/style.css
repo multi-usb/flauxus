@@ -1,0 +1,3228 @@
+    /* ============ FLAUXUS · sistema visual v7 (identidad de la landing) ============
+   La interfaz del juego usa el mismo sistema que la landing (../landing/src/styles/tokens.css y fonts.css):
+   negro dominante, verde eléctrico #C2FE0B (reemplazó al #C9D200 del manual), blanco, fichas en carbón #121212;
+   Unbounded en titulares, Tektur en notas y cifras, Space Grotesk en textos, Martian Mono en datos y botones.
+   Solo cambia la capa de interfaz: luces, escenarios y colores 3D siguen en core/util.js y engine/.
+   Fuentes servidas desde fonts/ (copiadas de @fontsource, subset latin, variables).                      */
+    @font-face {
+      font-family: "Tektur";
+      src: url("fonts/tektur-latin-standard-normal.woff2") format("woff2-variations");
+      font-weight: 400 900;
+      font-stretch: 75% 100%;
+      font-display: swap
+    }
+
+    @font-face {
+      font-family: "Unbounded";
+      src: url("fonts/unbounded-latin-wght-normal.woff2") format("woff2-variations");
+      font-weight: 200 900;
+      font-display: swap
+    }
+
+    @font-face {
+      font-family: "Space Grotesk";
+      src: url("fonts/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+      font-weight: 300 700;
+      font-display: swap
+    }
+
+    @font-face {
+      font-family: "Martian Mono";
+      src: url("fonts/martian-mono-latin-wght-normal.woff2") format("woff2-variations");
+      font-weight: 100 800;
+      font-display: swap
+    }
+
+    :root {
+      /* tokens de la landing (mismos nombres) */
+      --rw-verde: #C2FE0B;
+      --rw-negro: #000000;
+      --rw-blanco: #FFFFFF;
+      --rw-carbon: #121212;
+      --rw-gris: #383838;
+      --rw-ease: cubic-bezier(.2, .8, .2, 1);
+      --rw-tactil-min: 56px;
+      --font-display: "Tektur", "Space Grotesk", system-ui, sans-serif;
+      --font-head: "Unbounded", "Tektur", system-ui, sans-serif;
+      --font-text: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "Martian Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+      /* tokens propios del juego, ahora apuntando a la landing */
+      --ink: var(--rw-negro);
+      --ink2: var(--rw-carbon);
+      --paper: var(--rw-carbon);        /* las antiguas "tarjetas de papel" son fichas en carbón */
+      --paper2: var(--rw-carbon);
+      --lime: var(--rw-verde);
+      --lime-d: var(--rw-verde);
+      --coral: #ff7a5c;
+      --fg: var(--rw-blanco);
+      --fg-2: rgba(255, 255, 255, .78); /* texto secundario: blanco con opacidad, como la landing */
+      --fg-3: rgba(255, 255, 255, .5);  /* datos y notas (--rw-opacidad-controles) */
+      --muted: var(--fg-3);
+      --serif: var(--font-display);
+      --sans: var(--font-text);
+      --ease: var(--rw-ease);
+      --grain: none;                    /* sin grano de papel */
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      /* El fondo base ya no es negro: acompaña los fondos #221e1d de los niveles. */
+      background: #221e1d;
+      color: var(--fg);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: none;
+      overscroll-behavior: none
+    }
+
+    canvas {
+      display: block
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      touch-action: manipulation
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--lime);
+      outline-offset: 3px
+    }
+
+    kbd {
+      display: inline-block;
+      min-width: 24px;
+      padding: 3px 7px 2px;
+      border: 1.5px solid var(--ink);
+      border-radius: 5px;
+      background: #fffdf5;
+      color: var(--ink);
+      font: 600 11px/1.2 var(--sans);
+      text-align: center;
+      box-shadow: 0 2px 0 var(--ink);
+      margin: 0 1px
+    }
+
+    .dk kbd,
+    kbd.dk {
+      border-color: var(--rw-gris);
+      background: #1b1d14;
+      color: var(--fg);
+      box-shadow: 0 2px 0 #000
+    }
+
+    .tchip {
+      display: inline-block;
+      padding: 3px 9px;
+      border: 1.5px dashed var(--ink);
+      border-radius: 20px;
+      font: 600 11px var(--sans)
+    }
+
+    #g2d {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none
+    }
+
+    #hud {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none
+    }
+
+    .ui {
+      pointer-events: auto
+    }
+
+    /* ---- barra superior ---- */
+    .top {
+      position: absolute;
+      left: max(20px, env(safe-area-inset-left));
+      right: max(20px, env(safe-area-inset-right));
+      top: max(14px, env(safe-area-inset-top));
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 14px
+    }
+
+    .brand {
+      font: 700 30px/1 var(--serif);
+      letter-spacing: -.02em;
+      font-variation-settings: 'SOFT' 60, 'opsz' 72;
+      display: flex;
+      align-items: baseline;
+      gap: 3px
+    }
+
+    .brand i {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 14px var(--lime)
+    }
+
+    .subbrand {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    #progress {
+      display: flex;
+      gap: 7px;
+      justify-content: center
+    }
+
+    .pip {
+      min-width: 44px;
+      padding: 6px 8px 5px;
+      border: 1.5px solid var(--rw-gris);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .62);
+      text-align: center;
+      transition: .3s var(--ease);
+      backdrop-filter: blur(4px)
+    }
+
+    .pip b {
+      display: block;
+      font: 700 12px/1 var(--sans);
+      color: var(--fg-3)
+    }
+
+    .pip.done {
+      background: var(--lime);
+      border-color: var(--lime)
+    }
+
+    .pip.done b {
+      color: var(--ink)
+    }
+
+    .pip.next {
+      border-color: var(--lime);
+      animation: pipPulse 1.5s infinite
+    }
+
+    .pip.next b {
+      color: var(--lime)
+    }
+
+    .pip.cur {
+      border-color: var(--fg)
+    }
+
+    @keyframes pipPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(194, 254, 11, .5)
+      }
+
+      50% {
+        box-shadow: 0 0 0 7px rgba(194, 254, 11, 0)
+      }
+    }
+
+    #objective {
+      margin-top: 9px;
+      text-align: center;
+      font: 400 15px var(--serif);
+      color: var(--fg-2)
+    }
+
+    .rightTop {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .chip {
+      font-size: 11px;
+      color: var(--muted);
+      padding: 6px 11px;
+      border: 1px solid var(--rw-gris);
+      border-radius: 20px;
+      background: rgba(0, 0, 0, .6)
+    }
+
+    .icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid var(--rw-gris);
+      background: rgba(0, 0, 0, .72);
+      font-size: 15px;
+      line-height: 1;
+      transition: .15s
+    }
+
+    .icon:hover {
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    .icon.off {
+      opacity: .45;
+      text-decoration: line-through
+    }
+
+    /* ---- texto de sala ---- */
+    #roomInfo {
+      position: absolute;
+      left: 0;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      max-width: min(560px, 60vw);
+      padding: 16px 40px 16px max(22px, env(safe-area-inset-left));
+      background: linear-gradient(90deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, .56) 72%, rgba(0, 0, 0, 0) 100%);
+      -webkit-mask-image: linear-gradient(to top, #000 78%, transparent);
+      mask-image: linear-gradient(to top, #000 78%, transparent);
+      text-shadow: 0 1px 10px #000
+    }
+
+    #roomInfo .k {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--lime);
+      margin-bottom: 6px;
+      letter-spacing: .04em
+    }
+
+    #roomInfo h1 {
+      font: 700 clamp(26px, 4vw, 40px)/1 var(--serif);
+      letter-spacing: -.02em;
+      margin: 0 0 8px;
+      font-variation-settings: 'SOFT' 60
+    }
+
+    #roomInfo p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--fg-2);
+      margin: 0
+    }
+
+    #sourceChip {
+      position: absolute;
+      right: max(22px, env(safe-area-inset-right));
+      bottom: max(26px, env(safe-area-inset-bottom));
+      font-size: 12px;
+      color: var(--muted);
+      display: none;
+      text-align: right;
+      max-width: 34vw
+    }
+
+    #sourceChip b {
+      color: var(--lime);
+      font-weight: 600
+    }
+
+    #prompt {
+      position: absolute;
+      left: 50%;
+      bottom: max(34px, env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(10px);
+      font: 600 15px var(--sans);
+      padding: 14px 24px;
+      border: 0;
+      background: var(--lime);
+      color: var(--ink);
+      border-radius: 999px;
+      opacity: 0;
+      transition: .22s var(--ease);
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 4px 0 var(--lime-d), 0 12px 32px rgba(194, 254, 11, .28)
+    }
+
+    #prompt.show {
+      opacity: 1;
+      transform: translateX(-50%);
+      pointer-events: auto
+    }
+
+    #prompt:active {
+      transform: translateX(-50%) translateY(3px);
+      box-shadow: 0 1px 0 var(--lime-d)
+    }
+
+    #prompt kbd {
+      margin-left: 6px
+    }
+
+    #coach {
+      position: absolute;
+      left: 50%;
+      bottom: 104px;
+      transform: translateX(-50%) rotate(-.8deg);
+      font: 500 14px var(--sans);
+      color: var(--ink);
+      padding: 11px 18px;
+      background: var(--grain), var(--paper);
+      border-radius: 4px 9px 5px 10px;
+      opacity: 0;
+      transition: .4s var(--ease);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, .45);
+      max-width: 88vw;
+      text-align: center
+    }
+
+    #coach.show {
+      opacity: 1
+    }
+
+    #btnBack {
+      position: absolute;
+      left: max(20px, env(safe-area-inset-left));
+      top: 76px;
+      display: none;
+      font: 600 13px var(--sans);
+      padding: 10px 15px;
+      border: 1.5px solid var(--rw-gris);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .72);
+      min-height: 44px
+    }
+
+    #btnBack:hover {
+      border-color: var(--lime)
+    }
+
+    #btnWalk {
+      position: absolute;
+      right: max(22px, env(safe-area-inset-right));
+      bottom: max(34px, env(safe-area-inset-bottom));
+      font: 600 14px var(--sans);
+      padding: 13px 20px;
+      min-height: 48px;
+      border: 1.5px solid var(--lime);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .78);
+      color: var(--fg);
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
+      transition: .22s var(--ease);
+      white-space: nowrap
+    }
+
+    #btnWalk.show {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto
+    }
+
+    #btnWalk:hover {
+      background: rgba(194, 254, 11, .16)
+    }
+
+    #btnWalk kbd {
+      margin-left: 6px
+    }
+
+    #btnLook {
+      position: absolute;
+      right: max(20px, env(safe-area-inset-right));
+      bottom: calc(max(34px, env(safe-area-inset-bottom)) + 132px);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, .4);
+      background: rgba(0, 0, 0, .6);
+      color: var(--fg);
+      font-size: 22px;
+      display: none;
+      touch-action: none;
+      padding: 0
+    }
+
+    #btnLook:active {
+      background: rgba(194, 254, 11, .3);
+      border-color: var(--lime)
+    }
+
+    body.touch #btnWalk {
+      bottom: calc(max(34px, env(safe-area-inset-bottom)) + 66px)
+    }
+
+    #compass {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      display: none
+    }
+
+    #compass .mk {
+      position: absolute;
+      left: -24px;
+      top: -24px;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--lime);
+      box-shadow: 0 0 26px rgba(194, 254, 11, .6);
+      animation: pipPulse 1.5s infinite
+    }
+
+    #compass .arrow {
+      position: absolute;
+      left: -10px;
+      top: -10px;
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 22px solid var(--lime);
+      filter: drop-shadow(0 0 8px var(--lime))
+    }
+
+    #compass .lbl {
+      position: absolute;
+      left: 0;
+      transform: translateX(-50%);
+      top: 32px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .78);
+      white-space: nowrap;
+      font: 600 12px var(--sans);
+      color: var(--fg)
+    }
+
+    #joy {
+      position: absolute;
+      left: max(24px, env(safe-area-inset-left));
+      bottom: max(36px, env(safe-area-inset-bottom));
+      width: 132px;
+      height: 132px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, .35);
+      background: radial-gradient(circle, rgba(0, 0, 0, .25), rgba(0, 0, 0, .55));
+      display: none;
+      touch-action: none
+    }
+
+    body.joy-on #joy {
+      display: block
+    }
+
+    #joyKnob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(194, 254, 11, .82);
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 22px rgba(194, 254, 11, .4);
+      pointer-events: none
+    }
+
+    body.touch #roomInfo {
+      top: calc(max(14px, env(safe-area-inset-top)) + 96px);
+      bottom: auto;
+      max-width: 62vw
+    }
+
+    body.touch #roomInfo p {
+      display: none
+    }
+
+    body.touch #sourceChip,
+    body.touch .subbrand,
+    body.touch #objective {
+      display: none
+    }
+
+    body.touch #prompt,
+    body.touch #prompt.show {
+      left: auto;
+      right: max(20px, env(safe-area-inset-right));
+      transform: none
+    }
+
+    body.touch #coach {
+      bottom: 190px
+    }
+
+    /* ---- room UI ---- */
+    #roomUI {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: none
+    }
+
+    #roomUI.active {
+      display: block
+    }
+
+    #roomHint {
+      position: absolute;
+      left: 50%;
+      top: 92px;
+      transform: translateX(-50%);
+      font: 400 16px var(--serif);
+      color: var(--fg);
+      padding: 8px 18px;
+      background: rgba(0, 0, 0, .66);
+      border-radius: 999px;
+      backdrop-filter: blur(4px);
+      white-space: nowrap;
+      max-width: 94vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: .2s
+    }
+
+    #roomHint:empty {
+      opacity: 0
+    }
+
+    body.touch #roomHint {
+      top: auto;
+      bottom: max(24px, env(safe-area-inset-bottom));
+      font-size: 14px
+    }
+
+    /* tarjeta de papel */
+    .paper {
+      position: relative;
+      background: var(--grain), var(--paper);
+      color: var(--ink);
+      border-radius: 5px 11px 6px 13px;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, .55) inset, 0 22px 50px rgba(0, 0, 0, .55), 0 2px 0 rgba(0, 0, 0, .3)
+    }
+
+    .paper::before {
+      content: "";
+      position: absolute;
+      top: -11px;
+      left: 26px;
+      width: 78px;
+      height: 24px;
+      background: rgba(194, 254, 11, .82);
+      transform: rotate(-4deg);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+      mix-blend-mode: multiply
+    }
+
+    .card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(-.6deg);
+      width: min(500px, calc(100vw - 32px));
+      max-height: 88dvh;
+      overflow: auto;
+      padding: 30px 30px 26px;
+      display: none;
+      touch-action: pan-y
+    }
+
+    .card.show {
+      display: block;
+      animation: rise .45s var(--ease)
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -44%) rotate(-3deg) scale(.96)
+      }
+
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(-.6deg)
+      }
+    }
+
+    .card .k {
+      font: 600 12px var(--sans);
+      color: var(--fg-3);
+      margin-bottom: 10px;
+      letter-spacing: .03em
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font: 700 clamp(30px, 6vw, 40px)/1 var(--serif);
+      letter-spacing: -.02em;
+      font-variation-settings: 'SOFT' 60
+    }
+
+    .hl {
+      background: linear-gradient(transparent 56%, var(--lime) 56%, var(--lime) 90%, transparent 90%);
+      padding: 0 .1em
+    }
+
+    .card p {
+      margin: 0 0 16px;
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--fg-2)
+    }
+
+    .ctl {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: 9px 0;
+      font-size: 14px;
+      color: var(--fg-2)
+    }
+
+    .ctl .keys {
+      min-width: 150px;
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap
+    }
+
+    .pend {
+      display: inline-block;
+      margin: 2px 0 4px;
+      padding: 4px 10px;
+      border: 1.5px dashed var(--fg-3);
+      border-radius: 20px;
+      font: 600 12px var(--sans);
+      color: var(--fg-3)
+    }
+
+    .btn {
+      display: block;
+      margin-top: 20px;
+      width: 100%;
+      min-height: 50px;
+      padding: 14px 20px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--lime);
+      color: var(--ink);
+      font: 700 16px var(--sans);
+      transition: .15s;
+      box-shadow: 0 4px 0 var(--lime-d), 0 10px 26px rgba(194, 254, 11, .25)
+    }
+
+    .btn:hover {
+      transform: translateY(-1px)
+    }
+
+    .btn:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 var(--lime-d)
+    }
+
+    .btn[disabled] {
+      background: #cfcbb4;
+      color: var(--fg-3);
+      box-shadow: 0 4px 0 #a9a58f;
+      cursor: wait
+    }
+
+    .btns {
+      min-height: 46px;
+      padding: 11px 18px;
+      border: 1.5px solid var(--fg);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .78);
+      color: var(--fg);
+      font: 600 14px var(--sans);
+      transition: .15s;
+      backdrop-filter: blur(4px)
+    }
+
+    .btns:hover {
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    .btns.go {
+      background: var(--lime);
+      color: var(--ink);
+      border-color: var(--lime)
+    }
+
+    .btns[disabled] {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    .stat {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 14px;
+      padding: 6px 0;
+      color: var(--fg-2)
+    }
+
+    .stat span {
+      white-space: nowrap
+    }
+
+    .stat u {
+      flex: 1;
+      border-bottom: 2px dotted var(--fg-3);
+      transform: translateY(-3px);
+      text-decoration: none
+    }
+
+    .stat b {
+      font: 700 17px var(--serif);
+      color: var(--ink)
+    }
+
+    .stamp {
+      position: absolute;
+      right: 22px;
+      top: 20px;
+      padding: 6px 14px;
+      border: 3px solid var(--ink);
+      border-radius: 50%/40%;
+      font: 700 17px var(--serif);
+      transform: rotate(9deg);
+      background: var(--lime);
+      animation: stampIn .5s .25s var(--ease) both
+    }
+
+    @keyframes stampIn {
+      from {
+        opacity: 0;
+        transform: rotate(25deg) scale(2.2)
+      }
+
+      to {
+        opacity: 1;
+        transform: rotate(9deg) scale(1)
+      }
+    }
+
+    #btnSkip {
+      position: absolute;
+      right: max(20px, env(safe-area-inset-right));
+      top: 76px;
+      font: 500 13px var(--sans);
+      padding: 10px 14px;
+      border: 1.5px dashed var(--rw-gris);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .7);
+      color: var(--fg-2);
+      display: none;
+      min-height: 44px
+    }
+
+    #btnSkip:hover {
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    #flash {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .26s;
+      /* Cortinilla de transición: el mismo tono cálido de los niveles. */
+      background: #221e1d
+    }
+
+    #flash.on {
+      opacity: 1
+    }
+
+    #titleCard {
+      position: fixed;
+      inset: 0;
+      z-index: 44;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0
+    }
+
+    #titleCard.show {
+      animation: tcard 1.6s ease forwards
+    }
+
+    @keyframes tcard {
+      0% {
+        opacity: 0;
+        transform: scale(.96)
+      }
+
+      20% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      75% {
+        opacity: 1
+      }
+
+      100% {
+        opacity: 0;
+        transform: scale(1.04)
+      }
+    }
+
+    .tc-note {
+      font: 800 clamp(70px, 16vw, 190px)/1 var(--serif);
+      color: var(--lime);
+      letter-spacing: -.04em;
+      text-shadow: 0 0 70px rgba(194, 254, 11, .5);
+      font-variation-settings: 'SOFT' 60
+    }
+
+    .tc-title {
+      font: 400 clamp(16px, 2.4vw, 24px) var(--serif);
+      color: var(--fg);
+      margin-top: 4px
+    }
+
+    /* ---- preloader (ui/loader.js) ----
+       Lenguaje de la landing: negro, verde #C2FE0B, logotipo, titulares en Unbounded y etiquetas en Martian Mono.
+       Indicador de actividad = ecualizador de siete barras (la flauta "suena" mientras carga). La barra solo
+       se llena con bytes reales del escenario (.measured); sin medición es un barrido, sin cifras. */
+    #preloader {
+      position: fixed;
+      inset: 0;
+      z-index: 66;
+      display: grid;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+      overflow: hidden;
+      background: radial-gradient(ellipse at 50% 42%, rgba(194, 254, 11, .08), transparent 58%), var(--rw-negro);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity .34s var(--ease), visibility 0s .34s
+    }
+
+    #preloader.on {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity .26s var(--ease), visibility 0s
+    }
+
+    .pl-glow {
+      position: absolute;
+      left: 50%;
+      top: 42%;
+      width: min(640px, 92vw);
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(194, 254, 11, .10), rgba(194, 254, 11, .025) 44%, transparent 70%);
+      pointer-events: none
+    }
+
+    .pl-panel {
+      position: relative;
+      z-index: 1;
+      width: min(460px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center
+    }
+
+    .pl-brand {
+      width: clamp(120px, 26vw, 168px);
+      height: clamp(26px, 5.6vw, 36px);
+      margin-bottom: clamp(26px, 5vh, 40px);
+      background: url("brand/flauxus-horizontal-verde.svg") center / contain no-repeat
+    }
+
+    body.embedded .pl-brand { visibility: hidden }
+
+    /* ecualizador: actividad, no progreso */
+    .pl-eq {
+      display: flex;
+      align-items: flex-end;
+      gap: 5px;
+      height: 34px;
+      margin-bottom: 22px
+    }
+
+    .pl-eq i {
+      width: 4px;
+      height: 100%;
+      background: var(--rw-verde);
+      transform-origin: 50% 100%;
+      transform: scaleY(.25);
+      animation: plEq 1.1s ease-in-out infinite;
+      box-shadow: 0 0 12px rgba(194, 254, 11, .45)
+    }
+
+    .pl-eq i:nth-child(2) { animation-delay: -.85s; animation-duration: .95s }
+    .pl-eq i:nth-child(3) { animation-delay: -.4s; animation-duration: 1.25s }
+    .pl-eq i:nth-child(4) { animation-delay: -.2s; animation-duration: .9s }
+    .pl-eq i:nth-child(5) { animation-delay: -.65s; animation-duration: 1.15s }
+    .pl-eq i:nth-child(6) { animation-delay: -.1s; animation-duration: 1.05s }
+    .pl-eq i:nth-child(7) { animation-delay: -.5s; animation-duration: .98s }
+
+    #preloader.ready .pl-eq i { animation: none; transform: scaleY(1); transition: transform .2s }
+
+    @keyframes plEq {
+      0%, 100% { transform: scaleY(.22) }
+      50% { transform: scaleY(1) }
+    }
+
+    .pl-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: center
+    }
+
+    .pl-kicker {
+      font: 600 10.5px/1.3 var(--font-mono);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--rw-verde)
+    }
+
+    .pl-title {
+      margin: 10px 0 10px;
+      font: 900 clamp(24px, 6vw, 40px)/.98 var(--font-head);
+      letter-spacing: -.03em;
+      text-transform: uppercase;
+      color: var(--fg);
+      text-wrap: balance
+    }
+
+    .pl-sub {
+      min-height: 20px;
+      font: 500 15px/1.35 var(--font-text);
+      color: var(--fg)
+    }
+
+    .pl-meter {
+      position: relative;
+      width: min(360px, 78vw);
+      height: 2px;
+      margin-top: 22px;
+      background: rgba(255, 255, 255, .16);
+      overflow: hidden
+    }
+
+    /* sin medición: un tramo verde que barre (actividad) */
+    .pl-meter i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 28%;
+      background: var(--rw-verde);
+      box-shadow: 0 0 14px rgba(194, 254, 11, .6);
+      animation: plSweep 1.3s cubic-bezier(.45, 0, .55, 1) infinite
+    }
+
+    /* con medición (bytes reales): barra determinada */
+    .pl-meter.measured i {
+      animation: none;
+      transition: width .25s linear
+    }
+
+    #preloader.ready .pl-meter i { animation: none; width: 100% !important }
+
+    @keyframes plSweep {
+      from { transform: translateX(-110%) }
+      to { transform: translateX(370%) }
+    }
+
+    .pl-pct {
+      min-height: 14px;
+      margin-top: 10px;
+      font: 500 10.5px/1.3 var(--font-mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: var(--fg-3);
+      font-variant-numeric: tabular-nums
+    }
+
+    /* etapas: las dos anteriores (✓) y la actual */
+    .pl-steps {
+      list-style: none;
+      margin: 14px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font: 500 10.5px/1.35 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase
+    }
+
+    .pl-steps li { color: var(--fg-3) }
+    .pl-steps li.ok::before { content: "✓ "; color: var(--rw-verde) }
+    .pl-steps li.now { display: none } /* la etapa actual ya está en .pl-sub */
+
+    /* error: la cortina se queda, con aviso y acciones */
+    .pl-error {
+      margin-top: 26px;
+      padding: 18px 18px 16px;
+      width: 100%;
+      background: var(--rw-carbon);
+      border: 1px solid var(--rw-gris);
+      border-top: 3px solid var(--coral)
+    }
+
+    .pl-error p {
+      margin: 0 0 14px;
+      font: 500 15px/1.4 var(--font-text);
+      color: var(--fg)
+    }
+
+    .pl-error-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center
+    }
+
+    .pl-error-btns .btn { padding: 0 26px }
+    .pl-error-btns .btns { padding: 0 18px; min-height: 44px }
+
+    #preloader.failed .pl-eq i,
+    #preloader.failed .pl-meter i { animation: none }
+    #preloader.failed .pl-eq i { transform: scaleY(.22); background: var(--fg-3); box-shadow: none }
+    #preloader.failed .pl-meter,
+    #preloader.failed .pl-pct,
+    #preloader.failed .pl-steps { visibility: hidden }
+
+    @media (max-height: 520px) {
+      .pl-brand { margin-bottom: 14px }
+      .pl-eq { height: 22px; margin-bottom: 12px }
+      .pl-steps { display: none }
+    }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      top: max(16px, env(safe-area-inset-top));
+      transform: translateX(-50%);
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 600 13px var(--sans);
+      opacity: 0;
+      transition: .2s;
+      z-index: 70;
+      pointer-events: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+      max-width: 92vw;
+      text-align: center
+    }
+
+    #toast.show {
+      opacity: 1
+    }
+
+    /* ---- satélites: habilidad desbloqueada · mano de la baraja · locución ---- */
+    #unlock {
+      position: absolute;
+      left: 50%;
+      top: calc(max(14px, env(safe-area-inset-top)) + 92px);
+      transform: translateX(-50%) rotate(-.7deg) translateY(-14px);
+      width: min(430px, calc(100vw - 28px));
+      padding: 16px 20px 14px;
+      opacity: 0;
+      pointer-events: none;
+      transition: .5s var(--ease)
+    }
+
+    #unlock.show {
+      opacity: 1;
+      transform: translateX(-50%) rotate(-.7deg)
+    }
+
+    #unlock .k {
+      font: 600 11px var(--sans);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--fg-3);
+      margin-bottom: 4px
+    }
+
+    #unlock strong {
+      display: block;
+      font: 700 24px/1.1 var(--serif);
+      margin-bottom: 5px
+    }
+
+    #unlock span {
+      display: block;
+      font-size: 13.5px;
+      line-height: 1.45;
+      color: var(--fg-2)
+    }
+
+    #unlock span.cards {
+      margin-top: 8px;
+      font: 700 12px var(--sans);
+      letter-spacing: .04em
+    }
+
+    .chip.skill {
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    #handWrap {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 92vw;
+      pointer-events: none
+    }
+
+    #hand,
+    #intMenu {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      pointer-events: auto
+    }
+
+    #intMenu {
+      display: none
+    }
+
+    .handlbl {
+      font: 600 11px var(--sans);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: 4px
+    }
+
+    .cardchip {
+      padding: 8px 13px;
+      border-radius: 7px;
+      background: var(--grain), var(--paper);
+      color: var(--ink);
+      font: 700 12px var(--sans);
+      letter-spacing: .03em;
+      border: 2px solid var(--ink);
+      box-shadow: 0 3px 0 var(--ink);
+      transform: rotate(-1.6deg);
+      transition: .15s;
+      min-height: 38px
+    }
+
+    .cardchip:nth-child(even) {
+      transform: rotate(1.3deg)
+    }
+
+    .cardchip:hover {
+      transform: translateY(-2px) rotate(0)
+    }
+
+    .cardchip.sel {
+      background: var(--lime);
+      transform: translateY(-3px) rotate(0);
+      box-shadow: 0 6px 0 var(--ink)
+    }
+
+    .cardchip.used {
+      opacity: .42;
+      box-shadow: none;
+      transform: none
+    }
+
+    .cardchip.menu {
+      background: var(--ink2);
+      color: var(--fg);
+      border-color: var(--rw-gris);
+      box-shadow: 0 3px 0 #000
+    }
+
+    .cardchip.menu:hover {
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    #vo {
+      position: absolute;
+      left: 50%;
+      bottom: calc(max(34px, env(safe-area-inset-bottom)) + 76px);
+      transform: translateX(-50%) translateY(10px);
+      width: min(720px, calc(100vw - 32px));
+      padding: 14px 20px 15px;
+      background: rgba(0, 0, 0, .74);
+      backdrop-filter: blur(6px);
+      border-left: 3px solid var(--lime);
+      border-radius: 4px 14px 14px 4px;
+      opacity: 0;
+      transition: .55s var(--ease);
+      pointer-events: none
+    }
+
+    #vo.show {
+      opacity: 1;
+      transform: translateX(-50%)
+    }
+
+    #vo .who {
+      font: 600 11px var(--sans);
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: var(--lime);
+      margin-bottom: 7px
+    }
+
+    #voText {
+      margin: 0;
+      font: 400 clamp(16px, 2.2vw, 21px)/1.5 var(--serif);
+      color: var(--fg)
+    }
+
+    #voText .w {
+      opacity: .4;
+      transition: opacity .4s
+    }
+
+    #voText .w.on {
+      opacity: 1
+    }
+
+    #vo .src {
+      margin-top: 7px;
+      font: 500 11px var(--sans);
+      color: var(--muted)
+    }
+
+    #btnVoSkip {
+      position: absolute;
+      right: max(20px, env(safe-area-inset-right));
+      top: 76px;
+      font: 500 13px var(--sans);
+      padding: 10px 14px;
+      border: 1.5px dashed var(--rw-gris);
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .7);
+      color: var(--fg-2);
+      display: none;
+      min-height: 44px
+    }
+
+    #btnVoSkip:hover {
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    body.touch #vo {
+      bottom: calc(max(36px, env(safe-area-inset-bottom)) + 150px)
+    }
+
+    .devpick {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--fg-3)
+    }
+
+    .devpick a {
+      padding: 5px 11px;
+      border: 1.5px dashed var(--fg-3);
+      border-radius: 20px;
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 600
+    }
+
+    .devpick a.on {
+      background: var(--lime);
+      border-style: solid;
+      border-color: var(--ink)
+    }
+
+    #epEntries {
+      margin: 26px 0 4px
+    }
+
+    .entrow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 10px 0 8px
+    }
+
+    .ent {
+      min-width: 150px;
+      padding: 10px 14px;
+      border: 1.5px dashed var(--rw-gris);
+      border-radius: 10px;
+      color: var(--muted)
+    }
+
+    .ent b {
+      display: block;
+      font: 700 17px var(--serif);
+      color: var(--fg-3)
+    }
+
+    .ent span {
+      font-size: 12px
+    }
+
+    .ent.on {
+      border: 1.5px solid var(--lime)
+    }
+
+    .ent.on b {
+      color: var(--fg)
+    }
+
+    .ent.on span {
+      color: var(--lime)
+    }
+
+    .ent.now {
+      background: rgba(194, 254, 11, .1)
+    }
+
+    .entnote {
+      font-size: 13px !important;
+      color: var(--muted) !important
+    }
+
+    @keyframes nudge {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(194, 254, 11, .7)
+      }
+
+      50% {
+        box-shadow: 0 0 0 10px rgba(194, 254, 11, 0)
+      }
+    }
+
+    #chiselBtn.nudge {
+      animation: nudge 1.4s infinite;
+      border-color: var(--lime);
+      color: var(--lime)
+    }
+
+    /* ---- intro ---- */
+    #intro {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, .35), rgba(0, 0, 0, .9));
+      transition: opacity .6s;
+      padding: 16px
+    }
+
+    #intro.hide {
+      opacity: 0;
+      pointer-events: none
+    }
+
+    #intro .box {
+      width: min(540px, 100%);
+      max-height: 94dvh;
+      overflow: auto;
+      padding: 34px 34px 28px;
+      transform: rotate(-.5deg);
+      touch-action: pan-y
+    }
+
+    #intro .eyebrow {
+      font: 600 12px var(--sans);
+      color: var(--fg-3);
+      margin-bottom: 6px
+    }
+
+    #intro .big {
+      font: 800 clamp(54px, 12vw, 92px)/.95 var(--serif);
+      margin: 0 0 14px;
+      letter-spacing: -.04em;
+      font-variation-settings: 'SOFT' 60, 'opsz' 144
+    }
+
+    #intro .lede {
+      font: 400 clamp(17px, 2.6vw, 20px)/1.4 var(--serif);
+      margin: 0 0 20px;
+      color: var(--fg-2)
+    }
+
+    #intro .how {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 16px;
+      align-items: center;
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: var(--fg-2)
+    }
+
+    #intro .note {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--fg-3);
+      text-align: center
+    }
+
+    #help {
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      background: rgba(0, 0, 0, .78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px
+    }
+
+    #help.show {
+      display: flex
+    }
+
+    #help .box {
+      width: min(460px, 100%);
+      padding: 28px;
+      transform: rotate(.4deg)
+    }
+
+    #help h3 {
+      margin: 0 0 14px;
+      font: 700 28px var(--serif)
+    }
+
+    /* ---- MI ---- */
+    #miUI {
+      position: absolute;
+      inset: 0;
+      display: none
+    }
+
+    .breath {
+      position: absolute;
+      width: 46px;
+      height: 46px;
+      margin: -23px 0 0 -23px;
+      border-radius: 50%;
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 6px 14px rgba(0, 0, 0, .5);
+      cursor: ns-resize;
+      pointer-events: auto;
+      touch-action: none;
+      left: 0;
+      top: 0;
+      color: var(--ink);
+      font: 700 15px var(--sans)
+    }
+
+    .breath.untouched {
+      animation: bpulse 1.4s infinite
+    }
+
+    .breath.active {
+      background: var(--lime);
+      box-shadow: 0 0 0 6px rgba(194, 254, 11, .35), 0 6px 14px rgba(0, 0, 0, .5)
+    }
+
+    @keyframes bpulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 0 0 0 rgba(194, 254, 11, .6)
+      }
+
+      50% {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 0 0 14px rgba(194, 254, 11, 0)
+      }
+    }
+
+    .breath::after {
+      content: "↕";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    #miBtns {
+      position: absolute;
+      left: 50%;
+      top: 84%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 94vw
+    }
+
+    #intentionCard {
+      position: absolute;
+      right: 5%;
+      top: 22%;
+      width: 200px;
+      padding: 14px;
+      pointer-events: auto;
+      display: none;
+      transform: rotate(1.2deg)
+    }
+
+    #intentionCard strong {
+      display: block;
+      font: 700 18px var(--serif);
+      margin-bottom: 4px
+    }
+
+    #intentionCard span {
+      display: block;
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+      color: var(--fg-2)
+    }
+
+    #intentionCard .btns {
+      width: 100%;
+      color: var(--ink);
+      background: transparent;
+      border-color: var(--ink);
+      min-height: 40px;
+      padding: 8px
+    }
+
+    /* ---- LA ---- */
+    #laUI {
+      position: absolute;
+      inset: 0;
+      display: none
+    }
+
+    .frame {
+      position: absolute;
+      left: 50%;
+      top: 21%;
+      transform: translateX(-50%);
+      width: min(780px, 94vw);
+      padding: 26px 16px 18px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .07);
+      border: 1.5px solid rgba(255, 255, 255, .2);
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      pointer-events: none
+    }
+
+    .frame::before {
+      content: "Pentagrama · tu secuencia";
+      position: absolute;
+      left: 14px;
+      top: -11px;
+      padding: 0 8px;
+      background: var(--ink);
+      font: 400 14px var(--serif);
+      color: var(--fg)
+    }
+
+    .slot,
+    .lcard {
+      width: min(150px, 21vw);
+      height: clamp(86px, 14vh, 108px)
+    }
+
+    .slot {
+      position: relative;
+      border: 2px dashed rgba(255, 255, 255, .35);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font: 600 20px var(--serif);
+      color: rgba(255, 255, 255, .45);
+      transition: .15s;
+      pointer-events: auto
+    }
+
+    .slot.hover {
+      border-color: var(--lime);
+      background: rgba(194, 254, 11, .14);
+      transform: scale(1.05)
+    }
+
+    .slot.playing {
+      border-color: var(--lime);
+      background: rgba(194, 254, 11, .2);
+      box-shadow: 0 0 34px rgba(194, 254, 11, .4)
+    }
+
+    .slot.full {
+      border-style: solid;
+      border-color: rgba(255, 255, 255, .3)
+    }
+
+    .tray {
+      position: absolute;
+      left: 50%;
+      top: 55%;
+      transform: translateX(-50%);
+      width: min(820px, 96vw);
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      pointer-events: none
+    }
+
+    .tray>* {
+      pointer-events: auto
+    }
+
+    .lcard {
+      padding: 8px 9px;
+      background: var(--grain), var(--paper);
+      color: var(--ink);
+      border-radius: 3px 7px 4px 8px;
+      box-shadow: 4px 6px 0 rgba(0, 0, 0, .4);
+      cursor: grab;
+      touch-action: none;
+      position: relative;
+      transition: transform .15s, box-shadow .15s;
+      overflow: hidden
+    }
+
+    .lcard:hover {
+      transform: translateY(-4px) rotate(-1.2deg);
+      box-shadow: 6px 12px 0 rgba(0, 0, 0, .4)
+    }
+
+    .lcard strong {
+      display: block;
+      font: 700 13px var(--serif)
+    }
+
+    .lcard img {
+      width: 100%;
+      height: 42%;
+      object-fit: fill;
+      display: block;
+      margin: 4px 0
+    }
+
+    .lcard .tiny {
+      font-size: 10px;
+      color: var(--fg-3)
+    }
+
+    /* Fragmento en el aire: rooms/LA.js lo mueve con transform desde la esquina de la ventana. Sin transición
+       (la de .lcard lo haría ir 150 ms por detrás del dedo). */
+    .lcard.drag {
+      position: fixed;
+      left: 0;
+      top: 0;
+      z-index: 80;
+      cursor: grabbing;
+      transform: scale(1.1) rotate(-3deg);
+      transition: none;
+      will-change: transform;
+      box-shadow: 12px 20px 28px rgba(0, 0, 0, .55);
+      pointer-events: none;
+      margin: 0
+    }
+
+    .lcard.lifted {
+      opacity: .2
+    }
+
+    .lcard.cut {
+      background: var(--grain), #d8d2bb
+    }
+
+    .lcard.cut::after {
+      content: attr(data-tag);
+      position: absolute;
+      left: -8%;
+      right: -8%;
+      top: 44%;
+      padding: 2px 0;
+      background: var(--lime);
+      text-align: center;
+      font: 700 10px var(--sans);
+      transform: rotate(-12deg);
+      color: var(--ink)
+    }
+
+    #laStatus {
+      position: absolute;
+      left: 50%;
+      top: 78%;
+      transform: translateX(-50%);
+      font: 400 15px var(--serif);
+      color: var(--fg);
+      white-space: nowrap
+    }
+
+    #laBtns {
+      position: absolute;
+      left: 50%;
+      top: 84%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 94vw
+    }
+
+    #chiselBtn.on {
+      background: var(--lime);
+      color: var(--ink);
+      border-color: var(--lime)
+    }
+
+    /* ---- epílogo ---- */
+    #epilogue {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: var(--grain), var(--ink);
+      overflow: auto;
+      display: none;
+      padding: 56px 24px 90px;
+      touch-action: pan-y
+    }
+
+    #epilogue.show {
+      display: block
+    }
+
+    #epInner {
+      max-width: 980px;
+      margin: 0 auto
+    }
+
+    #epilogue .eyebrow {
+      font: 600 12px var(--sans);
+      color: var(--lime)
+    }
+
+    #epilogue h2 {
+      font: 800 clamp(40px, 8vw, 72px)/.95 var(--serif);
+      letter-spacing: -.03em;
+      margin: 10px 0 14px;
+      font-variation-settings: 'SOFT' 60
+    }
+
+    #epilogue p {
+      color: var(--fg-2);
+      line-height: 1.6;
+      max-width: 680px;
+      font-size: 15px
+    }
+
+    #traceCanvas {
+      width: 100%;
+      aspect-ratio: 16/9;
+      display: block;
+      margin: 28px 0;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .6)
+    }
+
+    .epBtns {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap
+    }
+
+    .epBtns button {
+      padding: 14px 20px;
+      border-radius: 999px;
+      border: 1.5px solid var(--fg);
+      background: transparent;
+      font: 600 14px var(--sans);
+      min-height: 48px
+    }
+
+    .epBtns .primary {
+      background: var(--lime);
+      border-color: var(--lime);
+      color: var(--ink);
+      box-shadow: 0 4px 0 var(--lime-d)
+    }
+
+    #epSummary {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 16px
+    }
+
+    @media(max-width:720px) {
+      .top {
+        grid-template-columns: 1fr auto;
+        row-gap: 8px
+      }
+
+      .mid {
+        grid-column: 1/-1;
+        grid-row: 2
+      }
+
+      .brand {
+        font-size: 26px
+      }
+
+      .pip {
+        min-width: 38px;
+        padding: 5px 5px 4px
+      }
+
+      .chip {
+        display: none
+      }
+
+      .card {
+        padding: 24px 22px 20px
+      }
+
+      .ctl .keys {
+        min-width: 104px
+      }
+
+      #btnBack,
+      #btnSkip {
+        top: 96px
+      }
+    }
+
+    /* =====================================================================
+       CAPA DE MARCA · interfaz del juego con el lenguaje de la landing
+       Reglas de componente sobre las anteriores (misma especificidad, van después).
+       Referencias en la landing: .prompt-btn (botón recto, borde verde de 1 px, relleno a pasos),
+       .cta de [ JUEGA YA ] (cápsula de vidrio verde), fichas en carbón, etiquetas en Martian Mono.
+       ===================================================================== */
+    body {
+      font-variant-numeric: tabular-nums
+    }
+
+    /* ---- marca: logotipo oficial en lugar del texto ---- */
+    .brand {
+      width: 132px;
+      height: 28px;
+      font-size: 0;
+      background: url("brand/flauxus-horizontal-verde.svg") left center / contain no-repeat
+    }
+
+    .brand i {
+      display: none
+    }
+
+    .subbrand {
+      margin-top: 6px;
+      font: 500 10px/1.3 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase
+    }
+
+    /* Dentro de la landing (iframe) la marca ya está en la página y esa esquina es la salida ◀◀. */
+    body.embedded .brand,
+    body.embedded .subbrand {
+      visibility: hidden
+    }
+
+    #intro .big {
+      height: clamp(52px, 11vw, 84px);
+      font-size: 0;
+      margin: 4px 0 20px;
+      background: url("brand/flauxus-horizontal-verde.svg") left center / contain no-repeat
+    }
+
+    /* ---- tipografía ---- */
+    #roomInfo h1,
+    .card h2,
+    #epilogue h2,
+    .pl-title,
+    #help h3,
+    #unlock strong,
+    .tc-title {
+      font-family: var(--font-head);
+      font-weight: 900;
+      font-style: normal;
+      text-transform: uppercase;
+      letter-spacing: -.03em;
+      line-height: .95
+    }
+
+    #roomInfo h1 { font-size: clamp(22px, 3.2vw, 34px) }
+    .card h2 { font-size: clamp(24px, 4.6vw, 32px) }
+    #epilogue h2 { font-size: clamp(32px, 6.4vw, 60px) }
+    .pl-title { font-size: clamp(24px, 3.6vw, 40px) }
+    #help h3 { font-size: 22px }
+    #unlock strong { font-size: 19px }
+    .tc-title { font-size: clamp(14px, 2vw, 20px); font-weight: 700; letter-spacing: .02em; margin-top: 10px }
+
+    /* notas y cifras: Tektur pesada, como las notas de las seis salas en la landing */
+    .tc-note,
+    .pl-note,
+    .stat b,
+    .stamp,
+    .ent b,
+    .slot,
+    .lcard strong,
+    #intentionCard strong {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-style: normal;
+      font-stretch: 85%;
+      letter-spacing: -.01em
+    }
+
+    /* textos y citas: Space Grotesk */
+    #roomHint,
+    #laStatus { font: 500 15px/1.35 var(--font-text) }
+    #voText { font: 400 clamp(16px, 2.1vw, 20px)/1.5 var(--font-text) }
+    #intro .lede { font: 500 clamp(16px, 2.3vw, 19px)/1.45 var(--font-text); color: var(--fg) }
+
+    /* datos, etiquetas y avisos: Martian Mono en mayúsculas */
+    #objective,
+    #roomInfo .k,
+    .card .k,
+    #intro .eyebrow,
+    #epilogue .eyebrow,
+    .pl-kicker,
+    .pl-pct,
+    #vo .who,
+    #vo .src,
+    .handlbl,
+    #unlock .k,
+    .chip,
+    .pip b,
+    #sourceChip,
+    #compass .lbl,
+    .frame::before,
+    .pend,
+    .tchip,
+    .devpick,
+    .lcard .tiny,
+    .lcard.cut::after,
+    #intro .note {
+      font-family: var(--font-mono);
+      font-style: normal;
+      font-weight: 500;
+      font-size: 10.5px;
+      letter-spacing: .05em;
+      text-transform: uppercase
+    }
+
+    #objective { font-size: 11px; color: var(--fg-2) }
+    #compass .lbl,
+    .pip b { font-weight: 700 }
+
+    kbd,
+    .dk kbd,
+    kbd.dk {
+      border: 1px solid var(--fg-3);
+      border-radius: 0;
+      background: var(--rw-negro);
+      color: var(--fg);
+      font: 600 10px/1.2 var(--font-mono);
+      box-shadow: 0 2px 0 var(--rw-gris)
+    }
+
+    /* ---- superficies: fichas en carbón, rectas, con la barra verde de la landing ---- */
+    .paper {
+      background: var(--rw-carbon);
+      color: var(--fg);
+      border: 1px solid var(--rw-gris);
+      border-radius: 0;
+      box-shadow: 0 22px 50px rgba(0, 0, 0, .55)
+    }
+
+    .paper::before {
+      top: -1px;
+      left: -1px;
+      width: 56px;
+      height: 4px;
+      background: var(--rw-verde);
+      transform: none;
+      box-shadow: none;
+      mix-blend-mode: normal
+    }
+
+    .card { transform: translate(-50%, -50%) }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translate(-50%, -46%) }
+      to { opacity: 1; transform: translate(-50%, -50%) }
+    }
+
+    #intro .box,
+    #help .box,
+    #intentionCard { transform: none }
+    #unlock { transform: translateX(-50%) translateY(-14px) }
+    #unlock.show { transform: translateX(-50%) }
+
+    #coach {
+      transform: translateX(-50%);
+      border-radius: 0;
+      border-left: 3px solid var(--rw-verde);
+      color: var(--fg);
+      font: 500 14px/1.35 var(--font-text)
+    }
+
+    #toast {
+      border-radius: 0;
+      border: 1px solid var(--rw-verde);
+      background: var(--rw-negro);
+      color: var(--fg);
+      font: 500 11px/1.4 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase
+    }
+
+    #roomHint,
+    #compass .lbl,
+    #vo,
+    .ent,
+    .frame,
+    .slot,
+    #traceCanvas,
+    .pl-meter,
+    .pl-meter i,
+    .pend,
+    .tchip { border-radius: 0 }
+
+
+    /* resaltado de la primera palabra del título: negro sobre verde, como la pantalla "inundada" de la landing */
+    .hl {
+      background: var(--rw-verde);
+      color: var(--rw-negro);
+      padding: 0 .12em
+    }
+
+    .stat u { border-bottom-color: var(--rw-gris) }
+    .stat b { color: var(--fg) }
+
+    .stamp {
+      border: 0;
+      border-radius: 0;
+      color: var(--rw-negro);
+      transform: rotate(-4deg)
+    }
+
+    @keyframes stampIn {
+      from { opacity: 0; transform: rotate(-4deg) scale(2.2) }
+      to { opacity: 1; transform: rotate(-4deg) scale(1) }
+    }
+
+    .tchip,
+    .pend { border: 1px dashed var(--fg-3); color: var(--fg-2) }
+
+    .devpick a {
+      border: 1px dashed var(--fg-3);
+      border-radius: 0;
+      color: var(--fg-2)
+    }
+
+    .devpick a.on {
+      border: 1px solid var(--rw-verde);
+      color: var(--rw-negro)
+    }
+
+    /* baraja: fichas rectas en carbón; la elegida, en verde */
+    .cardchip,
+    .cardchip:nth-child(even) {
+      border: 1px solid var(--fg-3);
+      border-radius: 0;
+      background: var(--rw-carbon);
+      color: var(--fg);
+      box-shadow: none;
+      transform: none;
+      font: 600 11px/1 var(--font-mono);
+      letter-spacing: .04em;
+      text-transform: uppercase
+    }
+
+    .cardchip:hover { border-color: var(--rw-verde); transform: translateY(-2px) }
+    .cardchip.sel { background: var(--rw-verde); border-color: var(--rw-verde); color: var(--rw-negro); box-shadow: none }
+    .cardchip.menu { background: var(--rw-negro); border-color: var(--rw-gris); box-shadow: none }
+
+    /* objetos del minijuego con contenido oscuro dentro (onda, flecha): claros, en blanco puro */
+    .breath { background: var(--rw-blanco) }
+    .lcard,
+    .lcard.cut { background: var(--rw-blanco); border-radius: 0 }
+    .lcard .tiny { color: rgba(0, 0, 0, .55) }
+
+    /* ---- chips, pestañas de sala e iconos: rectos ---- */
+    .chip {
+      border-radius: 0;
+      border-color: var(--rw-gris);
+      background: rgba(0, 0, 0, .6);
+      color: var(--fg-2)
+    }
+
+    .pip {
+      border: 1px solid var(--rw-gris);
+      border-radius: 0;
+      background: rgba(0, 0, 0, .62);
+      backdrop-filter: none
+    }
+
+    .pip b { color: var(--fg-3) }
+    .pip.cur { border-color: var(--fg) }
+
+    .icon {
+      border: 1px solid var(--fg-3);
+      border-radius: 0;
+      background: rgba(0, 0, 0, .72)
+    }
+
+    /* ---- botones secundarios = .prompt-btn de la landing ---- */
+    .btns,
+    #btnBack,
+    #btnSkip,
+    #btnVoSkip,
+    #btnWalk,
+    .epBtns button,
+    #intentionCard .btns {
+      border: 1px solid var(--rw-verde);
+      border-radius: 0;
+      background: linear-gradient(var(--rw-verde), var(--rw-verde)) no-repeat 0 0 / 0% 100%, var(--rw-negro);
+      color: var(--rw-verde);
+      font: 600 12px/1.2 var(--font-mono);
+      letter-spacing: .02em;
+      backdrop-filter: none;
+      box-shadow: none;
+      transition: background-size 220ms steps(6, jump-none), color 0s 110ms, opacity .22s var(--ease), transform .22s var(--ease)
+    }
+
+    /* acciones de escape (saltar), un paso por debajo: borde y texto neutros hasta el hover */
+    #btnSkip,
+    #btnVoSkip {
+      border-color: var(--fg-3);
+      color: var(--fg-2)
+    }
+
+    .btns:hover,
+    .btns:focus-visible,
+    #btnBack:hover,
+    #btnBack:focus-visible,
+    #btnSkip:hover,
+    #btnSkip:focus-visible,
+    #btnVoSkip:hover,
+    #btnVoSkip:focus-visible,
+    #btnWalk:hover,
+    #btnWalk:focus-visible,
+    .epBtns button:hover,
+    .epBtns button:focus-visible,
+    #intentionCard .btns:hover {
+      background: linear-gradient(var(--rw-verde), var(--rw-verde)) no-repeat 0 0 / 100% 100%, var(--rw-negro);
+      border-color: var(--rw-verde);
+      color: var(--rw-negro);
+      outline: none
+    }
+
+    /* estado activo / confirmación: verde lleno, texto negro */
+    .btns.go,
+    #chiselBtn.on,
+    .epBtns .primary {
+      background: var(--rw-verde);
+      border-color: var(--rw-verde);
+      color: var(--rw-negro);
+      box-shadow: none
+    }
+
+    .btns[disabled],
+    .btns[disabled]:hover {
+      background-size: 0% 100%, auto;
+      border-color: var(--fg-3);
+      color: var(--fg-3)
+    }
+
+    /* ---- botón principal = [ JUEGA YA ] de la landing (.cta) ---- */
+    .btn {
+      min-height: var(--rw-tactil-min);
+      border: 1px solid var(--rw-verde);
+      border-radius: 9999px;
+      background: linear-gradient(100deg, rgba(194, 254, 11, .28), rgba(194, 254, 11, .12));
+      color: var(--rw-blanco);
+      font: 900 16px/1 var(--font-display);
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      box-shadow: none;
+      transition: transform 120ms steps(2, jump-none), box-shadow .2s
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      border-color: rgba(255, 255, 255, .82);
+      background: linear-gradient(120deg, rgba(229, 255, 221, .34), rgba(170, 214, 174, .18) 48%, rgba(194, 254, 11, .28));
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, .45), 0 0 28px rgba(194, 254, 11, .35);
+      transform: skewX(-6deg);
+      outline: none
+    }
+
+    .btn:active { transform: translateY(2px); box-shadow: none }
+
+    .btn[disabled] {
+      border-color: var(--fg-3);
+      background: transparent;
+      color: var(--fg-3);
+      box-shadow: none;
+      transform: none
+    }
+
+    /* ---- aviso contextual (Entrar a la sala · E): verde lleno, recto ---- */
+    #prompt {
+      border-radius: 0;
+      font: 600 13px/1.2 var(--font-mono);
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      box-shadow: 0 0 28px rgba(194, 254, 11, .35)
+    }
+
+    #prompt:active { box-shadow: none }
+
+    @media(max-width:720px) {
+      .brand {
+        width: 108px;
+        height: 23px;
+        font-size: 0
+      }
+
+      /* la mono es más ancha que la sans anterior: en pantallas estrechas, botones más compactos para que
+         «Volver al atrio» y «Saltar …» quepan en la misma fila, debajo de las pestañas de sala */
+      .btns,
+      #btnBack,
+      #btnSkip,
+      #btnVoSkip,
+      #btnWalk {
+        font-size: 11px;
+        letter-spacing: 0;
+        padding: 8px 10px
+      }
+
+      #btnBack kbd {
+        display: none
+      }
+
+      #btnBack,
+      #btnSkip,
+      #btnVoSkip {
+        top: 106px
+      }
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      .pip.next,
+      .breath.untouched,
+      #compass .mk,
+      .pl-meter i {
+        animation: none
+      }
+
+      /* sin movimiento: el ecualizador queda quieto y la barra, a la izquierda */
+      .pl-eq i {
+        animation: none;
+        transform: scaleY(.55)
+      }
+
+      .pl-eq i:nth-child(odd) {
+        transform: scaleY(.85)
+      }
+
+      #preloader,
+      #preloader.on {
+        transition: none
+      }
+    }
+    /* =====================================================================
+       MENÚ PRINCIPAL · VIDRIO
+       El atrio gira detrás del menú (fase intro): el panel es una superficie de vidrio oscuro con desenfoque
+       acotado a su propia caja (no se procesa todo el lienzo). El fondo solo se oscurece en los bordes, para
+       que el escenario siga visible y el texto conserve contraste AA.
+       Rendimiento: el blur se limita al panel; en táctil baja a 10 px y, sin soporte, el panel es opaco.
+       ===================================================================== */
+    #intro {
+      --glass-accent: var(--rw-verde);
+      --glass-accent-2: var(--rw-verde);
+      --glass-glow: rgba(194, 254, 11, .16);
+      background:
+        radial-gradient(ellipse 70% 60% at 50% 50%, transparent 0%, rgba(0, 0, 0, .28) 60%, rgba(0, 0, 0, .72) 100%),
+        linear-gradient(to bottom, rgba(0, 0, 0, .25), transparent 30%, transparent 70%, rgba(0, 0, 0, .45))
+    }
+
+    /* halo de luz detrás del panel: separa planos sin tapar la escena */
+    #intro::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(760px, 120vw);
+      aspect-ratio: 1.3;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(closest-side, var(--glass-glow), transparent 70%);
+      pointer-events: none
+    }
+
+    #intro .box {
+      position: relative;
+      width: min(560px, 100%);
+      padding: clamp(24px, 4.4vw, 38px) clamp(20px, 4.4vw, 38px) clamp(20px, 3.6vw, 30px);
+      background: linear-gradient(150deg, rgba(26, 26, 26, .72), rgba(10, 10, 10, .52) 55%, rgba(10, 10, 10, .62));
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-top-color: rgba(255, 255, 255, .26);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .07);
+      -webkit-backdrop-filter: blur(16px) saturate(1.15);
+      backdrop-filter: blur(16px) saturate(1.15)
+    }
+
+    #intro .box::before {
+      background: linear-gradient(90deg, var(--glass-accent), var(--glass-accent-2))
+    }
+
+    /* instrucciones en un segundo plano de vidrio, un paso más oscuro */
+    #intro .how {
+      margin: 0 0 6px;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, .34);
+      border: 1px solid rgba(255, 255, 255, .08);
+      color: var(--fg)
+    }
+
+    #intro .eyebrow { color: var(--glass-accent) }
+    #intro .note { color: var(--fg-2) }
+
+    #intro .btn {
+      display: block;
+      width: 100%;
+      margin-top: 20px;
+      border-color: var(--glass-accent)
+    }
+
+    body.touch #intro .box {
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px)
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      #intro .box { background: rgba(18, 18, 18, .94) }
+    }
+
+    @media (max-width: 520px) {
+      #intro { align-items: flex-end; padding: 12px 12px max(12px, env(safe-area-inset-bottom)) }
+      #intro .box { max-height: calc(100dvh - 24px) }
+      #intro .how { grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 13px; padding: 12px }
+      #intro .lede { margin-bottom: 14px }
+    }
+
+    @media (max-height: 560px) and (orientation: landscape) {
+      #intro .box { max-height: calc(100dvh - 24px); padding: 18px 24px }
+      #intro .big { height: 44px; margin: 0 0 10px }
+      #intro .lede { font-size: 15px; margin-bottom: 10px }
+      #intro .how { display: none }
+      #intro .btn { margin-top: 12px }
+    }
+
+    /* =====================================================================
+       ACENTOS SEGÚN EL SKIN ACTIVO (core/state.js → body[data-skin])
+       Cyborg (entrada desde el fanzine): cian del traje (#19C6D9, token --rw-cian de la landing) y rosado RGB.
+       Solo acentos: bordes, barra superior, halo, botón y la ficha de habilidad. Fondos oscuros y texto blanco
+       se mantienen para conservar el contraste.
+       ===================================================================== */
+    body[data-skin="cyborg"] {
+      --skin-a: #19C6D9;
+      --skin-b: #FF4FB8;
+    }
+
+    body[data-skin="cyborg"] #intro {
+      --glass-accent: var(--skin-a);
+      --glass-accent-2: var(--skin-b);
+      --glass-glow: rgba(25, 198, 217, .16)
+    }
+
+    body[data-skin="cyborg"] #intro::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 45% 40% at 18% 80%, rgba(255, 79, 184, .14), transparent 70%),
+        radial-gradient(ellipse 45% 40% at 82% 20%, rgba(25, 198, 217, .14), transparent 70%);
+      pointer-events: none
+    }
+
+    body[data-skin="cyborg"] #intro .box {
+      border-color: rgba(25, 198, 217, .32);
+      border-top-color: rgba(255, 79, 184, .45);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 42px rgba(25, 198, 217, .12), inset 0 1px 0 rgba(255, 255, 255, .07)
+    }
+
+    body[data-skin="cyborg"] #intro .btn {
+      border-color: var(--skin-a);
+      background: linear-gradient(100deg, rgba(25, 198, 217, .26), rgba(255, 79, 184, .16));
+      color: var(--rw-blanco)
+    }
+
+    body[data-skin="cyborg"] #intro .btn:hover,
+    body[data-skin="cyborg"] #intro .btn:focus-visible {
+      border-color: var(--skin-b);
+      background: linear-gradient(120deg, rgba(25, 198, 217, .4), rgba(255, 79, 184, .3));
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, .4), 0 0 28px rgba(255, 79, 184, .35)
+    }
+
+    body[data-skin="cyborg"] #intro .big {
+      filter: drop-shadow(0 0 18px rgba(25, 198, 217, .25))
+    }
+
+    body[data-skin="cyborg"] .chip.skill {
+      border-color: var(--skin-b);
+      color: var(--skin-b)
+    }
+
+    body[data-skin="cyborg"] #unlock::before {
+      background: linear-gradient(90deg, var(--skin-a), var(--skin-b))
+    }
+
+    body[data-skin="cyborg"] #unlock .k { color: var(--skin-a) }
+    body[data-skin="cyborg"] .pl-eq i:nth-child(odd) { background: var(--skin-a); box-shadow: 0 0 12px rgba(25, 198, 217, .45) }
+    body[data-skin="cyborg"] .pl-eq i:nth-child(even) { background: var(--skin-b); box-shadow: 0 0 12px rgba(255, 79, 184, .45) }
+
+    #intro .box { z-index: 1 }
+    #intro::before,
+    #intro::after { z-index: 0 }
+
+    /* =====================================================================
+       JERARQUÍA DE LA INFORMACIÓN (body[data-phase] lo fija Main.js)
+       Una sola voz principal a la vez:
+       · intro   → el menú. Se ocultan la ficha del atrio, las pestañas de sala y el objetivo.
+       · atrium  → la descripción de la ficha se pliega a los 9 s (queda nota + título); el aviso de ayuda
+                   sube por encima de la ficha para no pisarla.
+       · prelude → la locución manda: mientras habla María Clara, la descripción y la fuente se apartan.
+       · brief/play → la ficha de juego y las pistas mandan: la descripción de la sala se oculta.
+       · done    → la tarjeta de cierre sola.
+       ===================================================================== */
+    #roomInfo p {
+      max-height: 7.5em;
+      overflow: hidden;
+      transition: opacity .45s var(--ease), max-height .45s var(--ease)
+    }
+
+    #roomInfo:not(.fresh) p {
+      opacity: 0;
+      max-height: 0
+    }
+
+    #roomInfo,
+    #progress,
+    #objective,
+    #sourceChip,
+    #coach {
+      transition: opacity .35s var(--ease), visibility 0s
+    }
+
+    body[data-phase="intro"] #roomInfo,
+    body[data-phase="intro"] #progress,
+    body[data-phase="intro"] #objective,
+    body[data-phase="done"] #roomInfo,
+    body[data-phase="done"] #sourceChip,
+    body[data-phase="done"] #roomHint {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .35s var(--ease), visibility 0s .35s
+    }
+
+    body[data-phase="brief"] #roomInfo p,
+    body[data-phase="play"] #roomInfo p,
+    body:has(#vo.show) #roomInfo p {
+      opacity: 0;
+      max-height: 0
+    }
+
+    body:has(#vo.show) #sourceChip,
+    body:has(#unlock.show) #coach {
+      opacity: 0
+    }
+
+    /* el aviso de ayuda del atrio queda por encima de la ficha (antes la pisaba en ~1280 px) */
+    #coach { bottom: 168px }
+
+
+    /* Táctil dentro de una sala: «Volver al atrio» ocupa la franja superior (top 106 px en ≤720 px), así que la
+       ficha baja por debajo; en juego, la ficha y la fuente sonora se apartan para dejar la pista y los controles. */
+    @media (max-width: 720px) {
+      body[data-phase="prelude"] #roomInfo,
+      body[data-phase="brief"] #roomInfo,
+      body[data-phase="play"] #roomInfo { top: 158px }
+    }
+
+    body.touch[data-phase="play"] #roomInfo,
+    body.touch[data-phase="play"] #sourceChip {
+      opacity: 0;
+      visibility: hidden
+    }
+
+    /* Táctil: la locución sube por encima del botón ⟳ (girar la vista), que antes quedaba tapado en el preludio. */
+    body.touch #vo {
+      bottom: calc(max(36px, env(safe-area-inset-bottom)) + 204px)
+    }
+
+    /* =====================================================================
+       HUD POR REGIONES
+       Causa de las superposiciones anteriores: cada pieza del HUD tenía coordenadas propias (position:absolute
+       con top/left/bottom fijos) y ninguna «sabía» dónde estaban las demás. Ahora #hud es una rejilla y cada
+       pieza vive en una región; dentro de una región las piezas se apilan (flex), así que no pueden encimarse.
+       Lo oculto no ocupa sitio (display:none con transición discreta), para que los vecinos se reacomoden.
+
+       Ancho:    izquierda · centro · derecha   (≥ 961 px, y también celulares en horizontal)
+       Estrecho: las tres columnas se disuelven (display:contents) y cada grupo pasa a su franja:
+                 salir/marca · iconos → pestañas → volver · saltar → ficha → avisos → (escena) → voz → controles
+       ===================================================================== */
+    #hud {
+      --hud-pad: clamp(12px, 1.6vw, 22px);
+      --hud-gap: clamp(8px, 1.2vh, 14px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, min(620px, 46vw)) minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas:
+        "tl   tc     tr"
+        "left center right";
+      gap: var(--hud-gap) clamp(12px, 2vw, 28px);
+      padding:
+        max(var(--hud-pad), env(safe-area-inset-top)) max(var(--hud-pad), env(safe-area-inset-right))
+        max(var(--hud-pad), env(safe-area-inset-bottom)) max(var(--hud-pad), env(safe-area-inset-left))
+    }
+
+    /* todas las piezas vuelven al flujo: ya no tienen coordenadas propias */
+    #hud #btnBack, #hud #roomInfo, #hud #joy, #hud #unlock, #hud #roomHint, #hud #vo, #hud #coach, #hud #prompt,
+    #hud #btnVoSkip, #hud #btnSkip, #hud #btnLook, #hud #btnWalk, #hud #sourceChip, #hud .card {
+      position: relative;
+      inset: auto;
+      transform: none;
+      margin: 0
+    }
+
+    #hud .hud-tl { grid-area: tl; display: flex; align-items: center; gap: 12px; min-width: 0 }
+    #hud .mid { grid-area: tc; min-width: 0 }
+    #hud .rightTop { grid-area: tr; justify-self: end; align-self: start }
+
+    #hud .hud-left,
+    #hud .hud-center,
+    #hud .hud-right { display: flex; flex-direction: column; gap: var(--hud-gap); min-width: 0; min-height: 0 }
+    #hud .hud-left { grid-area: left; align-items: flex-start }
+    #hud .hud-center { grid-area: center; align-items: center; justify-content: space-between }
+    #hud .hud-right { grid-area: right; align-items: flex-end; justify-content: space-between }
+
+    #hud .hud-notice,
+    #hud .hud-speech { display: flex; flex-direction: column; align-items: center; gap: var(--hud-gap); width: 100%; min-width: 0 }
+    #hud .hud-skips,
+    #hud .hud-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--hud-gap); min-width: 0 }
+
+    /* --- salir del juego (solo embebido en la landing) --- */
+    #btnExit {
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 14px;
+      border: 1px solid var(--rw-verde);
+      background: linear-gradient(var(--rw-verde), var(--rw-verde)) no-repeat 0 0 / 0% 100%, var(--rw-negro);
+      color: var(--rw-verde);
+      font: 600 12px/1 var(--font-mono);
+      letter-spacing: .02em;
+      transition: background-size 220ms steps(6, jump-none), color 0s 110ms
+    }
+
+    #btnExit[hidden] { display: none }
+    #btnExit:hover, #btnExit:focus-visible { background-size: 100% 100%, auto; color: var(--rw-negro); outline: none }
+    body.embedded .brandwrap { display: none }
+
+    /* --- pestañas de sala: se encogen antes que desbordar --- */
+    #hud #progress { flex-wrap: nowrap; gap: clamp(3px, .6vw, 7px) }
+    #hud .pip { flex: 1 1 44px; min-width: 0; max-width: 64px; padding: 6px 4px 5px }
+    #hud .pip b { white-space: nowrap; font-size: clamp(9px, 2.6vw, 10.5px) }
+
+    /* --- columna izquierda --- */
+    #hud #btnBack { top: auto; left: auto; white-space: nowrap }
+    #hud #roomInfo {
+      margin-top: auto;                 /* escritorio: la ficha descansa abajo a la izquierda */
+      max-width: 100%;
+      padding: 14px 18px 14px 0;
+      background: linear-gradient(90deg, rgba(0, 0, 0, .6), rgba(0, 0, 0, .42) 70%, rgba(0, 0, 0, 0));
+      -webkit-mask-image: none;
+      mask-image: none;
+      box-shadow: -60px 0 0 rgba(0, 0, 0, .6)   /* la banda llega al borde de la pantalla */
+    }
+    #hud #roomInfo h1 { font-size: clamp(18px, 2.6vw, 32px); overflow-wrap: anywhere }
+    #hud #joy { margin-top: auto; flex: none }
+    body.touch #hud #roomInfo { margin-top: 0 }      /* táctil: la ficha sube; abajo va el círculo */
+
+    /* --- columna central --- */
+    #hud #unlock { width: min(430px, 100%); left: auto; top: auto }
+    #hud #roomHint {
+      max-width: 100%;
+      white-space: normal;
+      text-align: center;
+      text-wrap: balance;
+      top: auto;
+      bottom: auto;
+      left: auto
+    }
+    #hud #vo { width: 100%; max-height: 42dvh; overflow: hidden; bottom: auto }
+    #hud #coach { max-width: 100%; bottom: auto; top: auto; left: auto }
+    #hud #prompt { max-width: 100%; white-space: normal; text-wrap: balance; left: auto; right: auto; bottom: auto }
+
+    /* --- columna derecha --- */
+    #hud #btnVoSkip, #hud #btnSkip { top: auto; right: auto; white-space: nowrap }
+    #hud #btnLook { right: auto; bottom: auto }
+    #hud #btnWalk { right: auto; bottom: auto; max-width: 100%; white-space: normal; text-align: center }
+    #hud #sourceChip { right: auto; bottom: auto; max-width: 100% }
+
+    /* --- lo oculto no ocupa sitio --- */
+    #hud #unlock, #hud #vo, #hud #coach, #hud #prompt, #hud #btnWalk {
+      display: none;
+      opacity: 0;
+      transition: opacity .28s var(--ease), display .28s allow-discrete
+    }
+    #hud #unlock.show, #hud #vo.show, #hud #coach.show { display: block; opacity: 1 }
+    #hud #prompt.show, #hud #btnWalk.show { display: inline-block; opacity: 1; pointer-events: auto }
+    @starting-style {
+      #hud #unlock.show, #hud #vo.show, #hud #coach.show, #hud #prompt.show, #hud #btnWalk.show { opacity: 0 }
+    }
+    #hud #roomHint:empty { display: none }
+
+    body[data-phase="intro"] #hud #roomInfo,
+    body[data-phase="done"] #hud #roomInfo,
+    body[data-phase="epilogue"] #hud #roomInfo,
+    body.touch[data-phase="play"] #hud #roomInfo { display: none }
+    body[data-phase="intro"] #hud .mid { visibility: hidden }
+
+    /* --- tarjetas de sala: región central, bajo la barra superior --- */
+    #hud .card {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      place-self: center;
+      z-index: 2;
+      width: min(500px, 100%);
+      max-height: 100%;
+      overflow: auto
+    }
+    #hud .card.show { animation: cardRise .4s var(--ease) }
+    @keyframes cardRise { from { opacity: 0; translate: 0 18px } to { opacity: 1; translate: 0 0 } }
+
+    /* con una tarjeta abierta, el resto del HUD central se aparta: una sola voz */
+    body:has(#hud .card.show) #hud #roomInfo,
+    body:has(#hud .card.show) #hud .hud-notice,
+    body:has(#hud .card.show) #hud .hud-speech,
+    body:has(#hud .card.show) #hud .hud-actions,
+    body:has(#hud .card.show) #hud .hud-skips,
+    body:has(#hud .card.show) #hud #joy { display: none }
+
+    /* ---------- ESTRECHO: franjas ---------- */
+    @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) {
+      #hud {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+          "tl     tr"
+          "tc     tc"
+          "back   skips"
+          "info   info"
+          "notice notice"
+          ".      ."
+          "speech speech"
+          "joy    actions";
+        row-gap: 8px
+      }
+
+      #hud .hud-left, #hud .hud-center, #hud .hud-right { display: contents }
+      #hud #btnBack { grid-area: back; justify-self: start }
+      #hud .hud-skips { grid-area: skips; align-self: start }
+      #hud #roomInfo { grid-area: info; margin-top: 0; justify-self: start; max-width: min(100%, 520px) }
+      #hud #roomInfo p { display: none }
+      #hud .hud-notice { grid-area: notice }
+      #hud .hud-speech { grid-area: speech; align-self: end }
+      #hud #joy { grid-area: joy; align-self: end; justify-self: start; margin: 0 }
+      #hud .hud-actions { grid-area: actions; align-self: end }
+      #hud .card { grid-row: 4 / -1 }
+      #hud #vo { max-height: 34dvh }
+      #hud .subbrand, #hud #objective, #hud #sourceChip, #hud .chip { display: none }
+      #hud #btnBack kbd { display: none }
+      #btnExit span { display: none }
+    }
+
+    /* ---------- BAJO Y ANCHO (celular en horizontal): tres columnas compactas ---------- */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+      #hud { --hud-gap: 6px; grid-template-columns: minmax(0, 1fr) minmax(0, 46vw) minmax(0, 1fr) }
+      #hud #roomInfo p, #hud .subbrand, #hud #objective, #hud #sourceChip { display: none }
+      #hud #roomInfo { padding: 8px 12px 8px 0 }
+      #hud #roomInfo h1 { font-size: 16px; margin: 0 }
+      #hud #joy { width: 104px; height: 104px }
+      #hud #vo { max-height: 46dvh; padding: 10px 14px }
+      #hud #voText { font-size: 14px; line-height: 1.4 }
+      #hud .btn { min-height: 44px }
+      #hud .card { padding: 16px 18px }
+      #hud #btnBack kbd { display: none }
+      #btnExit span { display: none }
+    }
+
+    /* =====================================================================
+       ESCENA EN SEGUNDO PLANO CUANDO HAY UNA TARJETA
+       Con la ficha, el cierre o la ayuda abiertas, el escenario 3D (y el lienzo 2D de efectos) se desenfoca y
+       se oscurece: el holograma y el movimiento del fondo dejan de competir con la lectura.
+       Es un filtro del compositor sobre el <canvas> (no un posproceso dentro del motor) y, mientras dura, el
+       motor renderiza a menor resolución (ui/debug.js · setResCap): el desenfoque sale más barato, no más caro.
+       ===================================================================== */
+    #gl3d, #g2d { transition: filter .4s var(--ease) }
+    body.card-open #gl3d { filter: blur(9px) brightness(.5) saturate(.8) }
+    body.card-open #g2d { filter: blur(6px) brightness(.6) }
+    @media (prefers-reduced-motion: reduce) { #gl3d, #g2d { transition: none } }
+
+    /* =====================================================================
+       SATÉLITES · botones de entrada en la tarjeta del menú
+       ===================================================================== */
+    .sats {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+      gap: 8px
+    }
+    .sats .sats-k {
+      grid-column: 1 / -1;
+      font: 500 10.5px/1.3 var(--font-mono);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--fg-2)
+    }
+    .sats a {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 48px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      background: rgba(0, 0, 0, .34);
+      color: var(--fg);
+      text-decoration: none;
+      font: 700 12px/1.1 var(--font-mono);
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      transition: border-color .15s, background .15s
+    }
+    .sats a small { font: 500 10px/1.25 var(--font-text); letter-spacing: 0; text-transform: none; color: var(--fg-2) }
+    .sats a:hover, .sats a:focus-visible { border-color: var(--rw-verde); background: rgba(194, 254, 11, .1); outline: none }
+    .sats a.on { border-color: var(--rw-verde); background: var(--rw-verde); color: var(--rw-negro) }
+    .sats a.on small { color: rgba(0, 0, 0, .7) }
+    body[data-skin="cyborg"] .sats a.on { border-color: var(--skin-a); background: linear-gradient(100deg, var(--skin-a), var(--skin-b)) }
+    /* horizontal bajo: los satélites siguen disponibles, en una fila compacta (sin la línea de habilidad) */
+    @media (max-height: 560px) and (orientation: landscape) {
+      .sats { margin-top: 10px; padding-top: 8px; grid-template-columns: auto repeat(4, minmax(0, 1fr)); align-items: center }
+      .sats .sats-k { grid-column: auto; max-width: 110px }
+      .sats a { min-height: 40px; padding: 6px 8px }
+      .sats a small { display: none }
+    }
+
+    /* --- «Salir» (embebido): fijo en la esquina, por encima de todo; el HUD y las pantallas le dejan su hueco --- */
+    :root { --exit-w: 92px; --exit-h: 44px; --edge: clamp(12px, 1.6vw, 22px) }
+    #btnExit {
+      position: fixed;
+      z-index: 90;
+      top: max(var(--edge), env(safe-area-inset-top));
+      left: max(var(--edge), env(safe-area-inset-left));
+      width: var(--exit-w);
+      height: var(--exit-h);
+      justify-content: center;
+      padding: 0
+    }
+    .exit-slot { display: none; flex: none; width: var(--exit-w); height: var(--exit-h) }
+    body.embedded .exit-slot { display: block }
+    body.embedded #intro,
+    body.embedded #help,
+    body.embedded #epilogue { padding-top: calc(max(var(--edge), env(safe-area-inset-top)) + var(--exit-h) + 10px) }
+    body.embedded #preloader { padding-top: calc(max(24px, env(safe-area-inset-top)) + var(--exit-h)) }
+    @media (max-width: 960px), (max-height: 500px) { :root { --exit-w: 52px } }
+
+    /* --- ajustes del HUD por regiones tras la primera pasada del banco de pruebas --- */
+    @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) {
+      /* el JS muestra estas piezas con style.display: aquí manda el formato */
+      #hud #sourceChip, #hud .chip { display: none !important }
+      #hud #vo { overflow-y: auto; scrollbar-width: none }
+      #hud #btnBack, #hud #btnVoSkip, #hud #btnSkip { font-size: 11px; padding: 8px 10px; min-height: 44px }
+    }
+
+    /* muy estrecho: «Volver» y «Saltar» en filas propias (no caben lado a lado).
+       Iteración 4: el corte baja de 380 a 339 px. A 360 px sí caben lado a lado y la fila extra le quitaba
+       ~52 px de alto a la escena justo donde menos sobra. */
+    @media (max-width: 339px) {
+      #hud {
+        grid-template-rows: auto auto auto auto auto auto minmax(0, 1fr) auto auto;
+        grid-template-areas:
+          "tl     tr"
+          "tc     tc"
+          "back   back"
+          "skips  skips"
+          "info   info"
+          "notice notice"
+          ".      ."
+          "speech speech"
+          "joy    actions"
+      }
+      #hud .hud-skips { justify-self: start; align-items: flex-start }
+      #hud .card { grid-row: 3 / -1 }
+    }
+
+    /* poca altura en vertical (celulares compactos): controles más pequeños y la voz cede sitio */
+    @media (max-height: 700px) and (max-width: 960px) {
+      #hud #joy { width: 104px; height: 104px }
+      #hud #joyKnob { width: 46px; height: 46px }
+      #hud #vo { max-height: 26dvh; padding: 10px 14px }
+      #hud #voText { font-size: 15px; line-height: 1.4 }
+      body:has(#vo.show) #hud #roomInfo { display: none }
+    }
+
+    /* =====================================================================
+       MINIJUEGOS CON INTERFAZ PROPIA (LA♯ y MI) · misma regla que el HUD
+       Antes cada bloque tenía un «top» en porcentaje (21 %, 55 %, 78 %, 84 %): cuando la bandeja de fragmentos
+       pasaba a dos filas, tapaba el contador y el botón. Ahora LA♯ es una columna: pentagrama → bandeja →
+       contador → botones, en ese orden, con el espacio que cada uno necesite. La columna respeta la franja
+       superior del HUD (--ui-top) y, si la pantalla es muy baja, se desplaza en vez de recortarse.
+       ===================================================================== */
+    :root { --ui-top: 118px }
+    @media (max-width: 960px) and (min-height: 501px), (max-aspect-ratio: 4/5) { :root { --ui-top: 196px } }
+    @media (max-width: 339px) { :root { --ui-top: 248px } }
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) { :root { --ui-top: 96px } }
+
+    #laUI[style*="block"] {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: safe center;
+      gap: clamp(8px, 1.6vh, 16px);
+      padding: var(--ui-top) max(12px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      overflow-y: auto;
+      scrollbar-width: none
+    }
+
+    #laUI .frame, #laUI .tray, #laUI #laStatus, #laUI #laBtns {
+      position: relative;
+      inset: auto;
+      transform: none;
+      flex: none
+    }
+    #laUI .frame { width: min(780px, 100%); gap: clamp(6px, 1.2vw, 12px) }
+    #laUI .tray { width: min(820px, 100%); gap: clamp(6px, 1.2vw, 12px) }
+    #laUI #laBtns { width: 100% }
+    #laUI #laStatus { white-space: normal; text-align: center; padding: 4px 12px; background: rgba(0, 0, 0, .6) }
+    #laUI .slot, #laUI .lcard { width: min(150px, 21vw); height: clamp(66px, 12vh, 108px) }
+    #laUI .lcard strong { font-size: clamp(10px, 2.6vw, 14px) }
+    @media (max-width: 520px) { #laUI .lcard .tiny { display: none } }
+
+    /* MI: los botones descansan abajo, centrados, por encima del área segura; la carta de intención no invade
+       la columna derecha del HUD */
+    #miUI #miBtns { top: auto; bottom: max(18px, env(safe-area-inset-bottom)); width: min(94vw, 720px) }
+    #miUI #intentionCard { top: calc(var(--ui-top) + 56px); right: max(16px, env(safe-area-inset-right)); max-width: 46vw }
+
+    /* con un minijuego de interfaz propia en juego, la ficha de sala y la fuente sonora se apartan (el título ya
+       está marcado en las pestañas superiores) */
+    body[data-phase="play"]:has(#laUI[style*="block"], #miUI[style*="block"]) #hud #roomInfo,
+    body[data-phase="play"]:has(#laUI[style*="block"], #miUI[style*="block"]) #hud #sourceChip { display: none !important }
+
+    /* =====================================================================
+       SEGUNDA PASADA DEL BANCO DE PRUEBAS (105 combinaciones)
+       ===================================================================== */
+    /* Menú, ayuda y epílogo son pantallas completas: el HUD no se dibuja debajo de ellas. */
+    body[data-phase="intro"] #hud,
+    body[data-phase="epilogue"] #hud,
+    body:has(#help.show) #hud { visibility: hidden }
+
+    /* ⟳ (girar la vista) solo existe mientras se camina: atrio y preludio. Antes quedaba encendido en los
+       minijuegos y pisaba sus botones. */
+    body:not([data-phase="atrium"]):not([data-phase="prelude"]) #hud #btnLook { display: none !important }
+
+    /* Celular en horizontal: la tarjeta ocupa la columna central, sin invadir «Volver al atrio». */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+      #hud .card { grid-column: 2; width: 100%; max-height: 100% }
+      #hud .card h2 { font-size: 20px }
+      #hud .card p { font-size: 13px; margin-bottom: 8px }
+    }
+
+    /* Pantallas muy bajas en vertical (≤ 600 px): todo un punto más compacto para que los controles no se salgan. */
+    @media (max-height: 600px) and (max-width: 960px) {
+      #hud { row-gap: 6px }
+      #hud #roomInfo { padding: 6px 12px 6px 0 }
+      #hud #roomInfo h1 { font-size: 16px; margin: 0 }
+      #hud #joy { width: 92px; height: 92px }
+      #hud #btnLook { width: 46px; height: 46px }
+      #hud #prompt { padding: 10px 16px; font-size: 12px }
+      #hud #coach { padding: 8px 12px; font-size: 13px }
+    }
+
+    /* LA♯ en horizontal bajo: la interfaz descansa ABAJO en dos mitades (pentagrama, y debajo contador + botones |
+       bandeja de fragmentos). Antes las dos mitades iban centradas en vertical, con contador y botones en filas
+       propias: ocupaban de y≈165 a y≈335 de 390 y a María Clara solo le quedaban 49 px bajo el aviso (la cámara
+       se alejaba 1,4× y aun así solo se le veían las piernas). Ahora la franja libre mide ~120 px. */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+      #laUI[style*="block"] {
+        display: grid !important;
+        grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) minmax(0, 2fr);
+        grid-template-areas: "frame frame tray" "status btns tray";
+        align-content: end;
+        align-items: center;
+        justify-items: center;
+        column-gap: 12px;
+        row-gap: 6px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom))
+      }
+      #laUI .frame { grid-area: frame; padding: 16px 8px 8px; gap: 6px; max-width: 100% }
+      #laUI .tray { grid-area: tray; align-self: end; gap: 6px 8px }
+      #laUI #laStatus { grid-area: status; font-size: 12px; padding: 2px 6px }
+      #laUI #laBtns { grid-area: btns; gap: 6px }
+      #laUI .slot, #laUI .lcard { width: min(92px, 10.5vw); height: 58px }
+      /* el nombre en una sola línea: en dos empujaba la onda fuera de la tarjeta */
+      #laUI .lcard { padding: 6px 7px }
+      #laUI .lcard strong { font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: clip }
+      #laUI .lcard img { height: 24px; margin: 4px 0 0 }
+      #laUI .lcard .tiny { display: none }
+      #laUI .btns { min-height: 40px; padding: 6px 10px; font-size: 11px }
+    }
+
+    /* tercera pasada: en ≤ 380 px la tarjeta empieza bajo las filas de «Volver» y «Saltar» */
+    @media (max-width: 339px) { #hud .card { grid-row: 5 / -1 } }
+    /* ayuda en pantallas bajas: la caja nunca supera el alto disponible */
+    #help .box { max-height: 100%; overflow: auto }
+    #help { box-sizing: border-box }
+
+    /* LA♯ en celulares compactos (≤ 620 px de alto): fragmentos y pentagrama más bajos para que quepan los botones */
+    @media (max-height: 620px) and (max-width: 520px) {
+      #laUI[style*="block"] { gap: 6px }
+      #laUI .frame { padding: 18px 8px 8px }
+      #laUI .slot, #laUI .lcard { height: 46px }
+      #laUI .lcard img { height: 16px }
+      #laUI .lcard strong { font-size: 10px }
+      #laUI #laStatus { font-size: 12px; padding: 2px 8px }
+      #laUI .btns { min-height: 40px; padding: 6px 10px }
+    }
+
+    /* =====================================================================
+       ITERACIÓN 4 · CELULAR PRIMERO: objetivos táctiles y sitio para María Clara
+       La cámara (player.js · composeFrame) mide la franja libre entre el HUD de arriba y las piezas de abajo
+       y encuadra ahí a la avatar. Estas reglas le dejan esa franja en pantallas verticales.
+       ===================================================================== */
+    /* ♪ y ? medían 38 px (33 px en horizontal, encogidos por la fila): objetivo táctil mínimo de 44 px */
+    body.touch .icon { width: 44px; height: 44px; flex: none }
+    body.touch #laUI .btns, body.touch #miUI .btns { min-height: 44px }
+
+    @media (max-aspect-ratio: 4/5) {
+      /* La locución tapaba entre el 38 % y el 98 % de la avatar: en vertical ocupaba hasta el 34 % del alto, justo
+         en el centro. Ahora es una caja baja (el texto ya avanza solo con la lectura: ui/voice.js) pegada al
+         círculo, y la ficha de la sala se aparta mientras ella habla (el Momento sigue marcado en las pestañas). */
+      #hud #vo { max-height: clamp(112px, 18dvh, 160px) }
+      body:has(#vo.show) #hud #roomInfo { display: none }
+      /* LA♯: la columna de juego (pentagrama → bandeja → botones) descansa abajo, al alcance del pulgar, y deja
+         libre la franja superior para ver a María Clara y la mesa. Antes iba centrada y la cubría entera. */
+      #laUI[style*="block"] { justify-content: safe flex-end }
+    }
+    /* LA♯ en celulares de hasta 700 px de alto: fragmentos y espacios más bajos (siguen ≥ 48 px) para que quede
+       franja libre sobre el pentagrama; a 640 px la columna llenaba la pantalla y tapaba a la avatar. */
+    @media (max-height: 700px) and (min-height: 621px) and (max-width: 520px) {
+      #laUI[style*="block"] { gap: 6px }
+      #laUI .frame { padding: 18px 8px 8px }
+      #laUI .slot, #laUI .lcard { height: 50px }
+      #laUI .lcard img { height: 18px }
+      #laUI #laStatus { font-size: 12px; padding: 2px 8px }
+    }
+
+    /* =====================================================================
+       ITERACIÓN 4 · REVISIÓN
+       ===================================================================== */
+    /* Locución: líneas enteras. ui/voice.js limita #voText a un número entero de líneas según el alto que la
+       maquetación le deja a la caja y lo desplaza de línea en línea con la lectura; aquí solo se recorta el
+       sobrante. Antes la caja se cortaba a un alto cualquiera y la última línea asomaba a media altura. */
+    #hud #voText { overflow: hidden; scroll-behavior: smooth }
+    @media (prefers-reduced-motion: reduce) { #hud #voText { scroll-behavior: auto } }
+    /* la línea de fuente interna solo existe con ?dev: vacía no debe quitarle una línea de texto a la caja */
+    #hud #vo .src:empty { display: none }
+
+    /* LA♯ en vertical con alto de sobra (≥ 701 px): las tarjetas medían el 12 % del alto (101 px en 390×844) y la
+       columna subía hasta el 42 % de la pantalla: a María Clara le quedaban 150 px bajo el aviso y la cabeza lo
+       rozaba. Con tarjetas del 9,5 % la franja libre crece ~60 px y cabe sin alejar la cámara. Los celulares
+       más bajos ya tienen sus propias alturas (reglas de ≤ 700 px, más arriba). */
+    @media (max-aspect-ratio: 4/5) and (min-height: 701px) {
+      #laUI .slot, #laUI .lcard { height: clamp(60px, 9.5vh, 96px) }
+    }
+
+    /* Menú en celulares compactos (≤ 400 × 700): las cuatro entradas de los satélites quedaban en 2 × 2 y las dos
+       últimas (Afiche y Baraja) caían bajo el pliegue de la tarjeta, sin indicio de que hubiera más (699 px de
+       contenido en 614 visibles a 360×640). En una sola fila compacta —igual que en horizontal— caben todas a
+       la vista junto a «Entrar al museo». */
+    @media (max-width: 400px) and (max-height: 700px) {
+      #intro .lede { margin-bottom: 10px }
+      #intro .btn { margin-top: 14px }
+      .sats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; padding-top: 10px }
+      .sats a { min-height: 44px; padding: 6px 2px; align-items: center; justify-content: center; text-align: center; font-size: 10.5px; letter-spacing: 0 }
+      .sats a small { display: none }
+    }
+
+    /* LA♯ en tabletas táctiles en horizontal (formato ancho): la columna de juego también descansa abajo, al
+       alcance de los pulgares, y deja la franja superior a María Clara (la cámara la encuadra ahí en toda
+       pantalla táctil: player.js · frameK). Con ratón la columna sigue centrada, como en escritorio. */
+    @media (min-height: 501px) { body.touch #laUI[style*="block"] { justify-content: safe flex-end } }
+    /* Celular en horizontal: el tope de la caja (26dvh ≈ 101 px) daba dos líneas y media; con 108 px caben tres
+       enteras (3 × 21 px + rótulo + márgenes). */
+    @media (max-height: 500px) and (min-aspect-ratio: 4/5) { #hud #vo { max-height: 108px } }
+
+    /* =====================================================================
+       ITERACIÓN 5 · SUBTÍTULOS DE LA LOCUCIÓN
+       Una frase a la vez (ui/voice.js), en una caja que SIEMPRE mide dos líneas: no cambia de alto al cambiar de
+       frase, así que ni el HUD ni el encuadre de la cámara (que usa su borde superior) se mueven mientras María
+       Clara habla. Sigue en la región «voz» del HUD —franja inferior, sobre los controles táctiles—, igual en
+       todas las salas. Letra ≥ 16 px en cualquier formato, sobre veladura oscura (contraste AA de sobra).
+       ===================================================================== */
+    #hud #vo { max-width: 680px; max-height: none; overflow: hidden; padding: 10px 16px 12px; background: rgba(0, 0, 0, .8) }
+    #hud #vo .who { margin-bottom: 4px }
+    #hud #voText {
+      position: relative;
+      height: 3em;                      /* dos líneas exactas: 2 × 1,5 */
+      overflow: hidden;
+      font-size: clamp(16px, 2.1vw, 20px);
+      line-height: 1.5
+    }
+    #voText .vl, #voText .vm { position: absolute; left: 0; right: 0; top: 0; text-wrap: balance }
+    #voText .vm { visibility: hidden; pointer-events: none }           /* medidor: cuántas líneas ocuparía una frase */
+    #voText .vl {
+      bottom: 0;
+      display: flex;
+      align-items: center;              /* una sola línea queda centrada en la caja */
+      opacity: 0;
+      transform: translateY(6px)
+    }
+    #voText .vl.on { opacity: 1; transform: none; transition: opacity .2s var(--ease), transform .2s var(--ease) }
+    /* la que sale se va en la mitad de tiempo: así no se leen dos frases montadas durante el relevo */
+    #voText .vl.out { opacity: 0; transform: translateY(-6px); transition: opacity .09s ease-out, transform .18s var(--ease) }
+    @media (prefers-reduced-motion: reduce) {
+      #voText .vl, #voText .vl.on, #voText .vl.out { transition: none; transform: none }
+    }
+    /* texto para lectores de pantalla (aria-live): presente pero sin ocupar sitio */
+    #voLive { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+
+    /* =====================================================================
+       ITERACIÓN 5 · MENÚ PRINCIPAL CENTRADO Y LEGIBILIDAD
+       El panel queda centrado en horizontal y vertical en todos los formatos (antes, en celular vertical iba pegado
+       abajo y, embebido en la landing, bajaba el alto de «Salir»). Embebido: el hueco de «Salir» arriba se compensa
+       con un contrapeso abajo (.intro-bal) que cede antes que el panel cuando falta alto; así el panel queda
+       centrado en la ventana si cabe y nunca pisa «Salir». Márgenes con zonas seguras en los cuatro lados.
+       ===================================================================== */
+    #intro {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))
+    }
+    #intro .box { flex: 0 1 auto; min-height: 0; max-height: none }
+    .intro-bal { display: none; flex: 0 9999 auto; width: 1px; pointer-events: none }
+    body.embedded #intro { padding-top: calc(max(var(--edge), env(safe-area-inset-top)) + var(--exit-h) + 10px) }
+    body.embedded .intro-bal {
+      display: block;
+      /* lo que el hueco de «Salir» añade arriba respecto al margen de abajo */
+      height: calc(max(var(--edge), env(safe-area-inset-top)) + var(--exit-h) + 10px - max(12px, env(safe-area-inset-bottom)))
+    }
+    /* Celulares bajos en vertical: los controles ya están en la ayuda (botón ?), igual que en horizontal bajo;
+       sin ellos el panel cabe entero, con los cuatro satélites a la vista y sin scroll. */
+    @media (max-width: 520px) and (max-height: 700px) {
+      #intro .how { display: none }
+    }
+    @media (max-width: 520px) and (max-height: 600px) {
+      #intro .box { padding: 18px 16px 16px }
+      #intro .lede { margin-bottom: 8px }
+      #intro .btn { margin-top: 10px }
+      #intro .note { margin-top: 10px }
+      .sats { margin-top: 8px; padding-top: 8px }
+    }
+    /* Embebido en pantallas anchas o en horizontal bajo: «Salir» queda a un costado del panel, no encima; no hace
+       falta bajar el panel ni contrapeso. En horizontal estrecho el panel se angosta lo justo para no tocarlo. */
+    @media (min-width: 800px), (orientation: landscape) and (max-height: 560px) {
+      body.embedded #intro { padding-top: max(12px, env(safe-area-inset-top)) }
+      body.embedded .intro-bal { display: none }
+      body.embedded #intro .box { width: min(560px, calc(100vw - 2 * (var(--exit-w) + var(--edge) + 10px))) }
+    }
+    @media (max-height: 340px) and (orientation: landscape) {
+      #intro .box { padding: 12px 20px }
+      #intro .big { margin-bottom: 6px }
+      #intro .lede { margin-bottom: 6px }
+      #intro .btn { margin-top: 8px }
+      .sats { margin-top: 8px; padding-top: 6px }
+    }
+    /* Legibilidad: ninguna etiqueta del menú por debajo de 12 px (antes 10–10,5 px) */
+    #intro .eyebrow, #intro .note, .sats .sats-k { font-size: 12px }
+    .sats a small { font-size: 12px }
+    @media (max-width: 400px) and (max-height: 700px) { .sats a { font-size: 12px; letter-spacing: -.01em } }
+    /* Legibilidad del HUD: rótulos y datos de lectura a 12 px como mínimo (antes 10,5–11 px). Quedan fuera las
+       piezas cuyo tamaño está ajustado al hueco (pips de progreso, etiquetas de los fragmentos de LA♯). */
+    #objective, #roomInfo .k, .card .k, #epilogue .eyebrow, .pl-kicker, .pl-pct, #vo .who, #vo .src, .handlbl,
+    #unlock .k, .chip, #sourceChip, #compass .lbl, .pend, .tchip { font-size: 12px }
+    #hud #btnBack, #hud #btnVoSkip, #hud #btnSkip { font-size: 12px }
+    /* Menú en los dos formatos más justos (medidos con it5_jmenu.mjs): 320×568 y 568×320 embebidos */
+    @media (max-width: 520px) and (max-height: 600px) {
+      #intro .box { padding: 14px 16px 12px }
+      #intro .eyebrow { margin-bottom: 2px }
+      .sats { margin-top: 6px; padding-top: 6px }
+    }
+    @media (max-height: 340px) and (orientation: landscape) {
+      #intro .eyebrow { display: none }
+      #intro .big { height: 38px }
+      #intro .note { margin-top: 6px }
+      #intro .box { padding: 10px 18px }
+    }
