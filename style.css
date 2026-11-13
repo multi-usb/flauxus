@@ -3157,3 +3157,72 @@
     }
     /* texto para lectores de pantalla (aria-live): presente pero sin ocupar sitio */
     #voLive { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+
+    /* =====================================================================
+       ITERACIÓN 5 · MENÚ PRINCIPAL CENTRADO Y LEGIBILIDAD
+       El panel queda centrado en horizontal y vertical en todos los formatos (antes, en celular vertical iba pegado
+       abajo y, embebido en la landing, bajaba el alto de «Salir»). Embebido: el hueco de «Salir» arriba se compensa
+       con un contrapeso abajo (.intro-bal) que cede antes que el panel cuando falta alto; así el panel queda
+       centrado en la ventana si cabe y nunca pisa «Salir». Márgenes con zonas seguras en los cuatro lados.
+       ===================================================================== */
+    #intro {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))
+    }
+    #intro .box { flex: 0 1 auto; min-height: 0; max-height: none }
+    .intro-bal { display: none; flex: 0 9999 auto; width: 1px; pointer-events: none }
+    body.embedded #intro { padding-top: calc(max(var(--edge), env(safe-area-inset-top)) + var(--exit-h) + 10px) }
+    body.embedded .intro-bal {
+      display: block;
+      /* lo que el hueco de «Salir» añade arriba respecto al margen de abajo */
+      height: calc(max(var(--edge), env(safe-area-inset-top)) + var(--exit-h) + 10px - max(12px, env(safe-area-inset-bottom)))
+    }
+    /* Celulares bajos en vertical: los controles ya están en la ayuda (botón ?), igual que en horizontal bajo;
+       sin ellos el panel cabe entero, con los cuatro satélites a la vista y sin scroll. */
+    @media (max-width: 520px) and (max-height: 700px) {
+      #intro .how { display: none }
+    }
+    @media (max-width: 520px) and (max-height: 600px) {
+      #intro .box { padding: 18px 16px 16px }
+      #intro .lede { margin-bottom: 8px }
+      #intro .btn { margin-top: 10px }
+      #intro .note { margin-top: 10px }
+      .sats { margin-top: 8px; padding-top: 8px }
+    }
+    /* Embebido en pantallas anchas o en horizontal bajo: «Salir» queda a un costado del panel, no encima; no hace
+       falta bajar el panel ni contrapeso. En horizontal estrecho el panel se angosta lo justo para no tocarlo. */
+    @media (min-width: 800px), (orientation: landscape) and (max-height: 560px) {
+      body.embedded #intro { padding-top: max(12px, env(safe-area-inset-top)) }
+      body.embedded .intro-bal { display: none }
+      body.embedded #intro .box { width: min(560px, calc(100vw - 2 * (var(--exit-w) + var(--edge) + 10px))) }
+    }
+    @media (max-height: 340px) and (orientation: landscape) {
+      #intro .box { padding: 12px 20px }
+      #intro .big { margin-bottom: 6px }
+      #intro .lede { margin-bottom: 6px }
+      #intro .btn { margin-top: 8px }
+      .sats { margin-top: 8px; padding-top: 6px }
+    }
+    /* Legibilidad: ninguna etiqueta del menú por debajo de 12 px (antes 10–10,5 px) */
+    #intro .eyebrow, #intro .note, .sats .sats-k { font-size: 12px }
+    .sats a small { font-size: 12px }
+    @media (max-width: 400px) and (max-height: 700px) { .sats a { font-size: 12px; letter-spacing: -.01em } }
+    /* Legibilidad del HUD: rótulos y datos de lectura a 12 px como mínimo (antes 10,5–11 px). Quedan fuera las
+       piezas cuyo tamaño está ajustado al hueco (pips de progreso, etiquetas de los fragmentos de LA♯). */
+    #objective, #roomInfo .k, .card .k, #epilogue .eyebrow, .pl-kicker, .pl-pct, #vo .who, #vo .src, .handlbl,
+    #unlock .k, .chip, #sourceChip, #compass .lbl, .pend, .tchip { font-size: 12px }
+    #hud #btnBack, #hud #btnVoSkip, #hud #btnSkip { font-size: 12px }
+    /* Menú en los dos formatos más justos (medidos con it5_jmenu.mjs): 320×568 y 568×320 embebidos */
+    @media (max-width: 520px) and (max-height: 600px) {
+      #intro .box { padding: 14px 16px 12px }
+      #intro .eyebrow { margin-bottom: 2px }
+      .sats { margin-top: 6px; padding-top: 6px }
+    }
+    @media (max-height: 340px) and (orientation: landscape) {
+      #intro .eyebrow { display: none }
+      #intro .big { height: 38px }
+      #intro .note { margin-top: 6px }
+      #intro .box { padding: 10px 18px }
+    }
