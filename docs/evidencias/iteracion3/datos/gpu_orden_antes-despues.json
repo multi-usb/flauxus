@@ -1,0 +1,142 @@
+[
+ {
+  "ver": "antes",
+  "room": 0,
+  "state": "atrio",
+  "ms": 4.96,
+  "calls": 45,
+  "tris": 715,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 0,
+  "state": "atrio",
+  "ms": 4.85,
+  "calls": 45,
+  "tris": 715,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 4,
+  "state": "juego",
+  "ms": 5.58,
+  "calls": 89,
+  "tris": 958,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 4,
+  "state": "juego",
+  "ms": 5.58,
+  "calls": 82,
+  "tris": 958,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 5,
+  "state": "preludio",
+  "ms": 4.57,
+  "calls": 67,
+  "tris": 354,
+  "buf": "2560x1440",
+  "sinSombras": 4.68,
+  "sinBloom": 3.71
+ },
+ {
+  "ver": "despues",
+  "room": 5,
+  "state": "preludio",
+  "ms": 5.44,
+  "calls": 51,
+  "tris": 343,
+  "buf": "2560x1440",
+  "sinHolograma": 5.2,
+  "sinGalaxia": 4.87,
+  "sinAmbos": 4.69,
+  "sinSombras": 6.42,
+  "sinBloom": 4.7
+ },
+ {
+  "ver": "antes",
+  "room": 5,
+  "state": "juego",
+  "ms": 4.53,
+  "calls": 61,
+  "tris": 353,
+  "buf": "2560x1440",
+  "sinSombras": 4.79,
+  "sinBloom": 3.59
+ },
+ {
+  "ver": "despues",
+  "room": 5,
+  "state": "juego",
+  "ms": 5.15,
+  "calls": 45,
+  "tris": 341,
+  "buf": "2560x1440",
+  "sinHolograma": 4.76,
+  "sinGalaxia": 4.54,
+  "sinAmbos": 4.34,
+  "sinSombras": 5.17,
+  "sinBloom": 4.19
+ },
+ {
+  "ver": "antes",
+  "room": 6,
+  "state": "preludio",
+  "ms": 6.2,
+  "calls": 34,
+  "tris": 934,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 6,
+  "state": "preludio",
+  "ms": 6.67,
+  "calls": 35,
+  "tris": 934,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 6,
+  "state": "juego",
+  "ms": 8.81,
+  "calls": 28,
+  "tris": 932,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 6,
+  "state": "juego",
+  "ms": 10.7,
+  "calls": 29,
+  "tris": 932,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 1,
+  "state": "juego",
+  "ms": 10.64,
+  "calls": 29,
+  "tris": 906,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 1,
+  "state": "juego",
+  "ms": 12.75,
+  "calls": 29,
+  "tris": 906,
+  "buf": "2560x1440"
+ }
+]

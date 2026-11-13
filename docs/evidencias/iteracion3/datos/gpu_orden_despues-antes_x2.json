@@ -1,0 +1,160 @@
+[
+ {
+  "ver": "despues",
+  "room": 1,
+  "state": "juego",
+  "ms": 5.89,
+  "calls": 29,
+  "tris": 906,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 1,
+  "state": "juego",
+  "ms": 9.97,
+  "calls": 29,
+  "tris": 906,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 1,
+  "state": "juego",
+  "ms": 5.92,
+  "calls": 29,
+  "tris": 906,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 1,
+  "state": "juego",
+  "ms": 9.55,
+  "calls": 29,
+  "tris": 906,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 6,
+  "state": "juego",
+  "ms": 6.32,
+  "calls": 29,
+  "tris": 932,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 6,
+  "state": "juego",
+  "ms": 11.48,
+  "calls": 28,
+  "tris": 932,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 6,
+  "state": "juego",
+  "ms": 7.76,
+  "calls": 29,
+  "tris": 932,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 6,
+  "state": "juego",
+  "ms": 5.92,
+  "calls": 28,
+  "tris": 932,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 5,
+  "state": "juego",
+  "ms": 5.14,
+  "calls": 45,
+  "tris": 341,
+  "buf": "2560x1440",
+  "sinHolograma": 4.74,
+  "sinGalaxia": 4.6,
+  "sinAmbos": 4.49,
+  "sinSombras": 5.57,
+  "sinBloom": 6.44
+ },
+ {
+  "ver": "antes",
+  "room": 5,
+  "state": "juego",
+  "ms": 4.63,
+  "calls": 61,
+  "tris": 353,
+  "buf": "2560x1440",
+  "sinSombras": 4.6,
+  "sinBloom": 7.73
+ },
+ {
+  "ver": "despues",
+  "room": 5,
+  "state": "juego",
+  "ms": 5.2,
+  "calls": 45,
+  "tris": 341,
+  "buf": "2560x1440",
+  "sinHolograma": 4.86,
+  "sinGalaxia": 5.32,
+  "sinAmbos": 4.51,
+  "sinSombras": 5.27,
+  "sinBloom": 4.31
+ },
+ {
+  "ver": "antes",
+  "room": 5,
+  "state": "juego",
+  "ms": 4.62,
+  "calls": 61,
+  "tris": 353,
+  "buf": "2560x1440",
+  "sinSombras": 4.64,
+  "sinBloom": 3.62
+ },
+ {
+  "ver": "despues",
+  "room": 0,
+  "state": "atrio",
+  "ms": 4.78,
+  "calls": 45,
+  "tris": 715,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 0,
+  "state": "atrio",
+  "ms": 5.15,
+  "calls": 45,
+  "tris": 715,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "despues",
+  "room": 0,
+  "state": "atrio",
+  "ms": 5.08,
+  "calls": 45,
+  "tris": 715,
+  "buf": "2560x1440"
+ },
+ {
+  "ver": "antes",
+  "room": 0,
+  "state": "atrio",
+  "ms": 4.89,
+  "calls": 45,
+  "tris": 715,
+  "buf": "2560x1440"
+ }
+]

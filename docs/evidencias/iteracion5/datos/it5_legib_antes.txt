@@ -1,0 +1,54 @@
+  9.0px @360x640   lh null cr  9.82 (p10 7.85) cpl  11 Poppins    700 .hero-lockup .hero-artist strong  «María Clara»  {m1}  
+  9.0px @360x640   lh null cr 13.19 (p10 8.78) cpl  25 Poppins    400 .hero-composition .hero-lockup .hero-artist  «María Clara Lozada Ocampo»  {m1}  
+  9.0px @667x375   lh null cr  6.27 (p10 6.27) cpl   9 Martian Mo 400 .notes .note.lit .hz  «261,63 Hz»  {m5}  
+  9.0px @667x375   lh null cr  7.37 (p10 7.37) cpl   9 Martian Mo 400 .notes .note .hz  «293,66 Hz»  {m5}  
+ 10.0px @667x375   lh 1.2  cr 17.48 (p10 17.48) cpl  22 Martian Mo 600 #osd. .osd-prompt.prompt-tag  «[E] CONECTAR EL CUERPO»  {m2}  
+ 11.0px @667x375   lh 1.4  cr 14.14 (p10 9.99) cpl   2 Space Grot 400 .boot-tape .tape-label .tape-pct  «25»  {0_carga}  
+ 11.0px @667x375   lh 1.4  cr 17.14 (p10 12.85) cpl  32 Space Grot 400 #boot .boot-tape .tape-label  «25% · Tomando aire para sonar...»  {0_carga}  
+ 11.0px @667x375   lh 1.4  cr  5.86 (p10 3.91) cpl  28 Space Grot 400 #boot.ready .home-audio-caption  «Experiencia sonora inmersiva»  {1_inicio}  
+ 11.0px @390x844   lh null cr 11.09 (p10 6.84) cpl  22 Poppins    400 .hero-lockup .hero-scroll small  «Desliza para descubrir»  {m1}  
+ 11.2px @360x640   lh 1.6  cr  1.00 (p10 1.00) cpl  39 Martian Mo 400 .m4-stage .m4-facts p  «Flautista e intérprete de música contemporánea y»  {m4}  ← 768x1024 m4_012 bg 193,253,11 rgb(194, 254, 11) op 1
+ 11.2px @360x640   lh null cr  7.37 (p10 7.33) cpl  20 Martian Mo 400 .m4-stage .m4-quote.q1 cite  «Carrusel 1, lámina 1»  {m4}  
+ 11.2px @360x640   lh null cr  7.37 (p10 7.37) cpl  20 Martian Mo 400 .m4-stage .m4-quote.q2 cite  «Carrusel 1, lámina 8»  {m4}  
+ 11.2px @360x640   lh null cr 17.48 (p10 17.48) cpl  21 Martian Mo 400 #m5.moment .osc-wrap .osc-freq  «261,63 Hz : 261,63 Hz»  {m5}  
+ 11.2px @360x640   lh null cr 17.48 (p10 17.48) cpl  13 Martian Mo 400 #m5.moment.octave .osc-wrap .osc-freq  «261,63 Hz × 2»  {m5}  
+ 11.2px @360x640   lh null cr  7.37 (p10 7.37) cpl  25 Martian Mo 400 #m5.moment.octave .m5-quote cite  «María Clara Lozada Ocampo»  {m5}  
+ 11.2px @360x640   lh null cr 17.48 (p10 17.48) cpl  11 Martian Mo 700 #m6-team-k.m6-k.r  «Integrantes»  {m6}  
+ 11.2px @360x640   lh null cr  6.27 (p10 6.27) cpl  32 Martian Mo 500 .m6-group.m6-team .r dt  «Dirección Transmedia & Curaduría»  {m6}  
+ 11.2px @360x640   lh null cr 17.48 (p10 17.48) cpl  19 Martian Mo 700 #m6-academic-k.m6-k.r  «Dirección académica»  {m6}  
+ 11.2px @360x640   lh null cr  6.27 (p10 6.27) cpl  21 Martian Mo 500 .m6-group.m6-academic .r dt  «Directora de proyecto»  {m6}  
+ 11.2px @360x640   lh 1.05 cr  6.27 (p10 6.27) cpl  33 Martian Mo 500 .r .m6-inst  «Perfil académico · Javeriana Cali»  {m6}  
+ 11.2px @360x640   lh null cr  6.27 (p10 6.27) cpl  20 Martian Mo 500 .m6-group.m6-academic .r.m6-artist dt  «Artista colaboradora»  {m6}  
+ 12.0px @667x375   lh null cr  5.90 (p10 4.46) cpl  19 Poppins    400 .hero-composition .hero-copy .hero-explore  «Comenzar a explorar»  {m1}  
+ 12.0px @360x640   lh null cr  7.94 (p10 2.69) cpl  22 Poppins    400 #hud.scrolled .hud-scroll small  «Desliza para descubrir»  {m2}  
+ 12.5px @360x640   lh 1.5  cr 10.51 (p10 1.31) cpl  41 Poppins    300 .hero-lockup .hero-manifesto .hero-desc  «Una experiencia para explorar el sonido, el cuer»  {m1}  
+ 12.6px @360x640   lh 1.1  cr  6.65 (p10 3.21) cpl  29 Poppins    300 #boot.ready .press-start span  «Entrar a vivir la experiencia»  {1_inicio}  
+ 12.6px @360x640   lh 1.1  cr  7.38 (p10 3.33) cpl  14 Poppins    600 .press-start strong  «la experiencia»  {1_inicio}  
+ 13.0px @360x640   lh null cr 17.48 (p10 17.45) cpl  30 Martian Mo 600 #m5.moment .sala-detail.step .prompt-tag.sala-prompt  «▶ ENTRAR · ENCONTRAR EL SONIDO»  {m5}  
+ 13.0px @768x1024  lh 1.6  cr  7.78 (p10 7.42) cpl  11 Martian Mo 600 #m3.moment .m3-spec  «DO4 → LA♯4261,63 – 466,16 Hz6 / ◀◀»  {m3}  
+ 14.0px @360x640   lh null cr 17.48 (p10 17.48) cpl   3 Tektur     900 .notes .note.lit .n  «DO4»  {m5}  
+ 14.0px @360x640   lh null cr 21.00 (p10 21.00) cpl   3 Tektur     900 .notes .note .n  «RE4»  {m5}  
+ 14.0px @360x640   lh 1    cr 17.48 (p10 17.45) cpl  22 Martian Mo 600 .m6-inner .prompt-btn.rewind-btn .rewind-label  «∿∿ Tomar aire de nuevo»  {m6}  
+ 14.8px @360x640   lh 1.3  cr  4.78 (p10 1.66) cpl  50 Poppins    300 #boot.ready .home-tagline  «La flautista aumentada y su ecosistema interacti»  {1_inicio}  
+ 14.8px @360x640   lh 1.3  cr  9.85 (p10 2.79) cpl  27 Poppins    600 #boot.ready .home-tagline strong  «y su ecosistema interactivo»  {1_inicio}  
+ 15.8px @360x640   lh 1.24 cr 11.54 (p10 2.82) cpl  17 Poppins    400 .hero-composition .hero-copy p  «La flautista que seconvierte en cyborg,nota a no»  {m1}  
+ 16.0px @667x375   lh null cr  3.67 (p10 2.57) cpl  12 Tektur     900 #osd. .cta  «[ JUEGA YA ]»  {m2}  ← 1366x768 m2_092 bg 126,133,74 rgb(255, 255, 255) op 1
+ 16.0px @360x640   lh 1    cr 10.24 (p10 1.51) cpl   1 Space Grot 400 #hud.scrolled .hud-scroll i  «↓»  {m2}  
+ 16.0px @360x640   lh 1.06 cr  5.28 (p10 5.28) cpl  47 Space Grot 600 .m6-inst-block.r .m6-prog span  «Maestría en Comunicación y Creación Interactiva»  {m6}  
+ 16.0px @360x640   lh 1.05 cr 21.00 (p10 21.00) cpl 110 Unbounded  800 .r .m6-person  «Ana María Ocampo Coutin · perfil de LinkedIn, se»  {m6}  
+ 16.0px @390x844   lh 1    cr 12.69 (p10 7.04) cpl   1 Space Grot 400 .hero-lockup .hero-scroll i  «↓»  {m1}  
+ 17.6px @360x640   lh 1.05 cr 17.48 (p10 17.48) cpl  25 Unbounded  800 .m6-group.m6-academic .r.m6-artist dd  «María Clara Lozada Ocampo»  {m6}  
+ 18.0px @360x640   lh 1    cr  1.84 (p10 1.84) cpl   3 Tektur     900 #m3.moment .scale li  «DO4»  {m3}  ← 1920x1080 m3_015 bg 139,183,5 rgba(0, 0, 0, 0.28) op 1
+ 18.0px @360x640   lh 1    cr  1.02 (p10 1.00) cpl   3 Tektur     900 #m3.moment .scale .  «DO4»  {m3,m4}  ← 360x640 m4_012 bg 183,240,10 rgb(194, 254, 11) op 1
+ 20.0px @360x640   lh 1.42 cr 21.00 (p10 21.00) cpl  71 Space Grot 400 .m4-stage .m4-quote.q1 .type.typing  ««Construir un cuerpo disciplinado para la interp»  {m4}  
+ 20.0px @360x640   lh 1.42 cr 21.00 (p10 21.00) cpl  65 Space Grot 400 .m4-stage .m4-quote.q1 .type  ««Construir un cuerpo disciplinado para la interp»  {m4}  
+ 22.5px @1366x768  lh null cr  8.59 (p10 6.42) cpl   7 Poppins    700 .hero-composition .hero-copy .hero-cursor-hint  «Pasa el cursor»  {m1}  
+ 22.7px @667x375   lh 1.02 cr 21.00 (p10 21.00) cpl  37 Unbounded  800 #m5.moment.octave .m5-quote .type.typing  ««la octava en realidad no termina donde empieza,»  {m5}  
+ 25.2px @360x640   lh 0.9  cr 21.00 (p10 21.00) cpl  15 Unbounded  900 #m5.moment .sala-detail.step .sala-title  «El sonido bello»  {m5}  
+ 30.2px @360x640   lh 0.95 cr 12.30 (p10 1.00) cpl  14 Unbounded  800 #m3.moment .m3-b .m3-b1  «Cuando algo falla, el aire vuelve a soplar.Cuand»  {m3}  
+ 36.7px @360x640   lh 0.95 cr 17.48 (p10 17.48) cpl  23 Unbounded  800 .m4-stage .m4-quote.q2 .type.typing  ««Entonces puedo hacer lo que quiera.»«Entonces»  {m4}  
+ 41.8px @360x640   lh 0.9  cr 21.00 (p10 1.48) cpl   6 Unbounded  900 [difference] .m4-stage-mask .m4-stage .m4-name  «María ClaraLozada Ocampo»  {m4}  
+ 42.7px @667x375   lh 0.95 cr 17.48 (p10 17.48) cpl  19 Unbounded  800 .m4-stage .m4-quote.q2 .type  ««Entonces puedo hacer lo que quiera.»«Entonces p»  {m4}  
+ 46.8px @360x640   lh 0.85 cr 17.48 (p10 17.48) cpl   2 Tektur     900 #m5.moment .sala-detail.step .sala-note.split  «DO4»  {m5}  
+ 51.2px @667x375   lh 0.9  cr  1.02 (p10 1.00) cpl   4 Unbounded  900 #m3.moment .m3-c.t-mega  «Aquí nadiepierde.»  {m3,m4}  ← 844x390 m4_012 bg 172,225,10 rgb(194, 254, 11) op 1
+ 57.6px @768x1024  lh 0.86 cr 21.00 (p10 21.00) cpl  10 Unbounded  900 .m6-inner .m6-title .m6-rewind  «by REWIND/»  {m6}  
