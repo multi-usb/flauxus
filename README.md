@@ -50,4 +50,5 @@ Vite 5, GSAP, Three.js, WebGL, Web Audio API y CSS con tokens tipográficos. El 
 ## Notas
 
 - `juego/` incluye los másters FBX y WAV (unos 642 MB). El archivo `.webignore` deja fuera de la publicación los que no necesita el juego.
+- `juego/Stockhausen.wav` (máster estéreo 48 kHz, 122 MB) se guarda con **Git LFS**: instala Git LFS antes de clonar para descargar el archivo real; sin él, llega como puntero.
 - `landing/node_modules/` y `landing/dist/` no se versionan: se regeneran con `npm install` y `npm run build`.
