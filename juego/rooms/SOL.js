@@ -90,11 +90,25 @@ export const SOL = (() => {
      lo mueve o toca de verdad no cuenta: si no, el sensor que pasa por el centro se conectaba solo al empezar. */
   let armed = false, px0 = 0, py0 = 0;
   const pointing = () => armed && ptrActive();
-  const v3 = new THREE.Vector3(), anch = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
-  const proj = (o, out) => { o.getWorldPosition(v3).project(camera); out.x = (v3.x * .5 + .5) * W; out.y = (-v3.y * .5 + .5) * H; return out }; // sin vectores ni objetos nuevos por cuadro
+  const v3 = new THREE.Vector3(), _fv = new THREE.Vector3(), anch = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+  const projectV = (p, out) => { p.project(camera); out.x = (p.x * .5 + .5) * W; out.y = (-p.y * .5 + .5) * H; return out };
+  const proj = (o, out) => projectV(o.getWorldPosition(v3), out); // sin vectores ni objetos nuevos por cuadro
+  /* La cara ocupa un óvalo proyectado alrededor de la cabeza. Los sensores no pueden posarse sobre ella: el
+     destino de cada uno se empuja fuera del óvalo (las muñecas a los lados, la cabeza por encima). Se mide con dos
+     puntos de la cabeza reales, así vale en cualquier resolución y con cualquier encuadre. */
+  const face = { x: 0, y: 0, rx: 0, ry: 0, top: 0 };
   /* getWorldPosition ya actualiza la cadena de padres de cada articulación: no hace falta recalcular las
      matrices del esqueleto por segunda vez en el cuadro (lo hacía animAvatar un instante antes). */
-  const anchors = () => { camera.updateMatrixWorld(); const j = avatarObj.userData.joints; proj(j.wl, anch[0]); proj(j.wr, anch[1]); proj(j.head, anch[2]); return anch };
+  const anchors = () => {
+    camera.updateMatrixWorld(); const j = avatarObj.userData.joints, s = avatarObj.scale.y || 1;
+    proj(j.wl, anch[0]); proj(j.wr, anch[1]); proj(j.head, anch[2]);
+    j.head.getWorldPosition(_fv); _fv.y += .50 * s; projectV(_fv, anch[3]);
+    j.head.getWorldPosition(_fv); _fv.y += .02 * s; projectV(_fv, anch[4]);
+    const fh = Math.max(24, Math.abs(anch[3].y - anch[4].y));
+    face.x = (anch[3].x + anch[4].x) / 2; face.y = (anch[3].y + anch[4].y) / 2;
+    face.rx = fh * .34 + 40; face.ry = fh * .55 + 40; face.top = face.y - face.ry;
+    return anch
+  };
   /* Los sensores no salen del cuadro ni se meten bajo la franja del HUD (medida en vivo: GX.uiTop). El de la
      cabeza lleva el rótulo ENCIMA del aro (debajo caía sobre la cara de la avatar): reserva 28 px más arriba. */
   const headTop = () => (GX.uiTop || 0) + 78;
@@ -110,9 +124,37 @@ export const SOL = (() => {
      de la pantalla: no hay posiciones por resolución. Los sensores ya conectados no cuentan (viajan a su
      articulación y dejan de ser tocables). */
   const tgt = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+  const sock = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+  /* Sin sitio sobre la cabeza (horizontal bajo, con el HUD encima), el sensor de cabeza se corre al costado
+     del óvalo en vez de quedarse sobre la cara. Se elige el lado con más cuadro libre a partir del óvalo. */
+  const headBeside = () => face.x + face.rx + 52 <= W - 48 ? 1 : -1;
+  function avoidFace(p, i) {
+    if (i === 2) {
+      const clear = face.top - 34;
+      if (clear >= headTop()) { p.y = Math.min(p.y, clear); return p }
+      p.x = face.x + headBeside() * (face.rx + 52);
+      p.y = Math.max(headTop(), face.y - face.ry * .45);
+      return p
+    }
+    const dx = (p.x - face.x) / face.rx, dy = (p.y - face.y) / face.ry;
+    if (dx * dx + dy * dy < 1) {
+      const side = i === 0 ? -1 : 1, k = Math.sqrt(Math.max(.12, 1 - Math.min(1, dy * dy)));
+      p.x = face.x + side * face.rx * k;
+      p.y = Math.max(p.y, face.y + face.ry * .06);
+    }
+    return p
+  }
+  /* Posición de reposo de un sensor ya conectado: junto a su articulación, pero fuera del óvalo de la cara. */
+  function socket(i) {
+    if (i === 2) { sock[2].x = anch[2].x; sock[2].y = anch[2].y - H * .17 }
+    else { sock[i].x = anch[i].x + (i === 0 ? -1 : 1) * Math.max(52, sideX() * .55, face.rx * .8); sock[i].y = anch[i].y + H * .05 }
+    avoidFace(sock[i], i);
+    sock[i].x = keepX(sock[i].x); sock[i].y = keepY(sock[i].y, i);
+    return sock[i]
+  }
   function spread() {
     const D = 2 * hitR() + 8, need = d => Math.sqrt(Math.max(0, D * D - d * d)), L = tgt[0], R = tgt[1], C = tgt[2], x0 = 48, x1 = W - 48;
-    for (let i = 0; i < 3; i++) { tgt[i].x = keepX(tgt[i].x); tgt[i].y = keepY(tgt[i].y, i) }
+    for (let i = 0; i < 3; i++) { tgt[i].x = keepX(tgt[i].x); tgt[i].y = keepY(tgt[i].y, i); avoidFace(tgt[i], i) }
     for (let pass = 0; pass < 2; pass++) {
       if (!cap[0] && !cap[1]) {
         const n = need(R.y - L.y); if (R.x - L.x < n) { const m = (L.x + R.x) / 2; L.x = m - n / 2; R.x = m + n / 2; if (L.x < x0) { R.x += x0 - L.x; L.x = x0 } if (R.x > x1) { L.x -= R.x - x1; R.x = x1 } L.x = keepX(L.x) }
@@ -123,6 +165,7 @@ export const SOL = (() => {
         const n2 = need(w.x - C.x); if (w.y - C.y < n2) { w.y = keepY(C.y + n2, i); if (w.y - C.y < n2) C.y = keepY(w.y - n2, 2) }
       }
     }
+    for (let i = 0; i < 3; i++) { avoidFace(tgt[i], i); tgt[i].x = keepX(tgt[i].x); tgt[i].y = keepY(tgt[i].y, i) }
   }
   /* Destino de cada sensor: su articulación proyectada + desfase (+ una oscilación lenta si k = 1), ya separados. */
   function targets(a, k) {
@@ -261,7 +304,11 @@ export const SOL = (() => {
     },
     start() {
       holo?.setPresence(.6); // durante el minijuego el holograma cede protagonismo a los sensores
-      cap = [false, false, false]; hold = [0, 0, 0]; capT = [0, 0, 0]; order = []; pending = false; orbs = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }]; const p = pad([55, 110, 165], .09, 'sawtooth'); p.set(.5);
+      cap = [false, false, false]; hold = [0, 0, 0]; capT = [0, 0, 0]; order = []; pending = false; orbs = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
+      /* Colchón del minijuego: el mismo acorde cálido del preludio, ahora
+         en triángulo y muy bajo. Sin seno de 55 Hz ni diente de sierra:
+         los sensores y sus tonos tienen que quedar por encima. */
+      const p = pad([110, 164.81, 220, 261.63], .035, 'triangle'); p.set(.8);
       armed = false; px0 = ptr.x; py0 = ptr.y;
       hint(TOUCH ? 'Mantén el dedo sobre cada sensor hasta que el anillo se llene' : 'Mantén el cursor sobre cada sensor hasta que el anillo se llene');
       nearI = -1; const t = targets(anchors(), 0); orbs.forEach((o, i) => { o.x = t[i].x; o.y = t[i].y })
@@ -274,7 +321,7 @@ export const SOL = (() => {
       HM.sceneTop = cap[2] ? 0 : headTop() + 40;
       nearest();
       orbs.forEach((o, i) => {
-        if (cap[i]) { o.x = damp(o.x, a[i].x, 5, dt); o.y = damp(o.y, a[i].y, 5, dt); capT[i] += dt; n++ }
+        if (cap[i]) { const q = socket(i); o.x = damp(o.x, q.x, 5, dt); o.y = damp(o.y, q.y, 5, dt); capT[i] += dt; n++ }
         else {
           o.x = damp(o.x, t[i].x, 4, dt); o.y = damp(o.y, t[i].y, 4, dt); const inside = nearI === i;
           if (inside) { hold[i] += dt; if (Math.floor(hold[i] * 5) !== Math.floor((hold[i] - dt) * 5)) tone(300 + hold[i] * 400 + i * 80, .05, 'sine', .03) } else hold[i] = Math.max(0, hold[i] - dt * .8);
@@ -292,7 +339,7 @@ export const SOL = (() => {
       sky?.update(dt, t3); holo?.update(dt, t3, A.lvl || 0, camera)
     },
     /* Solo para pruebas (?debug expone la sala activa): estado del holograma y posición de los sensores. */
-    dbg() { return { holo: holo?.debug ?? null, box: holo?.debug.box(camera) ?? null, hud: HM.sky.slice(0, HM.skyN).map(r => ({ x0: +r.x0.toFixed(3), x1: +r.x1.toFixed(3), b: +r.b.toFixed(3) })), orbs: orbs.map((o, i) => ({ x: Math.round(o.x), y: Math.round(o.y), cap: !!cap[i], hold: +hold[i].toFixed(2) })), hitR: hitR(), armed, map: !!groundController.roomMap } },
+    dbg() { return { holo: holo?.debug ?? null, box: holo?.debug.box(camera) ?? null, hud: HM.sky.slice(0, HM.skyN).map(r => ({ x0: +r.x0.toFixed(3), x1: +r.x1.toFixed(3), b: +r.b.toFixed(3) })), orbs: orbs.map((o, i) => ({ x: Math.round(o.x), y: Math.round(o.y), cap: !!cap[i], hold: +hold[i].toFixed(2) })), face: { x: Math.round(face.x), y: Math.round(face.y), rx: Math.round(face.rx), ry: Math.round(face.ry) }, hitR: hitR(), armed, map: !!groundController.roomMap } },
     update3d(dt, t3) { let n = 0; for (let i = 0; i < 3; i++) if (cap[i]) n++; core.scale.setScalar(1 + n * .12 + Math.sin(t3 * 3) * .03); core.material.emissiveIntensity = .8 + n * 1.4; rings.forEach((r, i) => { r.rotation.z += dt * (.2 + i * .05) * (1 + n); r.material.opacity = .15 + n * .15 }); avatarObj.rotation.y = Math.sin(t3 * .4) * .25; animAvatar(avatarObj, 0, t3, true, n / 3); plantFeet(meta.gameAvatarPos?.y ?? meta.floorY ?? 0); if (bloom) bloom.strength = .5 + n * .25 },
     draw() {
       const R = 30, on = pointing();

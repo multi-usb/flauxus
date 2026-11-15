@@ -68,7 +68,7 @@ export function initPrelude(id, narrate = true) {
   };
   resetPlayerForPrelude(startPos, floorY);
   avatarObj.position.copy(player); avatarObj.rotation.y = startPos.yaw;
-  stopAuto(); A.ambient?.set(.35, .8); updateCam();
+  stopAuto(); updateCam();
   voPreload(id);   // la grabación de la voz se pide ya, mientras la cortina aún tapa la sala
   if (narrate) { startPreludeMusic(id); voRun(id) }
 }
@@ -121,6 +121,6 @@ export function enterZone() {
     if (PRE.grp) { clearGroup(PRE.grp); roomGroup.remove(PRE.grp) } PRE.grp = null; PRE.lab = null; $('prompt').classList.remove('show'); $('coach').classList.remove('show');
     avatarObj.position.copy(PRE.home);
     avatarObj.rotation.y = PRE.homeYaw ?? 0;
-    S.phase = 'brief'; $('brief').classList.add('show'); A.ambient?.set(0, .4); S.busy = false;
+    S.phase = 'brief'; $('brief').classList.add('show'); S.busy = false;
   });
 }

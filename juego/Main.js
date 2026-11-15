@@ -167,7 +167,7 @@ function shutdown() {
   try { voStop() } catch { }
   try { killBus() } catch { }
   for (const el of Rec.el.values()) { try { el.pause() } catch { } }
-  try { A.ambient = null; A.ctx?.close?.() } catch { }
+  try { A.ctx?.close?.() } catch { }
   try { composer?.dispose?.(); renderer.dispose(); renderer.forceContextLoss() } catch { }
 }
 addEventListener('flauxus:teardown', shutdown);

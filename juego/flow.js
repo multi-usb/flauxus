@@ -9,7 +9,7 @@ import { entry, ENTRIES, CARDS, HAND, LS, seen, PRELUDE } from './core/config.js
 import { S, rooms, skinKind, bumpRoomGen } from './core/state.js';
 import { W, H, burst, ringFx, shake } from './engine/fx.js';
 import {
-  A, ensureAudio, startAmbient, newBus, killBus, tone, sting,
+  A, ensureAudio, newBus, killBus, tone, sting, stopAtriumFlute,
   recOk, trackFiles, Rec, loadRec
 } from './AudioSystem.js';
 import { ROOMS, IMPL } from './Rooms.js';
@@ -79,7 +79,7 @@ export async function startGame() {
     document.activeElement?.blur?.();
     /* El gesto del usuario reanuda el AudioContext que `bootGame()` dejó
        preparado en silencio. */
-    ensureAudio(); startAmbient();
+    ensureAudio();
     hideIntro();
     S.phase = 'atrium'; S.sessionStart = performance.now();
     placePlayerAtSpawn(Math.PI);
@@ -148,7 +148,7 @@ export function bootGame() {
 
       if (direct) {
         hideIntro();
-        ensureAudio(); startAmbient();
+        ensureAudio();
         S.phase = 'atrium'; S.sessionStart = performance.now();
         seen.add(entry); LS.set('flauxus.entries.v1', [...seen]);
         renderProgress();
@@ -162,9 +162,10 @@ export function bootGame() {
       loaderStage(96, 'Todo listo');
       await loaderFinish();
       booted = true;
-      /* La música ambiental arranca con el gesto de «Entrar al museo».
-         Ninguna sala se precarga en segundo plano: su FBX se parsea bajo
-         el preloader de `enterRoom()` para no congelar la caminata. */
+      /* El audio arranca con el gesto de «Entrar al museo»: la flauta del
+         atrio entra con el primer paso. Ninguna sala se precarga en segundo
+         plano: su FBX se parsea bajo el preloader de `enterRoom()` para no
+         congelar la caminata. */
       return true;
     } catch (e) {
       console.error('bootGame', e);
@@ -192,6 +193,8 @@ export function noteRec(id) {
 export async function enterRoom(id, { loaderOn = false } = {}) {
   if (S.busy) return;
   S.busy = true;
+  /* La flauta pertenece al atrio: al cruzar el portal se retira de una vez. */
+  stopAtriumFlute();
   const r = rooms[id - 1];
   let need = false, go = null;
 
@@ -239,7 +242,6 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     setRoomInfo(`Momento ${id} · ${r.note}`, r.title, r.desc);
     $('sourceChip').style.display = 'block'; $('sourceChip').innerHTML = r.audio === 'real' ? `♪ <b>${r.source}</b>` : `♪ ${r.source}`;
     $('roomUI').classList.add('active'); hideRoomDom(); hint(''); $('btnBack').style.display = 'block'; $('prompt').classList.remove('show'); $('coach').classList.remove('show'); $('compass').style.display = 'none';
-    A.ambient?.set(0, .4);
     const pend = r.audio === 'pending' ? `<div class="pend">Audio provisional · pendiente de validar con María Clara</div>` : r.audio === 'none' ? `<div class="pend">Sonido procedural · esta sala no tiene grabación</div>` : '';
     const hlTitle = r.title.replace(/^(\S+)/, '<span class="hl">$1</span>');
     $('brief').innerHTML = `<div class="k">Momento ${id} de 6 · ${r.note}</div><h2>${hlTitle}</h2><p>${r.goal}</p>${pend}${ctlRow(r)}<button class="btn" id="btnGo">${GO_LABEL}</button>`;
@@ -316,7 +318,7 @@ export async function leaveRoom() {
     avatarObj.scale.setScalar(1);
     placePlayerAtAtrium();
     setRoomInfo('Atrio central', 'El museo imposible', 'Seis escaleras flotan alrededor del centro. Haz clic en el suelo para caminar y sigue la que late: cada una lleva a un momento distinto.');
-    A.ambient?.set(1, 1); renderProgress(); hint('');
+    renderProgress(); hint('');
     loaderStage(82, 'Acomodando la luz del atrio');
     await warmScene(12000);
     loaderStage(97, 'Todo listo');

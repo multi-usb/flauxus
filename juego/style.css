@@ -1811,6 +1811,39 @@
       white-space: nowrap
     }
 
+    #laStatusText {
+      display: block
+    }
+
+    /* Barra de escucha: vive dentro del contador para no mover los botones.
+       Avanza con el fragmento que se audiciona o con la secuencia completa. */
+    #laProg {
+      position: absolute;
+      left: 6%;
+      right: 6%;
+      bottom: -5px;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(239, 234, 219, .18);
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity .18s linear;
+      pointer-events: none
+    }
+
+    #laProg.on {
+      opacity: 1
+    }
+
+    #laProg b {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--lime);
+      box-shadow: 0 0 10px rgba(194, 254, 11, .9)
+    }
+
     #laBtns {
       position: absolute;
       left: 50%;
@@ -1871,10 +1904,11 @@
     }
 
     #traceCanvas {
-      width: 100%;
-      aspect-ratio: 16/9;
+      width: min(100%, 400px);
+      height: auto;
+      aspect-ratio: 9/16;
       display: block;
-      margin: 28px 0;
+      margin: 28px auto;
       border-radius: 8px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, .6)
     }

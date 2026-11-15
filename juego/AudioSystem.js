@@ -2,15 +2,15 @@
    FLAUXUS — AudioSystem.js
    Gestión de AudioContext, buffers, análisis espectral, síntesis y clips
    ====================================================================== */
-import { clamp, lerp, rand, INKH, $ } from './core/util.js';
+import { clamp, damp, lerp, rand, INKH, $ } from './core/util.js';
 import { T } from './core/time.js';
 import { VO } from './core/voiceState.js';
 import { toast } from './ui/toast.js';
 
 export const A = {
   ctx: null, master: null, an: null, anBuf: null, pan: null, bus: null, verb: null,
-  muted: false, nodes: [], keep: [], ambient: null, noiseBuf: null, voices: new Set(),
-  clip: { srcs: [], timers: [], el: null }, pre: null, lvl: 0, fake: 0
+  muted: false, nodes: [], keep: [], noiseBuf: null, voices: new Set(),
+  clip: { srcs: [], timers: [], el: null }, pre: null, lvl: 0, fake: 0, flute: null
 };
 
 export const trackFiles = new Map([
@@ -91,9 +91,11 @@ export function newBus() {
 }
 
 export function killBus() {
-  /* La música del preludio vive fuera del bus: se retira acá para que el
-     Momento arranque su propia música desde el principio. */
+  /* La música del preludio y la flauta del atrio viven fuera del bus: se
+     retiran acá para que el Momento arranque su propia música desde el
+     principio. */
   stopPreludeMusic(.18);
+  stopAtriumFlute();
   for (const n of A.nodes) { try { n.stop?.(); } catch { } }
   A.nodes = [];
   for (const v of [...A.voices]) v.stop(true);
@@ -114,6 +116,7 @@ export function setMuted(m) {
   for (const v of A.voices) if (v.el) v.el.muted = m;
   if (A.clip.el) A.clip.el.muted = m;
   if (A.pre?.el) A.pre.el.muted = m;
+  if (FLUTE.el) FLUTE.el.muted = m;
   if (VO?.el) VO.el.muted = m;
   $('btnSound')?.classList.toggle('off', m);
   toast(m ? 'Sonido desactivado' : 'Sonido activado');
@@ -189,10 +192,40 @@ export function pad(freqs, g = .03, type = 'sine', store) {
   };
 }
 
-export function startAmbient() {
-  if (A.ambient || !ensureAudio()) return;
-  A.ambient = pad([55, 82.41, 110, 164.81], .045, 'sine', A.keep);
-  A.ambient.set(1, 2);
+/* ---- flauta del atrio ----
+   El atrio ya no lleva un colchón sintético: su único fondo es María Clara
+   tocando mientras camina. La toma sale de su propia grabación (CPEBMov1,
+   23.30–35.20 s) y se reproduce en bucle con un fundido corto: aparece al
+   andar, se retira al detenerse y nunca suena dentro de las salas. */
+const FLUTE = { el: null, vol: 0, idle: 0, on: false };
+const FLUTE_VOL = .72;
+export function atriumFlute(sp = 0, dt = .016) {
+  const on = sp > .45, k = on ? 3.2 : 4.5, step = clamp(dt || .016, .001, .1);
+  FLUTE.on = on; FLUTE.vol = damp(FLUTE.vol, on ? FLUTE_VOL : 0, k, step);
+  if (!FLUTE.el) {
+    if (!on) return;
+    const el = A.flute = FLUTE.el = new Audio(new URL('audio/atrio-flauta' + AUDIO_EXT, document.baseURI).href);
+    el.loop = true; el.preload = 'auto'; el.volume = 0; el.muted = A.muted;
+  }
+  const el = FLUTE.el;
+  el.muted = A.muted;
+  if (on) {
+    FLUTE.idle = 0;
+    if (el.paused) {
+      try { el.currentTime = 0 } catch { }
+      el.play().catch(() => { });
+    }
+  } else {
+    FLUTE.idle += step;
+    if (FLUTE.idle > 1.2) { try { el.pause() } catch { } try { el.currentTime = 0 } catch { } }
+  }
+  el.volume = clamp(FLUTE.vol, 0, 1);
+}
+export function stopAtriumFlute() {
+  const el = FLUTE.el; if (!el) return;
+  try { el.pause() } catch { }
+  try { el.currentTime = 0 } catch { }
+  el.volume = 0; FLUTE.vol = 0; FLUTE.idle = 0; FLUTE.on = false;
 }
 
 /* ---- música del preludio ----
@@ -204,15 +237,56 @@ const PRE_LEVEL = .16;
 const PRE_TRACK = new Set([1, 3, 4, 6]);
 const PRE_CHORDS = {
   1: [130.81, 196, 261.63],
-  2: [73.42, 110, 146.83],
   3: [146.83, 220, 293.66],
   4: [55, 82.41, 110],
-  5: [55, 110, 164.81],
   6: [110, 165, 220]
 };
 
+/* ---- SOL: preludio propio ----
+   Todavía no hay grabación de la sala, así que su preludio es una pieza
+   sintética pensada para no competir con la voz: un acorde de La menor
+   con novena, cálido y lento, sin seno grave ni diente de sierra. El
+   filtro se abre y se cierra muy despacio y dos brillos altos, casi
+   inaudibles, le dan el aire de los pads de Blade Runner. */
+function solPrelude(x, pre, g) {
+  const hp = x.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 95; hp.Q.value = .4;
+  const lp = x.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = .35;
+  const body = x.createGain(); body.gain.value = 1;
+  hp.connect(lp); lp.connect(body); body.connect(g);
+  const notes = [110, 164.81, 220, 261.63, 329.63]; // La2 · Mi3 · La3 · Do4 · Mi4
+  notes.forEach((f, i) => {
+    for (const [type, det, lvl] of [['triangle', -4, .07], ['sine', 4, .045]]) {
+      const o = x.createOscillator();
+      o.type = type; o.frequency.value = f; o.detune.value = det + rand(-2, 2);
+      const ng = x.createGain(); ng.gain.value = lvl * (i === 0 ? .75 : 1);
+      o.connect(ng).connect(hp); o.start(); pre.nodes.push(o);
+    }
+  });
+  /* Apertura y cierre del filtro: 22 s por ciclo, sin llegar nunca a un
+     barrido brillante que se parezca a un zumbido. */
+  const fl = x.createOscillator(); fl.frequency.value = .045;
+  const fg = x.createGain(); fg.gain.value = 420;
+  fl.connect(fg).connect(lp.frequency); fl.start(); pre.nodes.push(fl);
+  /* Respiración del acorde sobre un gain aparte: el fundido de salida
+     sigue pudiendo llegar a cero. */
+  const al = x.createOscillator(); al.frequency.value = .07;
+  const ag = x.createGain(); ag.gain.value = .035;
+  al.connect(ag).connect(body.gain); al.start(); pre.nodes.push(al);
+  for (const [f, v] of [[880, .007], [1318.51, .0045]]) {
+    const o = x.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.detune.value = rand(-5, 5);
+    const og = x.createGain(); og.gain.value = v; o.connect(og).connect(body); o.start(); pre.nodes.push(o);
+    const sl = x.createOscillator(); sl.frequency.value = .05 + rand(0, .03);
+    const sg = x.createGain(); sg.gain.value = v * .8;
+    sl.connect(sg).connect(og.gain); sl.start(); pre.nodes.push(sl);
+  }
+}
+
 export function startPreludeMusic(id) {
   stopPreludeMusic(0);
+  /* RE aún no tiene su pieza: su preludio es silencio, solo la voz de
+     María Clara. Cuando exista la música que identifica la sala, entra
+     acá y deja de ser un caso vacío. */
+  if (id === 2) return null;
   const x = ensureAudio();
   /* Sin Web Audio queda el <audio> para las salas con grabación real. */
   if (!x) {
@@ -242,18 +316,21 @@ export function startPreludeMusic(id) {
     src.connect(lp).connect(g);
     src.start(0);
     pre.src = src;
+  } else if (id === 5) {
+    solPrelude(x, pre, g);
   } else {
-    /* RE y SOL todavía no tienen grabación: su preludio usa el mismo
-       material sintético de la sala, para no inventar una obra. */
+    /* Salas con grabación todavía sin cargar (o sin ficha): un acorde
+       sintético muy filtrado mantiene el ambiente hasta que llega el
+       archivo. RE no entra acá: su preludio es silencio. */
     const freqs = PRE_CHORDS[id] || PRE_CHORDS[1];
     const lp = x.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = id === 5 ? 900 : 1100;
+    lp.frequency.value = 1100;
     lp.Q.value = .5;
     lp.connect(g);
     for (const f of freqs) {
       const o = x.createOscillator();
-      o.type = id === 5 ? 'sawtooth' : id === 2 ? 'triangle' : 'sine';
+      o.type = 'sine';
       o.frequency.value = f;
       o.detune.value = rand(-7, 7);
       o.connect(lp);
@@ -261,42 +338,17 @@ export function startPreludeMusic(id) {
       pre.nodes.push(o);
     }
     const lfo = x.createOscillator();
-    lfo.frequency.value = id === 2 ? .8 : .12;
+    lfo.frequency.value = .12;
     const lg = x.createGain();
-    lg.gain.value = id === 2 ? .04 : .06;
+    lg.gain.value = .06;
     lfo.connect(lg).connect(g.gain);
     lfo.start();
     pre.nodes.push(lfo);
-    if (id === 2) {
-      /* Pulso de 96 BPM muy filtrado: referencia de la sala sin el click
-         seco que el usuario escuchará al empezar el minijuego. */
-      const pulse = x.createOscillator();
-      pulse.type = 'sine';
-      pulse.frequency.value = 48.7;
-      const pg = x.createGain();
-      pg.gain.value = .04;
-      const plfo = x.createOscillator();
-      plfo.frequency.value = 1.6;
-      const plg = x.createGain();
-      plg.gain.value = .04;
-      plfo.connect(plg).connect(pg.gain);
-      pulse.connect(pg).connect(g);
-      pulse.start(); plfo.start();
-      pre.nodes.push(pulse, plfo);
-    }
-    if (id === 5) {
-      const flfo = x.createOscillator();
-      flfo.frequency.value = .08;
-      const fg = x.createGain();
-      fg.gain.value = 320;
-      flfo.connect(fg).connect(lp.frequency);
-      flfo.start();
-      pre.nodes.push(flfo);
-    }
   }
+  const level = id === 5 ? .11 : PRE_LEVEL;
   const t = x.currentTime;
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(PRE_LEVEL, t + 1.2);
+  g.gain.linearRampToValueAtTime(level, t + 1.2);
   /* En la entrada directa (?room=N) todavía no hubo gesto: el primer toque
      o tecla reanuda el contexto y la música aparece con la locución. */
   if (x.state === 'suspended') {

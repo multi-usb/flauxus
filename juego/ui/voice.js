@@ -131,7 +131,7 @@ export function voStop() { VO.tok++; VO.active = false; soltar(); $('vo').classL
 export async function voRun(id) {
   const tok = ++VO.tok, pista = voPista(id); soltar(); VO.armed = false; VO.active = false;
   if (!pista || S.heard.has(id)) { VO.armed = true; return }
-  VO.active = true; $('btnVoSkip').style.display = 'block'; A.ambient?.set(.22, .8);
+  VO.active = true; $('btnVoSkip').style.display = 'block';
   const carga = VO_AUDIO && pista.audio ? voLoad(pista.audio) : null;
   limpiar(); $('vo').classList.add('show');
   $('voSrc').textContent = DEV_ENTRY_PICKER ? `fuente interna · ${(VO_TEXT[id] || []).map(f => f.src).join(' / ') || 'grabación'}${pista.estimada ? ' · sin grabación (tiempos estimados)' : ''}` : '';
@@ -191,6 +191,6 @@ export async function voRun(id) {
   });
   if (tok !== VO.tok) return;
   quitaGesto(); try { VO.el?.pause() } catch { } VO.el = null;
-  $('vo').classList.remove('show'); $('btnVoSkip').style.display = 'none'; VO.active = false; VO.armed = true; S.heard.add(id); A.ambient?.set(.4, 1.5)
+  $('vo').classList.remove('show'); $('btnVoSkip').style.display = 'none'; VO.active = false; VO.armed = true; S.heard.add(id)
 }
-$('btnVoSkip').onclick = () => { const id = S.room; voStop(); VO.armed = true; S.heard.add(id); A.ambient?.set(.4, 1); toast('Locución saltada · puedes seguir explorando') };
+$('btnVoSkip').onclick = () => { const id = S.room; voStop(); VO.armed = true; S.heard.add(id); toast('Locución saltada · puedes seguir explorando') };

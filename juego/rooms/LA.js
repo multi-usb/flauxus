@@ -63,13 +63,41 @@ export const LA = (() => {
   const NAMES = ['Fragmento A', 'Fragmento B', 'Fragmento C', 'Fragmento D', 'Fragmento E', 'Fragmento F'];
   let bounds = [], wf = [], slots = [null, null, null, null], tray = [], cuts = new Map(), playing = false, listened = false, drag = null, ghost = null, endDrag = null, chisel = false, papers = [], real = false, fbPad = null;
   // Cincel: 1 = invertido · 2 = tajo y separación (corta a la mitad, deja un silencio y la 2ª mitad vuelve al revés)
+  let progRaf = 0, progTimer = 0;
+  function paintProg(p, on) {
+    const el = $('laProg'); if (!el) return;
+    el.classList.toggle('on', !!on);
+    const b = el.firstElementChild;
+    if (b) b.style.width = (clamp(p, 0, 1) * 100).toFixed(2) + '%';
+    el.setAttribute('aria-valuenow', String(Math.round(clamp(p, 0, 1) * 100)))
+  }
+  function stopProg() {
+    cancelAnimationFrame(progRaf); progRaf = 0; clearTimeout(progTimer); progTimer = 0;
+    paintProg(0, false)
+  }
+  function runProg(dur) {
+    stopProg();
+    const d = Math.max(.08, dur || 0), t0 = performance.now();
+    paintProg(0, true);
+    const tick = now => {
+      const p = clamp((now - t0) / (d * 1000), 0, 1);
+      paintProg(p, true);
+      if (p < 1) { progRaf = requestAnimationFrame(tick); return }
+      progRaf = 0;
+      progTimer = setTimeout(() => { progTimer = 0; paintProg(0, false) }, 260)
+    };
+    progRaf = requestAnimationFrame(tick)
+  }
   function playFrag(i, when = 0, short = false) {
     const m = cuts.get(i) || 0, s = bounds[i], e = short ? Math.min(bounds[i + 1], s + 1.2) : bounds[i + 1];
-    if (m === 1) return playClip(6, s, e, { when, reverse: true, rate: .9, wet: .3 });
-    if (m === 2) { const mid = (s + e) / 2; let d = playClip(6, s, mid, { when, wet: .12 }); d += .32; d += playClip(6, mid, e, { when: when + d, reverse: true, wet: .35 }); return d }
-    return playClip(6, s, e, { when, wet: .1 })
+    let d;
+    if (m === 1) d = playClip(6, s, e, { when, reverse: true, rate: .9, wet: .3 });
+    else if (m === 2) { const mid = (s + e) / 2; let a = playClip(6, s, mid, { when, wet: .12 }); a += .32; a += playClip(6, mid, e, { when: when + a, reverse: true, wet: .35 }); d = a }
+    else d = playClip(6, s, e, { when, wet: .1 });
+    if (!playing && when === 0) runProg(d);
+    return d
   }
-  function status() { const n = slots.filter(s => s !== null).length; $('laStatus').textContent = `${n} de 4 espacios compuestos` + (cuts.size ? ` · ${cuts.size} intervenido${cuts.size > 1 ? 's' : ''}` : ''); $('laListen').disabled = n < 4 || playing || !real; $('laConfirm').style.display = (listened && !playing) || (!real && n === 4) ? 'block' : 'none' }
+  function status() { const n = slots.filter(s => s !== null).length; $('laStatusText').textContent = `${n} de 4 espacios compuestos` + (cuts.size ? ` · ${cuts.size} intervenido${cuts.size > 1 ? 's' : ''}` : ''); $('laListen').disabled = n < 4 || playing || !real; $('laConfirm').style.display = (listened && !playing) || (!real && n === 4) ? 'block' : 'none' }
   function cardEl(i, asGhost) {
     const c = document.createElement('div'); c.className = 'lcard' + (cuts.has(i) ? ' cut' : '') + (!asGhost && drag && drag.i === i ? ' lifted' : ''); c.dataset.i = i; if (cuts.has(i)) c.dataset.tag = cuts.get(i) === 1 ? 'invertido' : 'tajo';
     c.innerHTML = `<strong>${NAMES[i]}</strong><img src="${wf[i]}" alt="" draggable="false"><div class="tiny">${fmt(bounds[i])} – ${fmt(bounds[i + 1])}</div>`; if (!asGhost) c.addEventListener('pointerdown', e => onCard(e, i)); return c
@@ -133,6 +161,7 @@ export const LA = (() => {
   function play() {
     if (slots.some(s => s === null) || playing || !real) return; playing = true; status(); ensureAudio(); stopClips(); let t = 0; const els = [...document.querySelectorAll('#laFrame .slot')];
     slots.forEach((i, k) => { const d = playFrag(i, t); setTimeout(() => { els.forEach(x => x.classList.remove('playing')); els[k]?.classList.add('playing'); const rc = els[k]?.getBoundingClientRect(); if (rc) burst(rc.left + rc.width / 2, rc.top + rc.height / 2, LIMEH, 14, 200, .5, 3) }, t * 1000); t += d + .12 });
+    runProg(t);
     hint('Escuchando tu reensamblaje…'); setTimeout(() => { document.querySelectorAll('#laFrame .slot').forEach(x => x.classList.remove('playing')); playing = false; listened = true; status(); hint('Puedes reordenar y volver a escuchar, o entregar la obra.') }, t * 1000 + 300)
   }
   const getFloorY = () => meta.floorY ?? 1.40;
@@ -239,7 +268,7 @@ export const LA = (() => {
       avatarObj.position.set(gp.x, gp.y ?? fy, gp.z);
       avatarObj.rotation.y = gp.yaw ?? 0;
 
-      endDrag?.(); cuts = new Map(); playing = false; listened = false; drag = null; chisel = false; real = recOk(6);
+      endDrag?.(); cuts = new Map(); playing = false; listened = false; drag = null; chisel = false; real = recOk(6); stopProg();
       const reg = regionFor(6); bounds = splitRegion(6, reg.from, reg.to, 6); wf = [0, 1, 2, 3, 4, 5].map(i => wfImg(recPeaks(6, bounds[i], bounds[i + 1], 36)));
       slots = [null, null, null, null]; tray = [0, 1, 2, 3, 4, 5]; if (!real) { fbPad = pad([110, 165, 220], .05); fbPad.set(1) }
       $('laUI').style.display = 'block'; const cb = $('chiselBtn'); cb.style.display = S.mod.has('chisel') ? 'block' : 'none'; cb.classList.remove('on'); cb.classList.toggle('nudge', S.mod.has('chisel')); cb.textContent = '✂ Cincel'; if (S.mod.has('chisel')) setTimeout(() => { if (S.phase === 'play' && S.room === 6) toast('Cincel de Deconstrucción listo · actívalo para intervenir') }, 900);
@@ -279,6 +308,6 @@ export const LA = (() => {
       animAvatar(avatarObj, 0, t3, true, A.lvl);
       if (bloom) bloom.strength = .55;
     },
-    draw() { }, stop() { endDrag?.(); $('laUI').style.display = 'none'; ghost?.remove(); ghost = null; stopClips() }
+    draw() { }, stop() { endDrag?.(); $('laUI').style.display = 'none'; ghost?.remove(); ghost = null; stopClips(); stopProg() }
   }
 })();

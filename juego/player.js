@@ -10,7 +10,7 @@ import { PRELUDE } from './core/config.js';
 import { $, clamp, lerp, damp, lerpAngle, TOUCH, LIME, PALE, V3 } from './core/util.js';
 import { T } from './core/time.js';
 import { keys, ptr } from './core/inputState.js';
-import { A, tone } from './AudioSystem.js';
+import { A, tone, atriumFlute } from './AudioSystem.js';
 import {
   NAV, SPAWN, navY, setNavY, placeAtSpawn, navIdx, navCX, navCZ, navFree,
   navFloor, navSoft, navNode, navPath, navRampY, navPick
@@ -483,6 +483,9 @@ export function updateAtrium(dt) {
     if (rig.hold <= 0) rig.pitch = damp(rig.pitch, -.12, 3, dt);
     stepPh += speed * dt * .28; if (Math.floor(stepPh * 2) !== Math.floor((stepPh - speed * dt * .28) * 2) && speed > 1.5 && A.ctx) tone(70 + Math.random() * 20, .06, 'triangle', .04, 0, A.master);
     avatarObj.position.set(player.x, viewY, player.z); animAvatar(avatarObj, speed, T);
+    /* La flauta del atrio suena con el paso: es la misma toma que se ve
+       tocar. En el preludio de una sala se apaga (allí manda la locución). */
+    atriumFlute(on ? speed : 0, dt);
     stepFov(dt, sprint && speed > 6 ? 7 : 0); updateCam();
     S.nearby = on ? nearestPortal() : 0;
     if (pendEnter) { pendEnter.t -= dt; if (mag > .3 || auto || !on) pendEnter = null; else if (pendEnter.t <= 0) { const id = pendEnter.id; pendEnter = null; if (S.nearby === id) _enterRoom(id) } }

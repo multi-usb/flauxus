@@ -146,7 +146,7 @@
     <div id="laUI">
       <div class="frame" id="laFrame"></div>
       <div class="tray" id="tray"></div>
-      <div id="laStatus"></div>
+      <div id="laStatus"><span id="laStatusText"></span><i id="laProg" role="progressbar" aria-label="Progreso de escucha" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><b></b></i></div>
       <div id="laBtns"><button class="btns" id="chiselBtn" style="display:none">✂ Cincel</button><button class="btns"
           id="laListen" disabled>▶ Escuchar secuencia</button><button class="btns go" id="laConfirm"
           style="display:none">Entregar obra ✓</button></div>
@@ -180,8 +180,8 @@
       <div class="eyebrow">Epílogo</div>
       <h2>La partitura de tu huella</h2>
       <p>La experiencia termina después de la sexta sala. Esta salida no añade una séptima sala: convierte lo que
-        hiciste dentro del sistema —tu aire, tu pulso, tus pausas, tu recorrido, tus conexiones, tu reensamblaje— en una
-        huella propia.</p><canvas id="traceCanvas" width="1600" height="900"></canvas>
+        hiciste dentro del sistema (tu aire, tu pulso, tus pausas, tu recorrido, tus conexiones y tu reensamblaje) en
+        una huella propia.</p><canvas id="traceCanvas" width="1080" height="1920"></canvas>
       <div class="epBtns"><button class="primary" id="downloadTrace">Descargar mi partitura (.png)</button><button
           id="restart">Rebobinar y empezar de nuevo</button></div>
       <div id="epEntries"></div>
