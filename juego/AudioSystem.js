@@ -436,7 +436,10 @@ export function recDur(id) {
 
 export const recOk = id => Rec.buf.has(id) || (!Rec.bad.has(id) && recDur(id) > 0);
 
-export const REGIONS = { 3: { from: 0, to: 20, n: 4 }, 6: { from: 0, to: 24, n: 6 } };
+/* Para LA♯ se usa el tramo 5:31–5:55 de «CPE Bach Intervención»: es el pasaje de mayor
+   densidad y movimiento continuo de la toma (sin silencios largos), en vez del inicio,
+   más fragmentado y con varios huecos de bajo nivel. */
+export const REGIONS = { 3: { from: 0, to: 20, n: 4 }, 6: { from: 331, to: 355, n: 6 } };
 
 export function regionFor(id) {
   const R = REGIONS[id], d = recDur(id) || R.to;
