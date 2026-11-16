@@ -27,7 +27,7 @@ const AUDIO_EXT = (() => {
   try { return new Audio().canPlayType('audio/ogg; codecs="vorbis"') ? '.ogg' : '.m4a'; } catch { return '.m4a'; }
 })();
 export const recUrl = id => new URL('audio/' + trackFiles.get(id).replace(/\.wav$/i, AUDIO_EXT), document.baseURI).href;
-export const Rec = { buf: new Map(), el: new Map(), rev: new Map(), fb: new Set(), bad: new Set(), loading: new Map() };
+export const Rec = { buf: new Map(), el: new Map(), rev: new Map(), seg: new Map(), fb: new Set(), bad: new Set(), loading: new Map() };
 
 export function ensureAudio() {
   if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return A.ctx; }
@@ -436,13 +436,20 @@ export function recDur(id) {
 
 export const recOk = id => Rec.buf.has(id) || (!Rec.bad.has(id) && recDur(id) > 0);
 
-/* Para LA♯ se usa el tramo 5:31–5:55 de «CPE Bach Intervención»: es el pasaje de mayor
-   densidad y movimiento continuo de la toma (sin silencios largos), en vez del inicio,
-   más fragmentado y con varios huecos de bajo nivel. */
-export const REGIONS = { 3: { from: 0, to: 20, n: 4 }, 6: { from: 331, to: 355, n: 6 } };
+/* Tramos elegidos por densidad y movimiento, no por el inicio de la toma.
+   DO y FA♯ se reproducen en bucle (Voice); MI y LA se dividen en fragmentos.
+   RE y SOL no usan grabación: siguen con su material sintético. */
+export const REGIONS = {
+  1: { from: 45, to: 69 },             // DO · pasaje más activo y continuo
+  3: { from: 222, to: 242, n: 4 },     // MI · clímax de la sarabanda
+  4: { from: 631, to: 655 },           // FA♯ · clímax final
+  6: { from: 331, to: 355, n: 6 }      // LA · tramo 5:31–5:55
+};
 
 export function regionFor(id) {
-  const R = REGIONS[id], d = recDur(id) || R.to;
+  const R = REGIONS[id];
+  if (!R) return null;
+  const d = recDur(id) || R.to;
   return { from: Math.min(R.from, Math.max(0, d - 2)), to: Math.min(R.to, d), n: R.n };
 }
 
@@ -518,9 +525,35 @@ export function revBuf(id) {
 
 export const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 
-/* ---- Voice: una grabación en bucle, procesable en vivo ---- */
+/* ---- Voice: una grabación en bucle, procesable en vivo ----
+   Con REGIONS, la sala reproduce solo su tramo elegido. El recorte se cachea y lleva
+   un microfundido de 20 ms en los bordes para que el salto de bucle no haga clic. */
+function regionBuffer(id, buf, from, to) {
+  const key = `${id}:${from}:${to}`, cached = Rec.seg.get(key);
+  if (cached) return cached;
+  const x = A.ctx, sr = buf.sampleRate;
+  const a = Math.max(0, Math.min(buf.length - 1, Math.round(from * sr)));
+  const b = Math.max(a + 1, Math.min(buf.length, Math.round(to * sr)));
+  const len = b - a, out = x.createBuffer(buf.numberOfChannels, len, sr);
+  const fade = Math.min(Math.round(sr * .02), Math.floor(len / 4));
+  for (let c = 0; c < buf.numberOfChannels; c++) {
+    const s = buf.getChannelData(c), d = out.getChannelData(c);
+    d.set(s.subarray(a, b));
+    for (let i = 0; i < fade; i++) {
+      const k = i / fade;
+      d[i] *= k;
+      d[len - 1 - i] *= k;
+    }
+  }
+  Rec.seg.set(key, out);
+  return out;
+}
+
 export function Voice(id, o = {}) {
-  const x = ensureAudio(), buf = Rec.buf.get(id), rate = o.rate || 1, loop = o.loop !== false, v = { id, el: null, stopped: false };
+  const x = ensureAudio(), raw = Rec.buf.get(id), rate = o.rate || 1, loop = o.loop !== false, v = { id, el: null, stopped: false };
+  const pick = o.full ? null : (o.loopStart !== undefined && o.loopEnd !== undefined ? { from: o.loopStart, to: o.loopEnd } : regionFor(id));
+  const reg = pick && { from: Math.max(0, pick.from), to: Math.max(Math.max(0, pick.from) + .05, raw ? Math.min(pick.to, raw.duration) : pick.to) };
+  const buf = raw && x && reg ? regionBuffer(id, raw, reg.from, reg.to) : raw;
   if (buf && x) {
     const src = x.createBufferSource();
     src.buffer = buf;
@@ -546,7 +579,7 @@ export function Voice(id, o = {}) {
     const wet = x.createGain();
     wet.gain.value = o.wet || 0;
     if (A.verb) { tail.connect(wet); wet.connect(A.verb); }
-    src.start(x.currentTime + (o.delay || 0), clamp(o.offset || 0, 0, Math.max(0, buf.duration - .05)));
+    src.start(x.currentTime + (o.delay || 0), reg ? 0 : clamp(o.offset || 0, 0, Math.max(0, buf.duration - .05)));
     v.set = (p = {}) => {
       const t = x.currentTime;
       if (p.gain !== undefined) g.gain.setTargetAtTime(p.gain, t, .08);
@@ -573,9 +606,16 @@ export function Voice(id, o = {}) {
     el.muted = A.muted;
     v.el = el;
     A.fake++;
+    const from = reg ? reg.from : (o.offset || 0);
+    const seek = () => { try { el.currentTime = from; } catch { } };
+    const onTime = reg ? () => { if (el.currentTime >= reg.to || el.currentTime < reg.from - .25) seek() } : null;
+    if (onTime) {
+      el.addEventListener('timeupdate', onTime);
+      el.addEventListener('loadedmetadata', seek, { once: true });
+    }
     const start = () => {
       if (v.stopped) return;
-      try { el.currentTime = o.offset || 0; } catch { }
+      seek();
       el.play().catch(() => { });
     };
     if (o.delay) v.timer = setTimeout(start, o.delay * 1000); else start();
@@ -589,6 +629,7 @@ export function Voice(id, o = {}) {
       A.voices.delete(v);
       A.fake = Math.max(0, A.fake - 1);
       clearTimeout(v.timer);
+      if (onTime) el.removeEventListener('timeupdate', onTime);
       try { el.pause(); } catch { }
     };
   }
