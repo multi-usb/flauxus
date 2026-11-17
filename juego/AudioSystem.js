@@ -442,7 +442,7 @@ export const recOk = id => Rec.buf.has(id) || (!Rec.bad.has(id) && recDur(id) > 
 export const REGIONS = {
   1: { from: 45, to: 69 },             // DO · pasaje más activo y continuo
   3: { from: 222, to: 242, n: 4 },     // MI · clímax de la sarabanda
-  4: { from: 631, to: 655 },           // FA♯ · clímax final
+  4: { from: 577, to: 601 },           // FA♯ · clímax final (la toma calla desde 10:26)
   6: { from: 331, to: 355, n: 6 }      // LA · tramo 5:31–5:55
 };
 
