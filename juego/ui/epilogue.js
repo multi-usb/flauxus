@@ -13,11 +13,43 @@ export function renderEntries() {
   const keys = Object.keys(ENTRIES), n = keys.filter(k => seen.has(k)).length;
   $('epEntries').innerHTML = `<div class="eyebrow">Entradas descubiertas · ${n} de 4</div><div class="entrow">${keys.map(k => { const d = ENTRIES[k], on = seen.has(k); return `<div class="ent${on ? ' on' : ''}${k === entry ? ' now' : ''}"><b>${d.tag}</b><span>${on ? (d.skill || 'estado base') : 'por descubrir'}</span></div>` }).join('')}</div><p class="entnote">${n >= 4 ? 'Recorriste las cuatro puertas: cada una cambia la forma de jugar el mismo museo.' : 'Cada satélite —fanzine, afiche, baraja— abre una posibilidad distinta dentro del mismo museo. Vuelve a entrar desde otro para descubrirla.'}</p>`
 }
+/* La partitura no se muestra hasta que su autor la firma: el nombre entra en el
+   PNG descargable, no solo en la interfaz. */
+let traceName = '';
+const cleanName = v => v.replace(/\s+/g, ' ').trim().slice(0, 40);
+function showTrace() {
+  const result = $('traceResult');
+  if (!traceName) { result.hidden = true; return; }
+  result.hidden = false;
+  result.dataset.name = traceName;
+  $('traceCanvas').setAttribute('aria-label', `Partitura de la huella de ${traceName}`);
+  drawTrace();
+  (document.fonts?.ready || Promise.resolve()).then(drawTrace);
+}
 export function showEpilogue(cur) {
   S.phase = 'epilogue'; renderEntries(); hideRoomDom(); cur?.stop?.(); killBus(); $('roomUI').classList.remove('active'); $('btnBack').style.display = 'none'; $('epilogue').classList.add('show');
-  (document.fonts?.ready || Promise.resolve()).then(drawTrace); drawTrace();
+  $('nameGate').hidden = !!traceName; showTrace();
+  if (!traceName) setTimeout(() => $('traceName').focus({ preventScroll: true }), 80);
   const mins = ((performance.now() - S.sessionStart) / 60000).toFixed(1); $('epSummary').textContent = `Recorrido: ${[...S.completed].map(i => rooms[i - 1].note).join(' → ')} · duración total: ${mins} min · ${entryLabel.toLowerCase()}`; tone(523.25, 1.2, 'sine', .06, 0, A.master)
 }
+/* ---- firma y descarga ---- */
+const nameGate = $('nameGate'), nameInput = $('traceName');
+nameInput.addEventListener('input', () => nameInput.setCustomValidity(''));
+nameGate.addEventListener('submit', e => {
+  e.preventDefault();
+  const name = cleanName(nameInput.value);
+  if (name.length < 2) {
+    nameInput.setCustomValidity('Escribe tu nombre para firmar la partitura.');
+    nameInput.reportValidity();
+    return;
+  }
+  nameInput.setCustomValidity('');
+  traceName = name;
+  nameInput.value = name;
+  nameGate.hidden = true;
+  showTrace();
+  $('downloadTrace').focus({ preventScroll: true });
+});
 /* ---- tarjeta para compartir ----
    La huella se descarga como una pieza vertical 1080 × 1920, pensada para
    redes: marca arriba, titular, cifras del recorrido, los seis momentos y
@@ -48,6 +80,7 @@ function detailOf(r, m) {
   return `${Math.round(m.duration || 0)} s`
 }
 export function drawTrace() {
+  if (!traceName) return;
   const c = $('traceCanvas'), x = c.getContext('2d'), w = c.width, h = c.height, M = S.metrics, u = w / 1080;
   const pad = w * .0667, done = S.completed.size, total = rooms.length, entries = seen.size;
   const cuts = M[6]?.cuts || 0;
@@ -85,10 +118,22 @@ export function drawTrace() {
   x.fillText('LA PARTITURA', pad, h * .202);
   x.fillText('DE TU HUELLA', pad, h * .258);
 
+  /* firma: el nombre de quien completó el recorrido */
+  const pre = 'HUELLA DE ', upper = traceName.toUpperCase();
+  x.fillStyle = 'rgba(239,234,219,.5)'; x.font = `600 ${Math.round(17 * u)}px ${FONT}`;
+  x.fillText(pre, pad, h * .281);
+  const preW = x.measureText(pre).width, maxName = w - pad * 2 - preW;
+  let ns = 26 * u;
+  x.font = `900 ${Math.round(ns)}px ${SERIF}`;
+  while (ns > 15 * u && x.measureText(upper).width > maxName) {
+    ns -= u; x.font = `900 ${Math.round(ns)}px ${SERIF}`;
+  }
+  x.fillStyle = LIMEH; x.fillText(upper, pad + preW, h * .281);
+
   /* entrada y resumen breve */
   x.fillStyle = 'rgba(239,234,219,.68)'; x.font = `400 ${Math.round(27 * u)}px ${FONT}`;
-  x.fillText('Tu aire, tu pulso, tus pausas, tu recorrido,', pad, h * .298);
-  x.fillText('tus conexiones y tu reensamblaje.', pad, h * .32);
+  x.fillText('Tu aire, tu pulso, tus pausas, tu recorrido,', pad, h * .304);
+  x.fillText('tus conexiones y tu reensamblaje.', pad, h * .326);
 
   /* cifras: minutos en grande y tres contadores a la derecha */
   x.fillStyle = 'rgba(239,234,219,.42)'; x.font = `600 ${Math.round(18 * u)}px ${FONT}`;
@@ -147,7 +192,15 @@ export function drawTrace() {
   x.textAlign = 'right'; x.fillText(entryLabel, w - pad, h * .948);
   x.textAlign = 'left'
 }
-$('downloadTrace').onclick = () => { const a = document.createElement('a'); a.download = 'flauxus-partitura-huella.png'; a.href = $('traceCanvas').toDataURL('image/png'); a.click() };
+$('downloadTrace').onclick = () => {
+  if (!traceName) return;
+  const slug = traceName.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'huella';
+  const a = document.createElement('a');
+  a.download = `flauxus-partitura-${slug}.png`;
+  a.href = $('traceCanvas').toDataURL('image/png');
+  a.click();
+};
 /* «Rebobinar y empezar de nuevo»: el progreso solo vive en memoria, así que recargar ya lo deja todo en su estado
    inicial (nivel, avatar, cámara, HUD, escaleras). Se quita `?room=` para que el reinicio caiga siempre en la portada
    y el primer Momento, aunque se hubiera entrado por un acceso directo; el resto de parámetros (entrada, pruebas) sigue. */

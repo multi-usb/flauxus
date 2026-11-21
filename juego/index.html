@@ -181,9 +181,21 @@
       <h2>La partitura de tu huella</h2>
       <p>La experiencia termina después de la sexta sala. Esta salida no añade una séptima sala: convierte lo que
         hiciste dentro del sistema (tu aire, tu pulso, tus pausas, tu recorrido, tus conexiones y tu reensamblaje) en
-        una huella propia.</p><canvas id="traceCanvas" width="1080" height="1920"></canvas>
-      <div class="epBtns"><button class="primary" id="downloadTrace">Descargar mi partitura (.png)</button><button
-          id="restart">Rebobinar y empezar de nuevo</button></div>
+        una huella propia.</p>
+      <form id="nameGate" autocomplete="off">
+        <label for="traceName">Firma tu partitura</label>
+        <div class="nameRow"><input id="traceName" name="traceName" type="text" maxlength="40" minlength="2" required
+            autocomplete="name" autocapitalize="words" spellcheck="false" placeholder="Escribe tu nombre"
+            aria-describedby="nameHint"><button class="btn" type="submit">Generar mi partitura</button></div>
+        <p id="nameHint">Tu nombre se imprime dentro del PNG que descargues.</p>
+      </form>
+      <div id="traceResult" hidden><canvas id="traceCanvas" width="1080" height="1920"
+          aria-label="Partitura de la huella"></canvas>
+        <p class="epTagline">Tú has modificado la obra: parte de ella también es tuya. Compártela en tus redes sociales
+          etiquetando a <strong>María Clara</strong>.</p>
+        <div class="epBtns"><button class="primary" id="downloadTrace">Descargar <span class="miWord">MI</span>
+            partitura (.png)</button><button id="restart">Rebobinar y empezar de nuevo</button></div>
+      </div>
       <div id="epEntries"></div>
       <div id="epSummary"></div>
     </div>

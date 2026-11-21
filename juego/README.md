@@ -60,6 +60,8 @@ Los alias de URL (`?room=do`, `?room=do4`, `?room=re`…) se derivan automática
 
 **Progreso.** Solo en memoria: cada carga de la página empieza desde cero en el primer Momento (recargar, o salir a la landing y volver, no hereda nada). No se guarda en `localStorage`; la clave antigua `flauxus.progress.v1` se borra al cargar (`core/state.js`). Al salir (`pagehide` o el botón «Salir» embebido) `Main.js` detiene audio, locución y bucle de render y suelta el contexto WebGL; si la página vuelve desde bfcache, se recarga. Única excepción deliberada: el registro de entradas descubiertas (`flauxus.entries.v1`, `core/config.js`). Cada satélite físico abre el museo con una carga distinta de la página (`?entry=`), así que «Entradas descubiertas · n de 4» del epílogo solo puede acumularse entre cargas; no guarda progreso ni cambia lo jugable.
 
+**Epílogo y partitura.** `ui/epilogue.js` pide el nombre antes de revelar el canvas; la partitura (1080 × 1920) se dibuja con ese nombre en Tektur y el PNG se descarga como `flauxus-partitura-<nombre>.png`. El botón de descarga usa la tipografía de las notas de la landing para la sílaba «MI».
+
 Parámetros útiles: `?raf=timer` mueve el bucle con un temporizador (pruebas automatizadas con la página oculta) · `?input=touch` fuerza la interfaz táctil · `?room=1…6` entra directo a un Momento (lo usan las notas de la landing) · `?entry=fanzine|poster|cards` cambia la entrada (la cyborg tiñe el menú) · `?dev` muestra «Simular entrada» · `?perf` muestra el contador de rendimiento.
 
 ### Añadir o mover una sala
