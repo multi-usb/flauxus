@@ -108,9 +108,10 @@ const FLUTE_MOUTH_X = FLUTE_NEAR_X - FLUTE_MOUTH_INSET;
 /* Agarre en espacio local de la flauta (el grupo no rota). La mano
    izquierda sujeta el bisel y la derecha baja por el tubo. Al ampliar el
    inset, el tubo y las manos se desplazan juntos hacia la izquierda del
-   personaje: los agarres conservan sus valores para no cambiar la pose de
-   las muñecas respecto del tubo. */
-const FLUTE_GRIPS = { Left: [.38, -.175, -.01], Right: [.126, -.175, -.01] };
+   personaje. La mano derecha, la más alejada de la cara, se corrió 4 cm
+   más hacia el extremo del tubo: así queda un poco más lejos de la cara
+   sin cambiar el apoyo del bisel. */
+const FLUTE_GRIPS = { Left: [.38, -.175, -.01], Right: [.085, -.175, -.01] };
 /* Respaldo si el rig no tuviera hueso de cabeza; la pose real se calcula
    desde la boca en cada frame. */
 const FLUTE_PLAY_POS = new V3(-.40, 2.20, .15);
@@ -127,7 +128,10 @@ const FLUTE_POLES = { Left: [.75, -.62, -.18], Right: [-.75, -.62, -.18] };
    apenas hacia delante (+Z), sin sacar la mano del tubo ni cambiar la pose
    de los otros dos avatares. */
 const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.75, -.62, -.18] };
-const FLUTE_ROLLS = { Left: 0, Right: 0 };
+/* La mano derecha (la más alejada de la cara) gira media vuelta sobre sus
+   dedos: en la pose anterior la palma miraba hacia el cuerpo y el dorso
+   quedaba a la vista; así la palma sostiene el tubo mirando hacia afuera. */
+const FLUTE_ROLLS = { Left: 0, Right: Math.PI };
 const FLUTE_NOD = .12;
 const _flutePlay = new V3(), _mouth = new V3();
 const _qNod = new THREE.Quaternion(), _xAxis = new V3(1, 0, 0);
