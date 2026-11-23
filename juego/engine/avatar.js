@@ -128,10 +128,12 @@ const FLUTE_POLES = { Left: [.75, -.62, -.18], Right: [-.75, -.62, -.18] };
    apenas hacia delante (+Z), sin sacar la mano del tubo ni cambiar la pose
    de los otros dos avatares. */
 const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.75, -.62, -.18] };
-/* La mano derecha (la más alejada de la cara) gira media vuelta sobre sus
-   dedos: en la pose anterior la palma miraba hacia el cuerpo y el dorso
-   quedaba a la vista; así la palma sostiene el tubo mirando hacia afuera. */
-const FLUTE_ROLLS = { Left: 0, Right: Math.PI };
+/* La mano derecha (la más alejada de la cara) se corre hacia el extremo del
+   tubo y gira apenas hacia afuera. Un giro mayor deja la palma al
+   descubierto: en el rig original el pulgar se abre y en body/cyborg, que
+   tienen manos rígidas sin falanges, parece una mano saludando. Con este
+   ángulo el dorso sigue mirando afuera y los dedos apoyan sobre el tubo. */
+const FLUTE_ROLLS = { Left: 0, Right: .15 };
 const FLUTE_NOD = .12;
 const _flutePlay = new V3(), _mouth = new V3();
 const _qNod = new THREE.Quaternion(), _xAxis = new V3(1, 0, 0);
