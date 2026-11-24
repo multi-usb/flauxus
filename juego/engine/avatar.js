@@ -108,33 +108,34 @@ const FLUTE_MOUTH_X = FLUTE_NEAR_X - FLUTE_MOUTH_INSET;
 /* Agarre en espacio local de la flauta (el grupo no rota). La mano
    izquierda sujeta el bisel y la derecha baja por el tubo. Al ampliar el
    inset, el tubo y las manos se desplazan juntos hacia la izquierda del
-   personaje. La mano derecha, la más alejada de la cara, se corrió 8 cm
-   hacia el extremo del tubo: así queda bastante más lejos del rostro sin
-   cambiar el apoyo del bisel. También baja 3,5 cm para que, al girar la
-   palma hacia afuera, los dedos sigan encontrando el tubo. */
-const FLUTE_GRIPS = { Left: [.38, -.175, -.01], Right: [.046, -.21, -.01] };
+   personaje. La mano derecha, la más alejada de la cara, se corrió 3 cm
+   más hacia el extremo del tubo (11 cm respecto de la pose original) y
+   subió 1 cm: queda un poco más lejos del rostro y los dedos encuentran
+   el tubo con la palma mirando hacia adelante. */
+const FLUTE_GRIPS = { Left: [.38, -.175, -.01], Right: [.016, -.20, -.01] };
 /* Respaldo si el rig no tuviera hueso de cabeza; la pose real se calcula
    desde la boca en cada frame. */
 const FLUTE_PLAY_POS = new V3(-.40, 2.20, .15);
 /* Los dedos apuntan en el plano YZ, perpendiculares al tubo. La mano
    izquierda los inclina hacia delante para agarrar el bisel; la derecha
-   los lleva casi verticales: con la palma girada hacia afuera, así los
-   dedos quedan apoyados sobre el tubo en vez de pasar por delante. */
+   los lleva casi verticales: con la palma al frente, el tubo cae sobre
+   las yemas y los dedos no lo tapan. */
 const FLUTE_DIRS = { Left: [.12, .8, .58], Right: [-.12, .99, 0] };
-/* Polos hacia abajo y afuera: los codos acompañan al cuerpo en vez de
-   quedar levantados como alas. */
-const FLUTE_POLES = { Left: [.75, -.62, -.18], Right: [-.75, -.62, -.18] };
+/* Polos hacia abajo: los codos cuelgan junto al torso. El derecho, además,
+   va apenas hacia adentro y adelante para que el brazo acompañe la mano
+   sin abrirse como un ala. */
+const FLUTE_POLES = { Left: [.75, -.62, -.18], Right: [-.25, -.96, .02] };
 /* El cyborg lleva una chaqueta y un torso más anchos que el resto de los
    rigs. Con el polo común, el codo izquierdo se mete en la geometría del
    pecho al tocar. Este polo lo abre hacia +X (lado izquierdo) y lo lleva
    apenas hacia delante (+Z), sin sacar la mano del tubo ni cambiar la pose
    de los otros dos avatares. */
-const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.75, -.62, -.18] };
-/* La mano derecha (la más alejada de la cara) da el giro completo hacia
-   afuera: la palma mira al costado opuesto al rostro y el dorso queda del
-   lado de la cara. Los dedos se orientan casi verticales para que el tubo
-   caiga sobre las yemas y la mano no parezca abierta. */
-const FLUTE_ROLLS = { Left: 0, Right: Math.PI };
+const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.25, -.96, .02] };
+/* La mano derecha (la más alejada de la cara) gira hasta que la palma mira
+   hacia adelante, en la misma dirección que el personaje. Los dedos quedan
+   casi verticales, apoyados sobre el tubo, y el antebrazo acompaña el giro
+   sin retorcer la muñeca. */
+const FLUTE_ROLLS = { Left: 0, Right: -1.17 };
 const FLUTE_NOD = .12;
 const _flutePlay = new V3(), _mouth = new V3();
 const _qNod = new THREE.Quaternion(), _xAxis = new V3(1, 0, 0);
