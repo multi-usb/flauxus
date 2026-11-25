@@ -296,18 +296,24 @@ const _shoulder = new V3(), _target = new V3(), _targetLocal = new V3(), _axis =
   /* Auxiliares del IK: se llama en cada cuadro (dos veces en SOL: avatar y holograma), así que no crea objetos. */
   _pole = new V3(), _qTmp = new Q(), _qHand = new Q(), _qRoll = new Q(), _yAxis = new V3(0, 1, 0);
 
-/* Curl extra de los dedos para el rig original (el único con falanges).
-   Se suma a la pose del mixer en el espacio local de cada falange: +X
-   flexiona hacia la palma, que tras orientar la muñeca es el lado donde
-   queda el tubo. Los ángulos son suaves para que la mano sujete sin
-   cerrarse en un puño. */
+/* Curl de los dedos para el rig original (el único con falanges). Cada
+   falange flexiona hacia la palma en su espacio local (+X), que tras
+   orientar la muñeca es el lado donde queda el tubo: los dedos lo rodean
+   por delante en vez de quedar abiertos detrás. La mano derecha parte de
+   su pose de reposo para que el curl no dependa del idle; la izquierda lo
+   suma a la pose del mixer para cerrar sobre el bisel. */
 const FLUTE_FINGERS = ['Index', 'Middle', 'Ring', 'Pinky'];
 const FLUTE_FINGER_CURL = {
-  Index: [.26, .36, .24],
-  Middle: [.28, .38, .26],
-  Ring: [.26, .36, .24],
-  Pinky: [.22, .32, .22]
+  Index: [1, .3, .5],
+  Middle: [1.05, .3, .5],
+  Ring: [.9, .3, .45],
+  Pinky: [.75, .25, .4]
 };
+/* El pulgar derecho, en reposo, queda extendido por delante del tubo y la
+   flauta parece entrar en la mano. Se lo gira alrededor del eje del tubo
+   para que quede debajo y detrás, sosteniéndola desde el lado opuesto a
+   los dedos. */
+const FLUTE_THUMB_TUCK = -.8;
 
 function solveArm(shoulder, target, L1, L2, pole, outElbow) {
   _axis.copy(target).sub(shoulder);
@@ -420,17 +426,49 @@ export function applyFluteIK(avatar, blend, targets, handDirs, poles, handRolls,
       hand.updateWorldMatrix(false, false);
     }
 
-    /* Dedos: el rig original sí trae falanges. Se añade un curl local
-       proporcional al fundido; los rigs sin dedos (body/cyborg) conservan
-       la mano rígida y el tubo se apoya igualmente del lado de la palma. */
+    /* Pulgar derecho: en reposo queda extendido por delante del tubo y la
+       flauta parece entrar en la mano. Se lo gira alrededor del eje del
+       tubo para que quede debajo/detrás, sosteniéndolo. */
+    if (side === 'Right' && handDirs && handDirs[side] && blend > .02) {
+      const thumbAngle = FLUTE_THUMB_TUCK;
+      const thumb = bones.get('mixamorigRightHandThumb1');
+      if (thumb && thumbAngle) {
+        const restQ = template.restLocalQuats['mixamorigRightHandThumb1'];
+        if (restQ) {
+          thumb.quaternion.slerp(_qRest.fromArray(restQ), blend);
+          thumb.updateWorldMatrix(false, false);
+        }
+        _xW.set(1, 0, 0).applyQuaternion(_qVisual).normalize();
+        _qDelta.setFromAxisAngle(_xW, thumbAngle);
+        thumb.parent.getWorldQuaternion(_qParent);
+        thumb.getWorldQuaternion(_qDesired);
+        _qDesired.premultiply(_qDelta);
+        _qLocal.copy(_qParent).invert().multiply(_qDesired);
+        thumb.quaternion.slerp(_qLocal, blend);
+        thumb.updateWorldMatrix(false, false);
+      }
+    }
+
+    /* Dedos: el rig original sí trae falanges. La mano derecha se resetea
+       a su pose de reposo y se le suma el curl; los rigs sin dedos
+       (body/cyborg) conservan la mano rígida. */
     if (handDirs && handDirs[side] && blend > .02) {
       for (const finger of FLUTE_FINGERS) {
         const angles = FLUTE_FINGER_CURL[finger];
         for (let i = 0; i < angles.length; i++) {
-          const fb = bones.get('mixamorig' + side + 'Hand' + finger + (i + 1));
+          const name = 'mixamorig' + side + 'Hand' + finger + (i + 1);
+          const fb = bones.get(name);
           if (!fb) continue;
-          _qCurl.setFromAxisAngle(_fingerAxis, angles[i] * blend);
-          fb.quaternion.multiply(_qCurl);
+          const restQ = side === 'Right' && template.restLocalQuats[name];
+          if (restQ) {
+            _qCurl.setFromAxisAngle(_fingerAxis, angles[i]);
+            _qRest.fromArray(restQ);
+            _qDesired.copy(_qRest).multiply(_qCurl);
+            fb.quaternion.slerp(_qDesired, blend);
+          } else {
+            _qCurl.setFromAxisAngle(_fingerAxis, angles[i] * blend);
+            fb.quaternion.multiply(_qCurl);
+          }
           fb.updateWorldMatrix(false, false);
         }
       }
