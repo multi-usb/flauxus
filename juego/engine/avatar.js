@@ -137,6 +137,14 @@ const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.25, -.96, .02] };
    índice en vez de quedar detrás de los nudillos, y el antebrazo acompaña
    sin retorcer la muñeca. */
 const FLUTE_ROLLS = { Left: 0, Right: -.45 };
+/* El rig de «Matar al padre» (body) no tiene falanges: la mano es rígida y
+   abierta. Para que la flauta no quede delante de una mano abierta, se la
+   coloca debajo del tubo con la palma en cuenco, los dedos acompañando el
+   tubo hacia la cara y el pulgar por delante. Es la pose más cercana a un
+   agarre que permite ese esqueleto; la mano izquierda conserva la aprobada. */
+const FLUTE_GRIPS_BODY = { Left: FLUTE_GRIPS.Left, Right: [.006, -.10, 0] };
+const FLUTE_DIRS_BODY = { Left: FLUTE_DIRS.Left, Right: [.95, .25, 0] };
+const FLUTE_ROLLS_BODY = { Left: FLUTE_ROLLS.Left, Right: .589 };
 const FLUTE_NOD = .12;
 const _flutePlay = new V3(), _mouth = new V3();
 const _qNod = new THREE.Quaternion(), _xAxis = new V3(1, 0, 0);
@@ -623,8 +631,9 @@ export function animAvatar(av, sp, t, play = false, air = 0) {
 
     /* Los targets IK se cuelgan del mismo grupo: al moverse el bisel con la
        boca, las muñecas se recolocan y los codos se acomodan solos. */
+    const grips = u.version === 'body' ? FLUTE_GRIPS_BODY : FLUTE_GRIPS;
     for (const side of ['Left', 'Right']) {
-      const g = FLUTE_GRIPS[side], tg = _fluteTargets[side];
+      const g = grips[side], tg = _fluteTargets[side];
       tg[0] = u.flute.position.x + g[0];
       tg[1] = u.flute.position.y + g[1];
       tg[2] = u.flute.position.z + g[2];
@@ -635,7 +644,8 @@ export function animAvatar(av, sp, t, play = false, air = 0) {
     /* El cyborg usa un polo de codo propio para que el brazo izquierdo no
        se hunda en la chaqueta; el resto conserva la pose ya aprobada. */
     const poles = u.cy ? FLUTE_POLES_CYBORG : FLUTE_POLES;
-    applyFluteIK(u, b, _fluteTargets, FLUTE_DIRS, poles, FLUTE_ROLLS, u.flute.position);
+    const body = u.version === 'body';
+    applyFluteIK(u, b, _fluteTargets, body ? FLUTE_DIRS_BODY : FLUTE_DIRS, poles, body ? FLUTE_ROLLS_BODY : FLUTE_ROLLS, u.flute.position);
     u.visual.parent?.updateMatrixWorld(true);
   }
 
