@@ -543,6 +543,8 @@ function pickAtrium(cx, cy) {
     for (const g of stairGroups) { const l = stairLocal(g, h.x, h.z); if (Math.abs(l.x) < 2.5 && l.z <= 1.2 && l.z >= -((g.userData.len || 6.8) + 1.2) && (hi || l.z > -.5)) return { g } }
     return h
   }
+  /* Entrada directa: el atrio todavía no existe y no hay nada que picar. */
+  if (!atriumFloor) return null;
   const atriumFBXObj = getAtriumFBXObj();
   const targets = [atriumFloor, ...stairGroups];
   //if (atriumFBXObj) targets.push(atriumFBXObj);

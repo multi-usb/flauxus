@@ -20,7 +20,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { LIME, clamp, damp } from '../core/util.js';
+import { LIME, clamp, damp, qs } from '../core/util.js';
 import { QUALITY } from '../core/config.js';
 import { mat } from './materials.js';
 import { scene } from './renderer.js';
@@ -138,13 +138,11 @@ const FLUTE_POLES_CYBORG = { Left: [1.45, -.45, .2], Right: [-.25, -.96, .02] };
    sin retorcer la muñeca. */
 const FLUTE_ROLLS = { Left: 0, Right: -.45 };
 /* El rig de «Matar al padre» (body) no tiene falanges: la mano es rígida y
-   abierta. Para que la flauta no quede delante de una mano abierta, se la
-   coloca debajo del tubo con la palma en cuenco, los dedos acompañando el
-   tubo hacia la cara y el pulgar por delante. Es la pose más cercana a un
-   agarre que permite ese esqueleto; la mano izquierda conserva la aprobada. */
-const FLUTE_GRIPS_BODY = { Left: FLUTE_GRIPS.Left, Right: [.006, -.10, 0] };
-const FLUTE_DIRS_BODY = { Left: FLUTE_DIRS.Left, Right: [.95, .25, 0] };
-const FLUTE_ROLLS_BODY = { Left: FLUTE_ROLLS.Left, Right: .589 };
+   abierta. La posición y la dirección de los dedos son las mismas que en el
+   cyborg y el original; solo se gira la muñeca para que se vea el dorso y el
+   tubo caiga en la horquilla del pulgar, en vez de quedar delante de una
+   palma abierta. Es el ajuste mínimo que permite ese esqueleto. */
+const FLUTE_ROLLS_BODY = { Left: FLUTE_ROLLS.Left, Right: -1.856 };
 const FLUTE_NOD = .12;
 const _flutePlay = new V3(), _mouth = new V3();
 const _qNod = new THREE.Quaternion(), _xAxis = new V3(1, 0, 0);
@@ -387,6 +385,26 @@ function resetJoints(u) {
   u.joints.wr.position.set(.48, 1.03, 0);
 }
 
+/* Al cambiar de traje, las texturas 2K del rig anterior seguían en la GPU
+   aunque el rig ya no se viera. En el atrio → sala eso sumaba ~90 MB y el
+   primer render de la sala podía pasar de 1,6 s a más de 20 s (SwiftShader
+   y móviles con poca memoria). Se liberan solo las texturas: el rig sigue
+   en caché y, al volver a usarlo, Three las vuelve a subir desde la imagen. */
+function releaseRigTextures(rig) {
+  const seen = new Set();
+  rig.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) {
+      if (!m) continue;
+      for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap']) {
+        const t = m[k];
+        if (t && !seen.has(t)) { seen.add(t); t.dispose(); }
+      }
+    }
+  });
+}
+
 function clearVisual(u) {
   resetJoints(u);
   if (u.mixer) { u.mixer.stopAllAction(); if (u.rig) u.mixer.uncacheRoot(u.rig); u.mixer = null; }
@@ -399,6 +417,7 @@ function clearVisual(u) {
        de traje (salas FA♯, SOL♯ y LA♯) esa textura quedaba huérfana: +2 texturas por visita. Se libera aquí;
        geometría, materiales y mapas son los del rig en caché y se conservan. */
     u.rig.traverse(o => { if (o.isSkinnedMesh) o.skeleton?.dispose?.(); });
+    releaseRigTextures(u.rig);
     u.visual.remove(u.rig); u.rig = null;
   }
   u.mesh = null; u.bones = null; u.template = null; u.skeleton = null;
@@ -529,7 +548,10 @@ export function setAvatar(kind) {
   return p;
 }
 
-loadInto(avatarObj, 'disciplined'); // precarga la versión del atrio
+/* Precarga la versión del atrio solo en el arranque normal. En la entrada
+   directa (?room=N) el atrio no se muestra: descargar su avatar (12 MB)
+   competiría con el Momento y retrasaría el preloader. */
+if (!qs.has('room')) loadInto(avatarObj, 'disciplined');
 
 /* ======================================================================
    ANIMACIÓN
@@ -631,7 +653,7 @@ export function animAvatar(av, sp, t, play = false, air = 0) {
 
     /* Los targets IK se cuelgan del mismo grupo: al moverse el bisel con la
        boca, las muñecas se recolocan y los codos se acomodan solos. */
-    const grips = u.version === 'body' ? FLUTE_GRIPS_BODY : FLUTE_GRIPS;
+    const grips = FLUTE_GRIPS;
     for (const side of ['Left', 'Right']) {
       const g = grips[side], tg = _fluteTargets[side];
       tg[0] = u.flute.position.x + g[0];
@@ -645,7 +667,7 @@ export function animAvatar(av, sp, t, play = false, air = 0) {
        se hunda en la chaqueta; el resto conserva la pose ya aprobada. */
     const poles = u.cy ? FLUTE_POLES_CYBORG : FLUTE_POLES;
     const body = u.version === 'body';
-    applyFluteIK(u, b, _fluteTargets, body ? FLUTE_DIRS_BODY : FLUTE_DIRS, poles, body ? FLUTE_ROLLS_BODY : FLUTE_ROLLS, u.flute.position);
+    applyFluteIK(u, b, _fluteTargets, FLUTE_DIRS, poles, body ? FLUTE_ROLLS_BODY : FLUTE_ROLLS, u.flute.position);
     u.visual.parent?.updateMatrixWorld(true);
   }
 

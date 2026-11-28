@@ -29,7 +29,7 @@ import {
   rig, player, vel, moveInput, updateCam, updateAtrium, roomCamera, walkNext, walkTo,
   clickToGo, tryJump, setLookHold, setCamDt, setPlayerCallbacks, resetPlayerPhysics, stairLocal
 } from './player.js';
-import { startGame, tryEnter, enterRoom, startRoom, leaveRoom, afterDone, cur, bootGame, finish } from './flow.js';
+import { startGame, tryEnter, enterRoom, startRoom, leaveRoom, afterDone, cur, bootGame, finish, directRoom } from './flow.js';
 import { initDebug, perfTick, adaptRes, perfEl, setResCap } from './ui/debug.js';
 
 /* ======================================================================
@@ -54,7 +54,8 @@ GX._set({
   roomGen, T, $
 });
 roomsInit();
-makeAtrium();
+/* Entrada directa: el atrio se construye al volver, no antes de la sala. */
+if (!directRoom) makeAtrium();
 
 /* ======================================================================
    ENTRADA (pointer unificado: mouse + táctil)

@@ -18,7 +18,7 @@ import { lightingManager } from './engine/lighting.js';
 import { avatarObj, setAvatar } from './engine/avatar.js';
 import { groundController } from './engine/ground.js';
 import { mat, glowSprite, clearGroup } from './engine/materials.js';
-import { paintHuella, atriumReady } from './atrium/atrium.js';
+import { paintHuella, ensureAtrium } from './atrium/atrium.js';
 import {
   camCur, camLook, stopAuto, placePlayerAtSpawn,
   placePlayerAtAtrium, setRoomFloor, snapFov
@@ -31,6 +31,10 @@ import { showEpilogue } from './ui/epilogue.js';
 import { toast } from './ui/toast.js';
 
 export let cur = null;
+/* La grabación puede terminar de decodificarse con la sala ya visible; el
+   botón de empezar espera ese buffer para que el minijuego tenga todas sus
+   herramientas (regiones, picos, reverso) desde el primer compás. */
+let audioReadyForRoom = true;
 
 /* ======================================================================
    PREPARACIÓN BAJO EL PRELOADER
@@ -41,11 +45,19 @@ export let cur = null;
 let starting = false;
 const nextFrame = () => new Promise(res => requestAnimationFrame(res));
 
-async function warmScene(limit = 14000) {
+async function warmScene(limit = 14000, detach = null) {
+  /* Al entrar a una sala, el atrio sigue en la escena aunque esté oculto:
+     `compileAsync` recorre también los objetos invisibles y recompila todos
+     sus materiales bajo la iluminación nueva (hasta 25 s extra). Se aparta
+     solo durante la compilación y se reincorpora antes del primer render. */
+  const parent = detach?.parent;
+  if (parent) parent.remove(detach);
   try {
     await Promise.race([renderer.compileAsync(scene, camera), sleep(limit)]);
   } catch (e) {
     console.warn('Precompilado de escena', e);
+  } finally {
+    if (parent) parent.add(detach);
   }
   try {
     if (composer) composer.render(0); else renderer.render(scene, camera);
@@ -134,19 +146,13 @@ export function bootGame() {
        En el arranque normal lo hace `startGame()`, ya dentro del clic. */
     if (direct) ensureAudio();
     try {
-      loaderStage(16, 'Cargando el atrio y tu avatar');
-      await Promise.all([atriumReady, setAvatar(skinKind(0))]);
-      if (assetManager.failed.has('atrium')) throw new Error('No se pudo descargar el atrio');
-      /* La luz, la niebla y el fondo ya están calculados; fijar el color
-         exacto evita que el primer frame descubra un resto del anterior. */
-      BG.copy(BGT);
-      /* Deja al jugador en su spawn antes de la portada para que la cámara
-         giratoria encuadre el atrio definitivo, no el centro provisional. */
-      placePlayerAtSpawn(Math.PI);
-      loaderStage(64, 'Acomodando la luz del museo');
-      await warmScene(14000);
-
+      /* Entrada directa (?room=N): el atrio no se muestra en ningún momento,
+         así que no se descarga ni se compila. Antes se cargaba el atrio y el
+         avatar original completos para descartarlos al entrar al Momento;
+         eso sumaba ~20 MB y varios segundos de espera al preloader. */
       if (direct) {
+        loaderStage(16, 'Cargando tu avatar y el Momento');
+        await setAvatar(skinKind(direct));
         hideIntro();
         ensureAudio();
         S.phase = 'atrium'; S.sessionStart = performance.now();
@@ -158,6 +164,18 @@ export function bootGame() {
         showUnlock();
         return true;
       }
+
+      loaderStage(16, 'Cargando el atrio y tu avatar');
+      await Promise.all([ensureAtrium(), setAvatar(skinKind(0))]);
+      if (assetManager.failed.has('atrium')) throw new Error('No se pudo descargar el atrio');
+      /* La luz, la niebla y el fondo ya están calculados; fijar el color
+         exacto evita que el primer frame descubra un resto del anterior. */
+      BG.copy(BGT);
+      /* Deja al jugador en su spawn antes de la portada para que la cámara
+         giratoria encuadre el atrio definitivo, no el centro provisional. */
+      placePlayerAtSpawn(Math.PI);
+      loaderStage(64, 'Acomodando la luz del museo');
+      await warmScene(14000);
 
       loaderStage(96, 'Todo listo');
       await loaderFinish();
@@ -228,10 +246,11 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     const f = new THREE.Mesh(new THREE.CircleGeometry(18, 64), mat(0x12130d, { roughness: 1 })); f.rotation.x = -Math.PI / 2; f.position.y = floorY - 0.02; f.material.transparent = true; f.material.opacity = 0; f.visible = true; roomGroup.add(f); setRoomFloor(f);
     const disc = glowSprite(LIME, 14, .2); disc.material.depthTest = false; disc.position.y = floorY + 0.05; disc.renderOrder = -1; roomGroup.add(disc);
 
-    /* Escenario, avatar y grabación viajan en paralelo bajo el preloader. */
+    /* Escenario y avatar viajan en paralelo bajo el preloader. La grabación
+       no: su decodificación compite con la subida de texturas y alargaba el
+       primer render. Arranca recién cuando la sala ya es visible. */
     loaderStage(38, 'Construyendo el escenario');
     need = r.audio === 'real';
-    const audioReady = need ? loadRec(id) : Promise.resolve();
     await Promise.all([Promise.resolve(cur.build?.()), avatarReady]);
     if (assetManager.failed.has(id)) throw new Error('No se pudo descargar el escenario');
 
@@ -250,27 +269,34 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     go = $('btnGo'); go.onclick = startRoom;
     go.disabled = need; if (need) go.textContent = 'Preparando la grabación…';
 
-    /* La grabación forma parte de "listo para jugar": si todavía no está
-       decodificada, el nivel no se descubre. El tope de 30 s evita una
-       espera infinita si el archivo no existe o la red se cuelga. */
-    if (need) {
-      loaderStage(74, 'Cargando la grabación del Momento');
-      const slow = setTimeout(() => loaderStage(82, 'La grabación es larga · un momento más'), 5000);
-      await Promise.race([audioReady, sleep(30000)]);
-      clearTimeout(slow);
-    }
+    /* La grabación se sigue cargando con la sala ya visible: antes el
+       preloader esperaba la decodificación completa (hasta 30 s). El botón
+       de empezar se habilita cuando el buffer está listo; la música del
+       preludio entra por streaming desde el primer segundo. */
+    audioReadyForRoom = !need;
 
     /* Preludio / ficha listos, pero todavía ocultos. */
     if (PRELUDE.enabled) initPrelude(id, false);
 
     loaderStage(90, 'Preparando la imagen');
-    await warmScene(15000);
+    await warmScene(15000, world);
     loaderStage(97, 'Todo listo');
     await loaderFinish();
 
     S.ready = true;
-    go.disabled = false; go.innerHTML = GO_LABEL;
-    if (need) noteRec(id);
+    if (need) {
+      /* Con la sala ya abierta, la decodificación no retrasa el preloader.
+         El botón se habilita al terminar; mientras tanto el preludio suena
+         por streaming. */
+      loadRec(id).then(() => {
+        if (S.room !== id || !go) return;
+        audioReadyForRoom = true;
+        go.disabled = false; go.innerHTML = GO_LABEL;
+        noteRec(id);
+      });
+    } else {
+      go.disabled = false; go.innerHTML = GO_LABEL;
+    }
     /* La locución recién empieza cuando la sala ya es visible. */
     if (PRELUDE.enabled) startPreludeVoice(id);
     titleCard(r);
@@ -287,7 +313,11 @@ export async function enterRoom(id, { loaderOn = false } = {}) {
     S.busy = false;
   }
 }
-export function startRoom() { if (S.phase !== 'brief' || !S.ready) return; document.activeElement?.blur?.(); ensureAudio(); newBus(); S.phase = 'play'; S.playStart = performance.now(); $('brief').classList.remove('show'); $('btnSkip').style.display = 'none'; cur.start(); tone(660, .12, 'sine', .04, 0, A.master) }
+export function startRoom() {
+  if (S.phase !== 'brief' || !S.ready) return;
+  if (!audioReadyForRoom) { toast('La grabación todavía se está preparando'); return; }
+  document.activeElement?.blur?.(); ensureAudio(); newBus(); S.phase = 'play'; S.playStart = performance.now(); $('brief').classList.remove('show'); $('btnSkip').style.display = 'none'; cur.start(); tone(660, .12, 'sine', .04, 0, A.master);
+}
 
 export function finish(m, lines, skipped = false) {
   if (S.phase !== 'play') return; S.phase = 'done'; S.completed.add(S.room); S.metrics[S.room] = { ...m, skipped, duration: (performance.now() - S.playStart) / 1000 };
@@ -314,7 +344,7 @@ export async function leaveRoom() {
     lightingManager.setMode('atrium');
     BG.copy(BGT);
     loaderStage(36, 'Reuniendo el atrio y tu avatar');
-    await Promise.all([setAvatar(skinKind(0)), atriumReady]);
+    await Promise.all([setAvatar(skinKind(0)), ensureAtrium()]);
     avatarObj.scale.setScalar(1);
     placePlayerAtAtrium();
     setRoomInfo('Atrio central', 'El museo imposible', 'Seis escaleras flotan alrededor del centro. Haz clic en el suelo para caminar y sigue la que late: cada una lleva a un momento distinto.');

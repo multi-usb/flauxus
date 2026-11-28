@@ -300,10 +300,34 @@ export function startPreludeMusic(id) {
     return null;
   }
   const pre = A.pre = { id, src: null, el: null, nodes: [], gain: null, stopped: false };
+  const buf = Rec.buf.get(id);
+  /* Si el buffer todavía se está decodificando, la música entra ya por
+     streaming con un <audio>: el preludio no queda en silencio ni obliga a
+     esperar la decodificación completa bajo el preloader. El buffer se usa
+     en cuanto está listo para el Momento. */
+  if (!buf && PRE_TRACK.has(id) && trackFiles.has(id)) {
+    const el = new Audio(recUrl(id));
+    el.loop = true;
+    el.volume = PRE_LEVEL;
+    el.muted = A.muted;
+    el.play().catch(() => { });
+    pre.el = el;
+    if (x.state === 'suspended') {
+      const resume = () => {
+        el.play().catch(() => { });
+        removeEventListener('pointerdown', resume, true);
+        removeEventListener('keydown', resume, true);
+        pre.resume = null;
+      };
+      addEventListener('pointerdown', resume, true);
+      addEventListener('keydown', resume, true);
+      pre.resume = resume;
+    }
+    return pre;
+  }
   const g = pre.gain = x.createGain();
   g.gain.value = 0;
   g.connect(A.master);
-  const buf = Rec.buf.get(id);
   if (buf) {
     /* Grabación confirmada de la sala: la misma que usa el minijuego. */
     const src = x.createBufferSource();

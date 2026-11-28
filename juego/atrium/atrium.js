@@ -248,7 +248,17 @@ export function updateFloatingBlocks(T) {
   blocksMesh.instanceMatrix.needsUpdate = true;
 }
 
+/* El atrio se construye una sola vez. En la entrada directa (?room=N) no se
+   llama al arrancar: el museo no se muestra y su descarga competiría con la
+   del Momento. `ensureAtrium()` lo construye recién al volver al atrio. */
+export let atriumBuilt = false;
+export function ensureAtrium() {
+  if (!atriumBuilt) makeAtrium();
+  return atriumReady;
+}
+
 export function makeAtrium() {
+  atriumBuilt = true;
   clearGroup(world); bumpAtriumGen(); stairGroups.length = 0; portalObjects.length = 0;
   /* Transparent floor for raycasting (click-to-walk) */
   const floor = new THREE.Mesh(new THREE.CircleGeometry(29, 96), mat(0x1a1b14, { roughness: 1, transparent: true, opacity: 0 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.02; world.add(floor); atriumFloor = floor;
